@@ -1,0 +1,446 @@
+@prefix :        <http://xmlns.com/foaf/0.1/> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix cert:    <http://www.w3.org/ns/auth/cert#> .
+@prefix geo:     <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix pingback:  <http://purl.org/net/pingback/> .
+@prefix foaf:    <http://xmlns.com/foaf/0.1/> .
+@prefix iana:    <http://www.iana.org/assignments/relation/> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix contact:  <http://www.w3.org/2000/10/swap/pim/contact#> .
+
+<http://danbri.org/foaf.rdf#danbri>
+      a       foaf:Person ;
+      foaf:homepage <http://danbri.org/> ;
+      foaf:name "Dan Brickley" .
+
+<http://data.boab.info/david/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "David Peterson" .
+
+<http://handtwerk.de/foaf.rdf#arne>
+      a       foaf:Person ;
+      foaf:homepage <http://www.handtwerk.de/> ;
+      foaf:name "Arne Handt" .
+
+<http://www.w3.org/People/Berners-Lee/card#i>
+      a       foaf:Person ;
+      foaf:name "Tim Berners Lee" .
+
+<http://bblfish.net/people/henry/card>
+      a       foaf:PersonalProfileDocument ;
+      iana:alternate <http://bblfish.net/people/henry/card.rdf> , <http://bblfish.net/people/henry/card.n3> ;
+      foaf:maker <http://bblfish.net/people/henry/card#me> ;
+      foaf:primaryTopic <http://bblfish.net/people/henry/card#me> ;
+      foaf:title "Henry Story's FOAF file" .
+
+<http://www.anjeve.de/foaf.rdf#AnjaJentzsch>
+      a       foaf:Person ;
+      foaf:homepage <http://www.anjeve.de/> ;
+      foaf:name "Anja Jentzsch" .
+
+<http://xircles.codehaus.org/users/evenisse/foaf#me>
+      a       foaf:Person ;
+      foaf:name "Venisse Emmanuel" .
+
+<http://sebastian.dietzold.de/terms/me>
+      a       foaf:Person ;
+      foaf:name "Sebastian Dietzold" .
+
+<http://dbpedia.org/resource/Tim_Bray>
+      a       foaf:Person ;
+      foaf:name "Tim Bray" .
+
+<http://b4mad.net/FOAF/goern.rdf#goern>
+      a       foaf:Person ;
+      foaf:name "Christoph  Görn" .
+
+<http://torrez.us/who#elias>
+      a       foaf:Person ;
+      foaf:name "Torres Elias" , "Elias Torres" .
+
+<http://www.ifi.uzh.ch/ddis/fileadmin/user_upload/avi/#me>
+      a       foaf:Person ;
+      foaf:name "Abraham Bernstein" .
+
+<http://sw-app.org/mic.xhtml#i>
+      a       foaf:Person ;
+      foaf:homepage <http://www.sw-app.org/> ;
+      foaf:name "Michael G. Hausenblas" .
+
+<http://davelevy.info/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Dave Levy" .
+
+<http://foaf.me/dana#me>
+      a       foaf:Person ;
+      foaf:name "Danica Radovanovic" .
+
+<http://purl.oclc.org/NET/gearon/people/PaulGearon/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Paul Gearon" .
+
+<http://danny.ayers.name/index.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Danny Ayers" .
+
+<http://www.semantic-web.at/people/blumauer/card#me>
+      a       foaf:Person ;
+      foaf:name "Andreas Blumauer" .
+
+<http://www.topquadrant.com/people/dallemang/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Dean Allemang" .
+
+<http://www.dfki.uni-kl.de/~grimnes/foaf.rdf#ggrimnes>
+      a       foaf:Person ;
+      foaf:homepage <http://www.dfki.uni-kl.de/~grimnes/> ;
+      foaf:name "Gunnar AAstrand Grimnes" .
+
+<http://presbrey.mit.edu/foaf#presbrey>
+      a       foaf:Person ;
+      foaf:name "Joe Presbrey" .
+
+<http://www.uni-koblenz.de/~sschenk/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Simon Schenk" .
+
+<http://foafbuilder.qdos.com/people/asyd.myopenid.com/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Bruno Bonfils" .
+
+<http://dr.jones.dk/me/#me>
+      a       foaf:Person ;
+      foaf:name "Jonas Smedegaard" .
+
+<http://richard.cyganiak.de/foaf.rdf#cygri>
+      a       foaf:Person ;
+      foaf:homepage <http://richard.cyganiak.de/> ;
+      foaf:name "Richard Cyganiak" .
+
+<http://www.ifi.unizh.ch/ddis/fileadmin/user_upload/kiefer/foaf.rdf#christophkiefer>
+      a       foaf:Person ;
+      foaf:homepage <http://www.ifi.unizh.ch/ddis/christophkiefer.html> ;
+      foaf:name "Christoph Kiefer" .
+
+<http://purl.org/captsolo/semweb/foaf-captsolo.rdf#Uldis_Bojars>
+      a       foaf:Person ;
+      foaf:homepage <http://kaste.lv/~captsolo> ;
+      foaf:name "Uldis Bojars" .
+
+<http://ggg.milanstankovic.org/foaf.rdf#milstan>
+      a       foaf:Person ;
+      foaf:name "Milan Stankovic" .
+
+<http://fcns.eu/people/andrei/card#me>
+      a       foaf:Person ;
+      foaf:name "Andrei Sambra" .
+
+<http://dblp.l3s.de/d2r/page/authors/Christian_Bizer>
+      a       foaf:Person ;
+      foaf:homepage <http://www.bizer.de/> ;
+      foaf:name "Chris Bizer" .
+
+<http://mmt.me.uk/foaf.rdf#mischa>
+      a       foaf:Person ;
+      foaf:name "Mischa Tuffield" .
+
+<http://www.informatik.uni-leipzig.de/~auer/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Sören Auer" .
+
+<http://www.w3.org/People/Connolly/#me>
+      a       foaf:Person ;
+      foaf:name "Dan Connolly" .
+
+<http://www.ibiblio.org/hhalpin/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:homepage <http://www.ibiblio.org/hhalpin/> ;
+      foaf:name "Halpin Harry" .
+
+<http://dbpedia.org/resource/Roy_Fielding>
+      a       foaf:Person ;
+      foaf:homepage <http://roy.gbiv.com/> ;
+      foaf:name "Roy Fielding" .
+
+<http://semedia.deit.univpm.it/people/christian/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Christian Morbidoni" .
+
+<http://www.fosi.org/people/philarcher/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Archer Phil" .
+
+<http://swordfish.rdfweb.org/people/libby/rdfweb/webwho.xrdf#me>
+      a       foaf:Person ;
+      foaf:homepage <http://nicecupoftea.org/> ;
+      foaf:name "Libby Miller" .
+
+<http://tobyinkster.co.uk/#i>
+      a       foaf:Person ;
+      foaf:name "Toby Inkster" .
+
+<http://kingsley.idehen.name/dataspace/person/kidehen#this>
+      a       foaf:Person ;
+      foaf:name "Kingsley Idehen" .
+
+<http://heddley.com/edd/foaf.rdf#edd>
+      a       foaf:Person ;
+      foaf:homepage <http://heddley.com/edd/> ;
+      foaf:name "Edd Dumbill" .
+
+<http://www.aifb.uni-karlsruhe.de/Personen/viewPersonOWL/id2076instance>
+      a       foaf:Person ;
+      foaf:name "Max Völkel" .
+
+<http://sebastian.tramp.name>
+      a       foaf:Person ;
+      foaf:name "Sebastian Tramp" .
+
+<http://axel.deri.ie/~axepol/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Axel Polleres" .
+
+<http://metacognition.info/profile/webwho.xrdf#chime>
+      a       foaf:Person ;
+      foaf:name "Chimezie Ogbuji" .
+
+<http://www.discoveringidentity.com/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Mark Dixon" .
+
+<http://www.wchulseiee.net/foaf#elieuw>
+      a       foaf:Person ;
+      foaf:name "Ewald Lieuwes" .
+
+<http://dbpedia.org/resource/Yochai_Benkler>
+      a       foaf:Person ;
+      foaf:name "Yochai Benkler" .
+
+<http://foafbuilder.qdos.com/people/tboudreau.myopenid.com/foaf.rdf#me>
+      a       foaf:Person ;
+      foaf:name "Tim Boudreau" ;
+      foaf:weblog <http://weblogs.java.net/blog/timboudreau/> .
+
+<http://bblfish.net/people/henry/card#me>
+      a       foaf:Person ;
+      pingback:to <https://my-profile.eu/pingback.php> ;
+      contact:home
+              [ a       contact:ContactLocation ;
+                contact:address
+                        [ contact:city "Fontainebleau" ;
+                          contact:country "France" ;
+                          contact:postalCode "77300" ;
+                          contact:street "21 rue Saint Honore"
+                        ] ;
+                geo:lat "48.404532" ;
+                geo:long "2.700448"
+              ] ;
+      cert:key
+              [ a       cert:RSAPublicKey ;
+                cert:exponent 65537 ;
+                cert:modulus "BA2748848B3D7EEC1731D84CE93BB23112C9C61E98F4398B76C18A5370D1743F4EAFBB9E52A5C43CBB5ABB6720BB90D1D560F113FD5420416810C48DAFFDCD38861FC4ECDE7E2D1354DA3773667656622A295A9388A3261286F5963C03C7508929D68508812CADD4A99FF832A3B1112EBDA79FC276A95C7885AC26B1CA24DE330C7DDB9DDF922CBDD99DE1FFE31DFE18BFE34D38A9999C414530E1DC8EACEC95FD1FF34C54D409A3DC4FE7CF52BD06682A4459C1A5381FBB3734C8E0E691F3A032196464F70FA7AA6647F848FC28587A29219A84C130F50F90BF504A0E49074560AEB9A49429DE2488BBC7604176A283CE4BF2E9D8E4719893E45E0943AD6FA9"^^<http://www.w3.org/2001/XMLSchema#hexBinary>
+              ] ;
+      foaf:aimChatID "unbabelfish" ;
+      foaf:birthday "07-29" ;
+      foaf:currentProject <https://sommer.dev.java.net/> , <http://bblfish.net/work/atom-owl/2006-06-06/> , <https://bloged.dev.java.net/> ;
+      foaf:depiction <http://farm1.static.flickr.com/164/373663745_e2066a4950.jpg> ;
+      foaf:family_name "Story" ;
+      foaf:gender "male" ;
+      foaf:givenname "Henry" ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry Story's delicious bookmarking account"@en ;
+                foaf:accountName "bblfish" ;
+                foaf:accountServiceHomepage
+                        <http://delicious.com/> ;
+                foaf:homepage <http://delicious.com/bblfish>
+              ] ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry Story's linked in business social network account"@en ;
+                foaf:accountName "bblfish" ;
+                foaf:accountServiceHomepage
+                        <http://www.linkedin.com/> ;
+                foaf:homepage <http://www.linkedin.com/pub/0/482/680>
+              ] ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry's bitcoin account"@en ;
+                foaf:accountName "1NJohVdTiHs5gf3dV9URw2daCTkqqfTCCL" ;
+                foaf:accountServiceHomepage
+                        <http://www.bitcoin.org/>
+              ] ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry Story's java.net developer account"@en ;
+                foaf:accountName "bblfish" ;
+                foaf:accountServiceHomepage
+                        <http://java.net/>
+              ] ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry Story's twitter micro blogging account"@en ;
+                foaf:accountName "bblfish" ;
+                foaf:accountProfilePage
+                        <http://twitter.com/bblfish> ;
+                foaf:accountServiceHomepage
+                        <http://twitter.com/>
+              ] ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry Story's facebook social networking account"@en ;
+                foaf:accountName "bblfish" ;
+                foaf:accountServiceHomepage
+                        <http://www.facebook.com/>
+              ] ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry Story's twine semantic aggregation account"@en ;
+                foaf:accountName "bblfish" ;
+                foaf:accountServiceHomepage
+                        <http://twine.com/> ;
+                foaf:homepage <http://www.twine.com/user/bblfish>
+              ] ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry Story's skype account"@en ;
+                foaf:accountName "bblfish" ;
+                foaf:accountServiceHomepage
+                        <http://www.skype.com/>
+              ] ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry Story's last.fm music account"@en ;
+                foaf:accountName "bblfish" ;
+                foaf:accountServiceHomepage
+                        <http://www.last.fm/> ;
+                foaf:homepage <http://www.last.fm/user/bblfish>
+              ] ;
+      foaf:holdsAccount
+              [ a       foaf:OnlineAccount ;
+                rdfs:label "Henry Story's flickr pictures account"@en ;
+                foaf:accountName "bblfish" ;
+                foaf:accountServiceHomepage
+                        <http://www.flickr.com/> ;
+                foaf:homepage <http://www.flickr.com/people/bblfish>
+              ] ;
+      foaf:homepage <http://bblfish.net/> ;
+      foaf:interest <http://wikipedia.org/wiki/Philosophy> , <http://wikipedia.org/wiki/Semantic_Web> , <http://en.wikipedia.org/wiki/Go_%28game%29> , <http://wikipedia.org/wiki/Cycling> ;
+      foaf:jabberID "bblfish@jabber.org" ;
+      foaf:knows <http://danbri.org/foaf.rdf#danbri> , <http://data.boab.info/david/foaf.rdf#me> , <http://handtwerk.de/foaf.rdf#arne> , <http://www.w3.org/People/Berners-Lee/card#i> , <http://www.anjeve.de/foaf.rdf#AnjaJentzsch> , <http://xircles.codehaus.org/users/evenisse/foaf#me> , <http://sebastian.dietzold.de/terms/me> , <http://dbpedia.org/resource/Tim_Bray> , <http://b4mad.net/FOAF/goern.rdf#goern> , <http://torrez.us/who#elias> , <http://www.ifi.uzh.ch/ddis/fileadmin/user_upload/avi/#me> , <http://sw-app.org/mic.xhtml#i> , <http://davelevy.info/foaf.rdf#me> , <http://foaf.me/dana#me> , <http://purl.oclc.org/NET/gearon/people/PaulGearon/foaf.rdf#me> , <http://danny.ayers.name/index.rdf#me> , <http://www.semantic-web.at/people/blumauer/card#me> , <http://www.topquadrant.com/people/dallemang/foaf.rdf#me> , <http://www.dfki.uni-kl.de/~grimnes/foaf.rdf#ggrimnes> , <http://presbrey.mit.edu/foaf#presbrey> , <http://www.uni-koblenz.de/~sschenk/foaf.rdf#me> , <http://foafbuilder.qdos.com/people/asyd.myopenid.com/foaf.rdf#me> , <http://richard.cyganiak.de/foaf.rdf#cygri> , <http://dr.jones.dk/me/#me> , <http://www.ifi.unizh.ch/ddis/fileadmin/user_upload/kiefer/foaf.rdf#christophkiefer> , <http://purl.org/captsolo/semweb/foaf-captsolo.rdf#Uldis_Bojars> , <http://ggg.milanstankovic.org/foaf.rdf#milstan> , <http://fcns.eu/people/andrei/card#me> , <http://dblp.l3s.de/d2r/page/authors/Christian_Bizer> , <http://mmt.me.uk/foaf.rdf#mischa> , <http://www.informatik.uni-leipzig.de/~auer/foaf.rdf#me> , <http://www.w3.org/People/Connolly/#me> , <http://www.ibiblio.org/hhalpin/foaf.rdf#me> , <http://dbpedia.org/resource/Roy_Fielding> , <http://semedia.deit.univpm.it/people/christian/foaf.rdf#me> , <http://swordfish.rdfweb.org/people/libby/rdfweb/webwho.xrdf#me> , <http://www.fosi.org/people/philarcher/foaf.rdf#me> , <http://tobyinkster.co.uk/#i> , <http://kingsley.idehen.name/dataspace/person/kidehen#this> , <http://heddley.com/edd/foaf.rdf#edd> , <http://www.aifb.uni-karlsruhe.de/Personen/viewPersonOWL/id2076instance> , <http://sebastian.tramp.name> , <http://axel.deri.ie/~axepol/foaf.rdf#me> , <http://www.discoveringidentity.com/foaf.rdf#me> , <http://metacognition.info/profile/webwho.xrdf#chime> , <http://www.wchulseiee.net/foaf#elieuw> , <http://dbpedia.org/resource/Yochai_Benkler> , <http://foafbuilder.qdos.com/people/tboudreau.myopenid.com/foaf.rdf#me> , <http://kashori.com/JohnBlack/foaf.rdf#jpb> , <http://dbpedia.org/resource/James_Gosling> , <http://www.turnguard.com/turnguard> , <http://melvincarvalho.com/#me> , <http://bigasterisk.com/foaf.rdf#drewp> , <http://crschmidt.net/foaf.rdf#crschmidt> , <http://foaf.me/ah1#me> ;
+      foaf:knows
+              [ a       foaf:Person ;
+                foaf:homepage <http://www.j-paine.org/> ;
+                foaf:name "Jocelyn Paine"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                foaf:name "Karin Rafael Remeikis" ;
+                foaf:weblog <http://esa-eu.blogspot.com/> , <http://planetae.posterous.com/> ;
+                foaf:workplaceHomepage
+                        <http://spaceweek.de/>
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                foaf:homepage <http://catbauer.com/> ;
+                foaf:name "Cat Bauer"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                rdfs:seeAlso <http://kronkltd.net/data/foaf.rdf> ;
+                foaf:homepage <http://kronkltd.net/> ;
+                foaf:name "Renfer Daniel"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                rdfs:seeAlso <http://www.w3.org/People/Eric/ericP-foaf.rdf> ;
+                foaf:homepage <http://www.w3.org/People/Eric/> ;
+                foaf:name "Eric Prud'hommeaux"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                foaf:homepage <http://bitworking.org/> ;
+                foaf:name "Joe Gregorio"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                foaf:homepage <http://www.pst.ifi.lmu.de/people/staff/rauschmayer/axel-rauschmayer/> ;
+                foaf:name "Axel Rauschmayer"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                rdfs:seeAlso <http://www.webmink.net/foaf.rdf> ;
+                foaf:homepage <http://www.webmink.net/> ;
+                foaf:mbox_sha1sum "4e377376e6977b765c1e78b2d0157a933ba11167" ;
+                foaf:name "Simon Phipps"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                foaf:homepage <http://g1o.net/> ;
+                foaf:name "Giovanni Tummarello"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                rdfs:seeAlso <http://www.openrdf.org/people/foaf-jeen.rdf> ;
+                foaf:homepage <http://wwwis.win.tue.nl/~jbroekst/> ;
+                foaf:name "Jeen Broekstra"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                foaf:homepage <http://niij.org/> ;
+                foaf:name "Michael Zeltner"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                rdfs:seeAlso <http://www.openrdf.org/people/foaf-arjohn.rdf> ;
+                foaf:name "Arjohn Kampman"
+              ] ;
+      foaf:knows
+              [ a       foaf:Person ;
+                rdfs:seeAlso <http://novaspivack.typepad.com/foaf.rdf> ;
+                foaf:mbox <mailto:nova@radarnetworks.com> ;
+                foaf:name "Spivack Nova"
+              ] ;
+      foaf:logo <http://localhost:9000/pix/bfish.large.jpg> ;
+      foaf:mbox <mailto:henry.story@gmail.com> , <mailto:henry.story@bblfish.net> ;
+      foaf:name "Henry J. Story" ;
+      foaf:nick "bblfish" ;
+      foaf:openid <http://bblfish.net/> , <http://openid.sun.com/bblfish> ;
+      foaf:pastProject <http://babelfish.altavista.com/> ;
+      foaf:phone <tel:+33-9-70-44-86-64> , <tel:+1-510-931-5491> ;
+      foaf:schoolHomepage <http://www.kcl.ac.uk/kis/schools/hums/philosophy/> , <http://www.bbk.ac.uk/phil/> , <http://www.doc.ic.ac.uk/> ;
+      foaf:title "Mr" ;
+      foaf:weblog <http://bblfish.net/blog/> , <http://blogs.sun.com/bblfish/> , <http://www.flickr.com/photos/bblfish/> , <http://del.icio.us/bblfish> ;
+      foaf:workplaceHomepage
+              <http://sun.com/> .
+
+<http://kashori.com/JohnBlack/foaf.rdf#jpb>
+      a       foaf:Person ;
+      foaf:homepage <http://kashori.com/JohnBlack> ;
+      foaf:name "John Black" .
+
+<http://dbpedia.org/resource/James_Gosling>
+      a       foaf:Person ;
+      foaf:name "James Gosling" .
+
+<http://www.turnguard.com/turnguard>
+      a       foaf:Person ;
+      foaf:name "jakobitsch jürgen" .
+
+<http://melvincarvalho.com/#me>
+      a       foaf:Person ;
+      foaf:name "Melvin Carvalho" .
+
+<http://bigasterisk.com/foaf.rdf#drewp>
+      a       foaf:Person ;
+      foaf:homepage <http://bigasterisk.com/> ;
+      foaf:name "Drew Perttula" .
+
+<http://crschmidt.net/foaf.rdf#crschmidt>
+      a       foaf:Person ;
+      foaf:homepage <http://crschmidt.net/> ;
+      foaf:name "Christopher Schmidt" .
+
+<http://foaf.me/ah1#me>
+      a       foaf:Person ;
+      foaf:name "Akbar Hossain" .
