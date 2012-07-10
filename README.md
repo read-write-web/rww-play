@@ -58,5 +58,35 @@ such as [rdflib](https://github.com/linkeddata/rdflib.js)
 
 ### Linked Data
 
+You PUT an RDF resource to the  test_www directory with a command such as 
 
+```
+$ curl -X PUT -i -T card.ttl -H "Content-Type: text/turtle; utf-8"  http://localhost:9000/2012/card.ttl
+```
+
+and you can query it on the command line with curl as follows
+
+```
+$ curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> ?p . } " -i http://localhost:9000/2012/card.ttl
+HTTP/1.1 200 OK
+Content-Type: application/sparql-results+xml
+Content-Length: 8799
+
+<?xml version="1.0"?>
+<sparql xmlns="http://www.w3.org/2005/sparql-results#">
+  <head>
+    <variable name="p"/>
+  </head>
+  <results>
+    <result>
+      <binding name="p">
+        <uri>http://richard.cyganiak.de/foaf.rdf#cygri</uri>
+ ...
+```
+
+or if you would rather it return json 
+
+```
+curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" -H "Accept: application/sparql-results+json" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> [ <http://xmlns.com/foaf/0.1/name> ?p ] . } " -i http://localhost:9000/2012/card.ttl
+```
 
