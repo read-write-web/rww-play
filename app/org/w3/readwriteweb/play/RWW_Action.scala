@@ -93,7 +93,7 @@ object ReadWriteWeb_App extends Controller {
             Akka.future {
              writerFor[Jena#Graph](request)(RDFWriterSelector).map { wr=>
                 result(200,wr)(graph)
-             }.getOrElse(UnsupportedMediaType("cannot parse content type"))
+             }.getOrElse(UnsupportedMediaType("cannot parse content type".getBytes("UTF-8")))
             }
           }
         }
@@ -112,7 +112,7 @@ object ReadWriteWeb_App extends Controller {
                 bool => writerFor[Boolean](request)(BoolWriterSelector).map {
                   wr => result(200, wr)(bool)
                 }
-              ).getOrElse(UnsupportedMediaType("cannot parse content type"))
+              ).getOrElse(UnsupportedMediaType("cannot parse content type".getBytes("UTF-8")))
             )
           }
           Async {

@@ -36,9 +36,9 @@ Using the command line tool `curl` the following command fetches Dean Allemang's
 and returns it as Turtle with the needed CORS headers.
 
 ```bash
-$ curl -s -i -H "Accept: text/turtle" -H "Origin: http://love.js"  "http://localhost:9000/srv/cors?url=http://www.topquadrant.com/people/dallemang/foaf.rdf" 
+$ curl -s -i -H "Accept: text/turtle" -H "Origin: http://tricks.js"  "http://localhost:9000/srv/cors?url=http://www.topquadrant.com/people/dallemang/foaf.rdf" 
 HTTP/1.1 200 OK
-Access-Control-Allow-Origin: http://love.js
+Access-Control-Allow-Origin: http://tricks.js
 Last-Modified: Tue, 06 Jan 2009 16:37:29 GMT
 Server: Apache
 Accept-Ranges: bytes

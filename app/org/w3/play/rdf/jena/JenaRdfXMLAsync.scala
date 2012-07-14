@@ -3,20 +3,21 @@ package org.w3.play.rdf.jena
 import org.w3.banana.jena.Jena
 import org.w3.banana.RDFXML
 import java.net.URL
-import play.api.libs.iteratee.Iteratee
-import play.api.libs.concurrent.Promise
+import play.api.libs.iteratee.{Input, Error, Iteratee}
+import play.api.libs.concurrent.{Thrown, Promise}
 import com.fasterxml.aalto.{AsyncInputFeeder, AsyncXMLStreamReader}
 import com.fasterxml.aalto.stax.InputFactoryImpl
 import com.hp.hpl.jena.rdf.model.{ModelFactory, Model}
 import patch.AsyncJenaParser
 import com.hp.hpl.jena.rdf.arp.SAX2Model
 import org.w3.play.rdf.RDFIteratee
+import org.w3.play.util.IterateePlus
 
 
 object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
 
   def apply(loc: Option[URL]): Iteratee[Array[Byte], Either[Exception, Jena#Graph]] =
-    Iteratee.fold2[Array[Byte], RdfXmlFeeder](new RdfXmlFeeder(loc)) {
+    IterateePlus.fold2[Array[Byte], RdfXmlFeeder](new RdfXmlFeeder(loc)) {
       (feeder, bytes) =>
         try {
           //all this could be placed into a promise to be run by another actor if parsing takes too long
