@@ -11,7 +11,7 @@ import scalaz.Validation
 /**
  * RDF Iteratee to parse graphs, based on blocking parsers. This iteratee
  * will run each parser in its own thread. So this iteratee is not very
- * efficient. Beter find Iteratees that don't work with blocking parsers
+ * efficient. Better find Iteratees that don't work with blocking parsers
 
  * @param ops RDF operations
  * @param reader the RDFReader this is based on
@@ -35,7 +35,6 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType]
     val out = new PipedOutputStream(in)
     val blockingIO = Akka.future {
       try {
-        //http://www.youtube.com/watch?v=wMFqSjjnte0
         val graph: Validation[BananaException, Rdf#Graph] = reader.read(in, loc.map(_.toString).orNull)
         graph.either
       } finally {
