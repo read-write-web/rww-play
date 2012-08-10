@@ -1,0 +1,3 @@
+[submodule "Play20"]
+	path = Play20
+	url = https://github.com/bblfish/Play20.git
