@@ -11,6 +11,7 @@ import scala.Right
 import scala.Some
 import java.net.URL
 import org.w3.play.rdf.jena.{JenaSparqlQueryIteratee, JenaAsync}
+import scalaz.{Failure, Success}
 
 /**
  * a RWW bodyParser, like all body parsers, parses content sent from the client
@@ -38,12 +39,12 @@ class RwwBodyParser[Rdf <: RDF]
     else rh.contentType.map { str =>
       MimeType(str) match {
         case sparqlSelector(iteratee) => iteratee().mapDone {
-          case Left(e) => Left(BadRequest("could not parse query "+e))
-          case Right(sparql) => Right(QueryRwwContent(sparql))
+          case Failure(e) => Left(BadRequest("could not parse query "+e))
+          case Success(sparql) => Right(QueryRwwContent(sparql))
         }
         case graphSelector(iteratee) => iteratee(Some(new URL("http://localhost:9000/" + rh.uri))).mapDone {
-          case Left(e) => Left(BadRequest("cought " + e))
-          case Right(graph) => Right(GraphRwwContent(graph))
+          case Failure(e) => Left(BadRequest("cought " + e))
+          case Success(graph) => Right(GraphRwwContent(graph))
         }
         case mime: MimeType => parse.raw(rh).mapDone {
           _.right.map(rb => BinaryRwwContent(rb, mime.mime))

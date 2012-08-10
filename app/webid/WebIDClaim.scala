@@ -97,13 +97,13 @@
 //          }
 //        }
 //        if (matches) webid.success
-//        else new WebIDVerificationFailure("could not verify public key", None, this).fail
+//        else new WebIDVerificationFailure("could not verifyWebIDClaim public key", None, this).fail
 //      } finally {
 //        qe.close()
 //      }
 //  }
 //
-//  def verify: Validation[WebIDClaimFailure, WebID] = key match {
+//  def verifyWebIDClaim: Validation[WebIDClaimFailure, WebID] = key match {
 //    case rsakey: RSAPublicKey =>
 //      WebID(san).flatMap(webid=> {
 //        webid.getDefiningModel(CacheControl.CacheOnly).flatMap(rsaTest(webid, rsakey)) match {
@@ -117,14 +117,14 @@
 //}
 //
 //
-//trait Err {
+//trait VerificationException {
 //  type T <: AnyRef
 //  val msg: String
 //  val cause: Option[Throwable]=None
 //  val subject: T
 //}
 //
-//abstract class Fail extends Throwable with Err
+//abstract class Fail extends Throwable with VerificationException
 //
 //abstract class WebIDClaimFailure extends Fail
 //

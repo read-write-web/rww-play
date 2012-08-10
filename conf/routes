@@ -12,4 +12,4 @@ GET     /2012/*file                 org.w3.readwriteweb.play.ReadWriteWeb_App.ge
 PUT     /2012/*file                 org.w3.readwriteweb.play.ReadWriteWeb_App.put(file)
 POST    /2012/*file                 org.w3.readwriteweb.play.ReadWriteWeb_App.post(file)
 
-GET     /srv/cors                   org.w3.readwriteweb.play.CORSProxy.get(url: String)
+GET     /srv/cors                   org.w3.readwriteweb.play.JenaCORSProxy.get(url: String)

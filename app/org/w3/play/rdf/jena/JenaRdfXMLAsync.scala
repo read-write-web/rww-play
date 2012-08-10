@@ -12,11 +12,12 @@ import patch.AsyncJenaParser
 import com.hp.hpl.jena.rdf.arp.SAX2Model
 import org.w3.play.rdf.RDFIteratee
 import org.w3.play.util.IterateePlus
+import scalaz.{Failure, Success, Validation}
 
 
 object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
 
-  def apply(loc: Option[URL]): Iteratee[Array[Byte], Either[Exception, Jena#Graph]] =
+  def apply(loc: Option[URL]): Iteratee[Array[Byte], Validation[Exception, Jena#Graph]] =
     IterateePlus.fold2[Array[Byte], RdfXmlFeeder](new RdfXmlFeeder(loc)) {
       (feeder, bytes) =>
         try {
@@ -45,8 +46,8 @@ object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
     var err: Option[Exception] = None
 
     def result = err match {
-      case None => Right(model.getGraph)
-      case Some(e) => Left(e)
+      case None => Success(model.getGraph)
+      case Some(e) => Failure(e)
     }
 
     lazy val asyncReader: AsyncXMLStreamReader = new InputFactoryImpl().createAsyncXMLStreamReader()

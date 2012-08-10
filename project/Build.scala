@@ -9,8 +9,8 @@ object ApplicationBuild extends Build {
 
 
     val appDependencies = Seq(
-          "org.w3"                            %% "banana-jena"                % "0.3x1-SNAPSHOT",
-          "org.w3"                            %% "banana-sesame"              % "0.3x1-SNAPSHOT",
+          "org.w3"                            %% "banana-jena"                % "0.3-20120810-SNAPSHOT",
+          "org.w3"                            %% "banana-sesame"              % "0.3-20120810-SNAPSHOT",
           "net.rootdev"                       %  "java-rdfa"                  % "0.4.2-RC2",
           "nu.validator.htmlparser"           %  "htmlparser"                 % "1.2.1",
           "org.scalaz"                        %% "scalaz-core"                % "7.0-SNAPSHOT"

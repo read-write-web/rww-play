@@ -6,11 +6,21 @@ import java.io.File
 import org.w3.banana.jena._
 import java.net.URL
 import scalaz.Scalaz._
-import scalaz.Validation
+import scalaz._
 import akka.event.Logging
 import com.hp.hpl.jena.sparql.core.DatasetGraphFactory
 import akka.actor.InvalidActorNameException
 import org.w3.banana.WrongExpectation
+import org.w3.readwriteweb.play.QueryRwwContent
+import org.w3.readwriteweb.play.GraphRwwContent
+import org.w3.readwriteweb.play.Put
+import scalaz.Middle3
+import akka.actor.InvalidActorNameException
+import scalaz.Left3
+import org.w3.readwriteweb.play.Request
+import org.w3.banana.WrongExpectation
+import org.w3.readwriteweb.play.Query
+import sesame.{SesameStore, Sesame}
 
 
 trait ReadWriteWebException extends Exception
@@ -57,11 +67,12 @@ case class Query[Rdf<:RDF](query: QueryRwwContent[Rdf], path: String)
 
 abstract
 class ResourceActor[Rdf <: RDF,+SyntaxType](
-            ops: RDFOperations[Rdf],
             file: File,
             path: String,
-            url: URL,
-            graphQuery: OpenGraphQuery[Rdf]) extends Actor {
+            url: URL)(implicit
+                      ops: RDFOperations[Rdf],
+                      graphQuery: Rdf#Graph => SPARQLEngine[Rdf],
+                      sparqlOps: SPARQLOperations[Rdf]) extends Actor {
 
   val dsl = Diesel(ops)
   import dsl._
@@ -104,8 +115,7 @@ class ResourceActor[Rdf <: RDF,+SyntaxType](
     case Query(QueryRwwContent(q: Rdf#Query), _) => {
       sender ! graph.map {
         graph =>
-          graphQuery.executeQuery(graph, q)
-
+          new OpenSPARQLEngine(graph).executeQuery(q)
       }
     }
     case unknown => {
@@ -116,7 +126,7 @@ class ResourceActor[Rdf <: RDF,+SyntaxType](
 }
 
 class JenaResourceActor(file: File, path: String, url: URL) extends ResourceActor[Jena,Turtle](
-  JenaOperations, file,path,url,OpenJenaGraphQuery) {
+   file,path,url)(JenaOperations, JenaStore.toStore, JenaSPARQLOperations) {
 
   def reader[S >: Turtle] = JenaRDFReader.TurtleReader
 

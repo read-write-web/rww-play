@@ -27,7 +27,7 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType]
 
   new net.rootdev.javardfa.jena.RDFaReader
   //import shellac's rdfa parser
-  type SIteratee[Result] = Iteratee[Array[Byte], Either[Exception, Result]]
+  type SIteratee[Result] = Iteratee[Array[Byte], Validation[Exception, Result]]
 
   def apply(loc: Option[URL] = None): SIteratee[Rdf#Graph] = {
 
@@ -35,8 +35,7 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType]
     val out = new PipedOutputStream(in)
     val blockingIO = Akka.future {
       try {
-        val graph: Validation[BananaException, Rdf#Graph] = reader.read(in, loc.map(_.toString).orNull)
-        graph.either
+        reader.read(in, loc.map(_.toString).orNull)
       } finally {
         in.close()
       }

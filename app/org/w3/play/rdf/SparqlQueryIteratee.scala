@@ -23,7 +23,7 @@ class SparqlQueryIteratee[Rdf<:RDF, +SyntaxType]
     stream =>
       val query = new String(stream.toByteArray,"UTF-8")//todo, where do we get UTF-8?
       System.out.println("received query"+query)
-      ops.Query(query).either
+      ops.Query(query)
   }
 }
 
