@@ -5,15 +5,15 @@ import scalaz._
 import Scalaz._
 import java.security.{Principal, PublicKey}
 import java.net.{MalformedURLException, URL, URISyntaxException}
-import org.w3.play.remote.{FetchException, GraphFetcher}
+import org.w3.play.remote.{JenaGraphFetcher, FetchException, GraphFetcher, GraphNHeaders}
 import org.w3.banana._
 import java.math.BigInteger
 import java.security.interfaces.RSAPublicKey
+import jena.{JenaStore, JenaSPARQLOperations, JenaOperations, Jena}
 import play.api.libs.concurrent.Promise
 import scalaz.Semigroup._
 import scalaz.Failure
 import scalaz.Success
-import org.w3.play.remote.GraphNHeaders
 
 
 object WebIDAuthN {
@@ -33,7 +33,7 @@ object WebIDAuthN {
  */
 class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
                  sparqlOps: SPARQLOperations[Rdf],
-                 graphQuery: Rdf#Graph => SPARQLEngine[Rdf],
+                 graphQuery: Rdf#Graph => RDFStore[Rdf],
                  fetcher: GraphFetcher[Rdf])   {
 
   import sparqlOps._
@@ -49,7 +49,7 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
 //    else wiv
 //  }
 
-  def verify(x509claim: Claim[X509Certificate]) = {
+  def verify(x509claim: Claim[X509Certificate]): List[Promise[Validation[BananaException,WebIDPrincipal]]] = {
       val webidClaims = for (x509 <- x509claim) yield {
         Option(x509.getSubjectAlternativeNames()).toList.flatMap { coll =>
           import scala.collection.JavaConverters.iterableAsScalaIterableConverter
@@ -85,23 +85,29 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
 
   /**
    * transform an RDF#Node to a positive Integer if possible
+   * A bit heavy this implementation! Can't use asInstanceOf[T] as that info is sadly erased
    * @param node the node - as a literal - that should be the positive integer
    * @return a Validation containing and exception or the number
    */
   private def toPositiveInteger(node: Rdf#Node): Validation[BananaException,BigInteger] =
-    if (!node.isInstanceOf[Rdf#TypedLiteral])
-      FailedConversion("node was not a typed literal: "+node).fail[BigInteger]
-    else try {
-      fromTypedLiteral(node.asInstanceOf[Rdf#TypedLiteral]) match {
-        case (hexStr, xsd("hexBinary")) => Success(new BigInteger(stripSpace(hexStr), 16))
-        case (base10Str, base10Tp) if base10Types.contains(base10Tp) => new BigInteger(base10Str).success[BananaException]
-        case (_,tp) => FailedConversion(
-          "do not recognise datatype "+tp+" as one of the legal numeric ones in node: " + node).fail[BigInteger]
-      }
-    } catch {
-      case num: NumberFormatException =>
-        FailedConversion("failed to convert to integer "+node+" - "+num.getMessage).fail[BigInteger]
-    }
+    node.fold(
+       _=> FailedConversion("node must be a typed literal; it was: "+node).fail[BigInteger],
+       _=> FailedConversion("node must be a typed literal; it was: "+node).fail[BigInteger],
+       lit => lit.fold ( tl => try {
+         fromTypedLiteral(tl) match {
+           case (hexStr: String, xsd("hexBinary")) => Success(new BigInteger(stripSpace(hexStr), 16))
+           case (base10Str: String, base10Tp) if base10Types.contains(base10Tp) => new BigInteger(base10Str).success[BananaException]
+           case (_,tp) => FailedConversion(
+             "do not recognise datatype "+tp+" as one of the legal numeric ones in node: " + node).fail[BigInteger]
+         }
+       } catch {
+         case num: NumberFormatException =>
+           FailedConversion("failed to convert to integer "+node+" - "+num.getMessage).fail[BigInteger]
+       },
+         langLit => FailedConversion("numbers don't have language tags: "+langLit).fail[BigInteger]
+       )
+    )
+
 
   /**
    * function to verifyWebIDClaim that a given Subject Alternative Name referent is the owner of a public key
@@ -111,7 +117,8 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
    */
   def verifyWebID(san: String, key: PublicKey):  Promise[Validation[BananaException,WebIDPrincipal]] =  try {
     val uri = new java.net.URI(san)
-    val scheme = uri.getScheme
+    val webidProfile = new java.net.URI(san.split("#")(0))
+    val scheme = webidProfile.getScheme
     if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))
       return Promise.pure(
         UnsupportedProtocol("we only support http and https urls at present - this one was "+scheme, san).fail
@@ -120,7 +127,7 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
     key match {
       case rsaKey: RSAPublicKey =>  {
         val wid = ops.makeUri(san)
-        val p = fetcher.fetch(uri.toURL).map { graphVal: Validation[FetchException, GraphNHeaders[Rdf]]   =>
+        val p = fetcher.fetch(webidProfile.toURL).map { graphVal: Validation[FetchException, GraphNHeaders[Rdf]]   =>
           graphVal.flatMap { case GraphNHeaders(graph,headers) =>
             val sols = graph.executeSelect(query, Map("webid" -> wid))
             val s: Iterable[Validation[BananaException,WebIDPrincipal]] = solutionIterator(sols).map { sol: Rdf#Solution =>
@@ -129,7 +136,7 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
               keyVal.flatMap { key =>
                 if (key.modulus == rsaKey.getModulus && key.exponent == rsaKey.getPublicExponent)
                   WebIDPrincipal(uri).success[BananaException]
-                else new KeyMatchFailure("RSA key does not match one in profile",uri,rsaKey,key).fail[WebIDPrincipal]
+                else new KeyMatchFailure("RSA key does not match one in profile",san,rsaKey,key).fail[WebIDPrincipal]
               }
             }
             val result = s.find(_.isSuccess).getOrElse {
@@ -143,7 +150,7 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
         p
 
       }
-      case _ => Promise.pure(new UnsupportedKeyType("cannot verifyWebIDClaim WebID <"+uri+"> with key of type "+
+      case _ => Promise.pure(new UnsupportedKeyType("cannot verifyWebIDClaim WebID <"+san+"> with key of type "+
         key.getAlgorithm,key).fail)
    }
   } catch {
@@ -153,11 +160,13 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
   }
 
 
-
-
   def verifyWebIDClaim(webidClaim: Claim[Pair[String,PublicKey]]): Promise[Validation[BananaException,WebIDPrincipal]] =
     webidClaim.verify { sk => verifyWebID(sk._1,sk._2) }
 }
+
+object JenaWebIDAuthN extends WebIDAuthN[Jena]()(
+  JenaOperations, JenaSPARQLOperations,
+  JenaStore.toStore,JenaGraphFetcher)
 
 /**
  * A Claim is a Monad that contains something akin to a set of statements, that are not known to
@@ -190,6 +199,30 @@ object Claim {
   }
 
 }
+//
+//trait VClaim[+S,+V] {
+//  protected val claimed: S
+//  val verified: V
+//}
+//
+//object VClaim {
+//  implicit val VClaimMonad: Monad[Claim] with Traverse[Claim] =
+//    new Monad[Claim] with Traverse[Claim] {
+//
+//      def traverseImpl[G[_] : Applicative, A, B](fa: Claim[A])(f: A => G[B]): G[Claim[B]] =
+//        f(fa.statements).map(a => this.point(a))
+//
+//      def point[A](a: => A) = new Claim[A]{
+//        protected val statements : A = a;
+//        def verify[V](implicit fn: A=> V ) = fn(statements)
+//      }
+//
+//      def bind[A, B](fa: Claim[A])(f: (A) => Claim[B]) = f(fa.statements)
+//
+//    }
+//
+//}
+//
 
 case class WebIDPrincipal(webid: java.net.URI) extends Principal {
   val getName = webid.toString
@@ -230,4 +263,4 @@ case class ProfileParseError(val msg: String, val cause: List[Throwable], subjec
 
 //it would be useful to pass the graph in
 //perhaps change the WebID to the doc uri where it was fetched finally.
-case class KeyMatchFailure(val msg: String, webid: java.net.URI, certKey: RSAPublicKey, comparedWith: RSAPubKey ) extends VerificationException
+case class KeyMatchFailure(val msg: String, webid: String, certKey: RSAPublicKey, comparedWith: RSAPubKey ) extends VerificationException

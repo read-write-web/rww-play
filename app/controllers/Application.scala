@@ -11,8 +11,16 @@ object Application extends Controller {
    AuthZ(r => rg.startsWith("a")) {
         Action {
           Ok("hello "+rg)
+        }
   }
-      }
+
+  def webId(rg: String) =
+     AsyncAuthZ(AGuard(AWebIDFinder, _ => Promise.pure(WebIDAgent))) {
+       Action {
+         Ok("You are authorized. We found a WebID")
+       }
+     }
+
 //
 //    Async {
 //      //timeouts should be set as transport specific options as explained in Netty's ChannelFuture
