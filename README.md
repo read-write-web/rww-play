@@ -28,7 +28,8 @@ Getting going
  $ cd ../..
 ```
 * from the home directory of this project, start the previously compiled Play2.0 server in secure mode with lightweight client certificate verification (for WebID)
-```
+
+```bash
  $ Play20/play
  > run  -Dhttps.port=8443  -Dhttps.server.clientTrust=noCA
 ```
@@ -36,6 +37,12 @@ Getting going
 
 Usage 
 -----
+
+
+### WebID test
+
+1. get yourself a WebID certificate ( e.g. [My-Profile](https://my-profile.eu/profile.php) will give you a nice one )
+2. Use the browser you got a certificate above to connect to [https://localhost:8443/test/webid/eg](https://localhost:8443/test/webid/eg). Your browser will request a certificate from you and return a (way to simple message) - more advanced versions of this server will show a lot more info... 
 
 
 ### CORS 
