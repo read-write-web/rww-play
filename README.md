@@ -44,6 +44,18 @@ Usage
 1. get yourself a WebID certificate ( e.g. [My-Profile](https://my-profile.eu/profile.php) will give you a nice one )
 2. Use the browser you got a certificate above to connect to [https://localhost:8443/test/webid/eg](https://localhost:8443/test/webid/eg). Your browser will request a certificate from you and return a (way to simple message) - more advanced versions of this server will show a lot more info... 
 
+The code to run this is a few lines in [Application](https://github.com/read-write-web/rww-play/blob/master/app/controllers/Application.scala#L17):
+
+```scala
+ def webId(rg: String) =
+     AsyncAuthZ(AGuard(AWebIDFinder, _ => Promise.pure(WebIDAgent))) {
+       Action {
+         Ok("You are authorized. We found a WebID")
+       }
+     }
+```
+
+The [AsyncAuthZ](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L33) class still needs to be developed a bit but is as shown quite easy to use. The [AGuard](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L78) is there to make it easier to compose guards that function asynchronously - by sending creating on agent to authenticate the user (if needed) and the other to work out what groups of agents can get access . The WebId Authentication code [WebIDAuthN](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/play/auth/WebIDAuthN.scala) is quite short and makes use of Claims. All this is still very prone to change. 
 
 ### CORS 
 
