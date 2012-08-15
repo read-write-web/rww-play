@@ -7,19 +7,31 @@ It is very early stages at present and it implements sketches of the following
 * A [CORS](http://www.w3.org/TR/cors/) proxy
 * An initial implementation of [Linked Data Basic Profile](http://www.w3.org/2012/ldp/wiki/Main_Page)
 
-This currently works in Play2.0.
+This currently works in the [2.0.3-with-TLS branch of the bblfish fork of Play 2.0](https://github.com/bblfish/Play20), which comes with TLS support and a few more patches.
 
-Proper functioning of the CORS proxy requires the patch for the [pull request 378](https://github.com/playframework/Play20/pull/378) of
-Play.
 
 Getting going
 -------------
 
-* Install the latest version of [Play 2.0](https://github.com/playframework)
-* enter the home directory and run
- > play
-* start the server on port 9000
- > run
+
+* clone [this project](https://github.com/read-write-web/rww-play) and compile 
+  the [bblfish's 2.0.3-with-TLS branch of Play 2.0](https://github.com/bblfish/Play20) [submodule](http://git-scm.com/book/en/Git-Tools-Submodules)
+  
+```bash
+ $ git clone git://github.com/read-write-web/rww-play.git 
+ $ git submodule init
+ $ git submodule update
+ $ cd Play20/framework
+ $ ./build
+ > publish-local 
+  ... [exit scala shell]
+ $ cd ../..
+```
+* from the home directory of this project, start the previously compiled Play2.0 server in secure mode with lightweight client certificate verification (for WebID)
+```
+ $ Play20/play
+ > run  -Dhttps.port=8443  -Dhttps.server.clientTrust=noCA
+```
 
 
 Usage 
