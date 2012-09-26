@@ -24,7 +24,7 @@ import org.w3.play.remote.{RemoteException, LocalException, WrappedException}
  *
  */
 abstract  class GraphCache[Rdf <: RDF](implicit
-                             val ops: RDFOperations[Rdf],
+                             val ops: RDFOps[Rdf],
                              val iterateeSelector: IterateeSelector[Rdf#Graph]) extends Actor {
 //  import dispatch._
 

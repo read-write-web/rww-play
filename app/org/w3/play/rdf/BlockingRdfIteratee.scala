@@ -19,7 +19,7 @@ import scalaz.Validation
  * @tparam SyntaxType the mime type parsed
  */
 class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType]
-(implicit ops: RDFOperations[Rdf], reader: RDFReader[Rdf, SyntaxType])
+(implicit ops: RDFOps[Rdf], reader: RDFReader[Rdf, SyntaxType])
   extends RDFIteratee[Rdf#Graph, SyntaxType] {
 
   import play.api.Play.current

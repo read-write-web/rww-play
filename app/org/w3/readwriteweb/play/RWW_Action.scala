@@ -28,9 +28,9 @@ object ReadWriteWeb_App extends Controller {
   lazy val rwwActor = system.actorOf(Props(new ResourceManager(new File("test_www"), url)), name = "rwwActor")
 
   //import some implicits
-  import JenaRDFBlockingWriter.{WriterSelector=>RDFWriterSelector}
-  import SparqlSolutionsWriter.{WriterSelector=>SparqWriterSelector}
-  import org.w3.banana.BooleanWriter.{WriterSelector=>BoolWriterSelector}
+  import JenaRDFWriter.{selector=>RDFWriterSelector}
+  import JenaSolutionsWriter.{solutionsWriterSelector=>SparqWriterSelector}
+  import org.w3.banana.BooleanWriter.{selector=>BoolWriterSelector}
 
 
 //    JenaRDFBlockingWriter.WriterSelector()

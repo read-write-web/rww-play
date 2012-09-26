@@ -15,7 +15,7 @@ import org.w3.play.rdf.{IterateeSelector, RDFIteratee, BlockingRDFIteratee}
 
 object JenaBlockingSparqlIteratee  {
   implicit val ops = JenaOperations
-  import org.w3.banana.jena.JenaRDFReader.{TurtleReader,RDFXMLReader}
+  import org.w3.banana.jena.Jena.{turtleReader,rdfxmlReader}
 
   def apply[SyntaxType](implicit jenaSyntax: JenaGraphSyntax[SyntaxType],
                         reader: RDFReader[Jena, SyntaxType]) = new BlockingRDFIteratee[Jena,SyntaxType]

@@ -1,7 +1,7 @@
 package org.w3.readwriteweb.play
 
 import org.w3.banana._
-import jena.{JenaSPARQLOperations, JenaOperations, Jena}
+import jena.{JenaSparqlOps, JenaOperations, Jena}
 import org.w3.play.rdf.IterateeSelector
 import play.api.mvc.{RawBuffer, RequestHeader, BodyParser}
 import play.api.libs.iteratee.Done
@@ -25,8 +25,8 @@ import scalaz.{Failure, Success}
  * @tparam Rdf
  */
 class RwwBodyParser[Rdf <: RDF]
-(val ops: RDFOperations[Rdf],
- val sparqlOps: SPARQLOperations[Rdf],
+(val ops: RDFOps[Rdf],
+ val sparqlOps: SparqlOps[Rdf],
  val graphSelector: IterateeSelector[Rdf#Graph],
  val sparqlSelector: IterateeSelector[Rdf#Query])
   extends BodyParser[RwwContent] {
@@ -74,7 +74,7 @@ case class BinaryRwwContent(binary: RawBuffer, mime: String) extends RwwContent
 
 
 object jenaRwwBodyParser extends
-RwwBodyParser[Jena](JenaOperations, JenaSPARQLOperations,
+RwwBodyParser[Jena](JenaOperations, JenaSparqlOps,
   JenaAsync.graphIterateeSelector, JenaSparqlQueryIteratee.sparqlSelector )
 
 

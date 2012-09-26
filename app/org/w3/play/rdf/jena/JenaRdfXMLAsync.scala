@@ -1,6 +1,6 @@
 package org.w3.play.rdf.jena
 
-import org.w3.banana.jena.Jena
+import org.w3.banana.jena.{BareJenaGraph, Jena}
 import org.w3.banana.RDFXML
 import java.net.URL
 import play.api.libs.iteratee.{Input, Error, Iteratee}
@@ -17,8 +17,8 @@ import scalaz.{Failure, Success, Validation}
 
 object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
 
-  def apply(loc: Option[URL]): Iteratee[Array[Byte], Validation[Exception, Jena#Graph]] =
-    IterateePlus.fold2[Array[Byte], RdfXmlFeeder](new RdfXmlFeeder(loc)) {
+  def apply(loc: Option[URL]): Iteratee[Array[Byte], Validation[Exception, Jena#Graph]] =  {
+    val it : Iteratee[Array[Byte],RdfXmlFeeder]= IterateePlus.fold2[Array[Byte], RdfXmlFeeder](new RdfXmlFeeder(loc)) {
       (feeder, bytes) =>
         try {
           //all this could be placed into a promise to be run by another actor if parsing takes too long
@@ -39,14 +39,16 @@ object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
             Promise.pure(Pair(feeder, true))
           }
         }
-    }.mapDone(_.result)
+    }
+    it.mapDone(_.result)
+  }
 
 
   protected case class RdfXmlFeeder(base: Option[URL]) {
     var err: Option[Exception] = None
 
-    def result = err match {
-      case None => Success(model.getGraph)
+    def result: Validation[Exception,Jena#Graph] = err match {
+      case None => Success( BareJenaGraph(model.getGraph) )
       case Some(e) => Failure(e)
     }
 

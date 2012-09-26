@@ -2,13 +2,11 @@ package org.w3.readwriteweb.play
 
 import play.api.mvc.{Controller, Action}
 import java.net.URL
-import org.w3.banana.RDF
-import org.w3.banana.jena.{RDFWriterSelector, JenaRDFBlockingWriter, Jena}
+import org.w3.banana.{WriterSelector, RDF}
+import org.w3.banana.jena.{JenaRDFWriter, Jena}
 import org.w3.readwriteweb.play.PlayWriterBuilder._
-import play.api.libs.ws.ResponseHeaders
 import akka.util.Timeout
 import org.w3.play.remote._
-import scalaz.{Failure, Success}
 import org.w3.play.remote.LocalException
 import scalaz.Success
 import scalaz.Failure
@@ -22,7 +20,7 @@ import org.w3.play.remote.RemoteException
  * look like for a CORS proxy.
  *
  */
-class CORSProxy[Rdf<:RDF](fetcher: GraphFetcher[Rdf], writerSelector: RDFWriterSelector[Rdf#Graph]) extends Controller {
+class CORSProxy[Rdf<:RDF](fetcher: GraphFetcher[Rdf], writerSelector: WriterSelector[Rdf#Graph]) extends Controller {
 
   // turn a header map into an (att,val) sequence
   private implicit def sequentialise(headers: Map[String,Seq[String]]) = headers.toSeq.flatMap(pair=>pair._2.map(v=>(pair._1,v)))
@@ -59,7 +57,7 @@ class CORSProxy[Rdf<:RDF](fetcher: GraphFetcher[Rdf], writerSelector: RDFWriterS
   }
 }
 
-object JenaCORSProxy extends CORSProxy[Jena](JenaGraphFetcher,JenaRDFBlockingWriter.WriterSelector)
+object JenaCORSProxy extends CORSProxy[Jena](JenaGraphFetcher,JenaRDFWriter.selector)
 
 
 //class JenaServiceConnection extends ServiceConnection[Jena](JenaAsync.graphIterateeSelector)

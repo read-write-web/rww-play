@@ -1,6 +1,6 @@
 package org.w3.play.rdf
 
-import org.w3.banana.{SPARQLOperations, RDF}
+import org.w3.banana.{SparqlOps, RDF}
 import java.net.URL
 import play.api.libs.iteratee.Iteratee
 import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
@@ -10,7 +10,7 @@ import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
  * @author Henry Story
  */
 class SparqlQueryIteratee[Rdf<:RDF, +SyntaxType]
-(implicit ops: SPARQLOperations[Rdf])
+(implicit ops: SparqlOps[Rdf])
   extends RDFIteratee[Rdf#Query, SyntaxType] {
   /**
    *

@@ -5,15 +5,16 @@ import scalaz._
 import Scalaz._
 import java.security.{Principal, PublicKey}
 import java.net.{MalformedURLException, URL, URISyntaxException}
-import org.w3.play.remote.{JenaGraphFetcher, FetchException, GraphFetcher, GraphNHeaders}
+import org.w3.play.remote.{JenaGraphFetcher, FetchException, GraphFetcher}
 import org.w3.banana._
 import java.math.BigInteger
 import java.security.interfaces.RSAPublicKey
-import jena.{JenaStore, JenaSPARQLOperations, JenaOperations, Jena}
+import jena._
 import play.api.libs.concurrent.Promise
 import scalaz.Semigroup._
-import scalaz.Failure
 import scalaz.Success
+import org.w3.play.remote.GraphNHeaders
+import org.w3.banana.FailedConversion
 
 
 object WebIDAuthN {
@@ -31,9 +32,9 @@ object WebIDAuthN {
 /**
  *
  */
-class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
-                 sparqlOps: SPARQLOperations[Rdf],
-                 graphQuery: Rdf#Graph => RDFStore[Rdf],
+class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOps[Rdf],
+                 sparqlOps: SparqlOps[Rdf],
+                 graphQuery: Rdf#Graph => SparqlEngine[Rdf,Id],
                  fetcher: GraphFetcher[Rdf])   {
 
   import sparqlOps._
@@ -165,8 +166,9 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOperations[Rdf],
 }
 
 object JenaWebIDAuthN extends WebIDAuthN[Jena]()(
-  JenaOperations, JenaSPARQLOperations,
-  JenaStore.toStore,JenaGraphFetcher)
+  JenaOperations, JenaSparqlOps,
+  JenaGraphSparqlEngine.makeSparqlEngine,
+  JenaGraphFetcher)
 
 /**
  * A Claim is a Monad that contains something akin to a set of statements, that are not known to
@@ -179,6 +181,7 @@ object JenaWebIDAuthN extends WebIDAuthN[Jena]()(
 trait Claim[+S] {
   protected val statements: S
 
+  //warning: implicit here is not a good idea at all
   def verify[V](implicit fn: S=> V ): V
 }
 

@@ -11,16 +11,6 @@ import akka.event.Logging
 import com.hp.hpl.jena.sparql.core.DatasetGraphFactory
 import akka.actor.InvalidActorNameException
 import org.w3.banana.WrongExpectation
-import org.w3.readwriteweb.play.QueryRwwContent
-import org.w3.readwriteweb.play.GraphRwwContent
-import org.w3.readwriteweb.play.Put
-import scalaz.Middle3
-import akka.actor.InvalidActorNameException
-import scalaz.Left3
-import org.w3.readwriteweb.play.Request
-import org.w3.banana.WrongExpectation
-import org.w3.readwriteweb.play.Query
-import sesame.{SesameStore, Sesame}
 
 
 trait ReadWriteWebException extends Exception
@@ -70,12 +60,13 @@ class ResourceActor[Rdf <: RDF,+SyntaxType](
             file: File,
             path: String,
             url: URL)(implicit
-                      ops: RDFOperations[Rdf],
-                      graphQuery: Rdf#Graph => SPARQLEngine[Rdf],
-                      sparqlOps: SPARQLOperations[Rdf]) extends Actor {
+                      ops: RDFOps[Rdf],
+                      graphQuery: Rdf#Graph => SparqlEngine[Rdf,Id],
+                      sparqlOps: SparqlOps[Rdf]) extends Actor {
 
-  val dsl = Diesel(ops)
-  import dsl._
+//  val dsl = Diesel(ops)
+//  import dsl._
+  import ops._
 
   val defaultGraph = URI("http://default.graph/")
   val log = Logging(context.system, this)
@@ -83,7 +74,7 @@ class ResourceActor[Rdf <: RDF,+SyntaxType](
 
   def reader[S>: SyntaxType]: RDFReader[Rdf, S]
 
-  def writer[S>: SyntaxType]: RDFBlockingWriter[Rdf, S]
+  def writer[S>: SyntaxType]: RDFWriter[Rdf, S]
 
   lazy val parent = file.getParentFile
 
@@ -114,8 +105,11 @@ class ResourceActor[Rdf <: RDF,+SyntaxType](
     }
     case Query(QueryRwwContent(q: Rdf#Query), _) => {
       sender ! graph.map {
-        graph =>
-          new OpenSPARQLEngine(graph).executeQuery(q)
+        graph =>  q match {
+          case ask: Rdf#AskQuery => Either3.left3(graph.executeAsk(ask))
+          case select: Rdf#SelectQuery => Either3.middle3(graph.executeSelect(select))
+          case construct: Rdf#ConstructQuery => Either3.right3(graph.executeConstruct(construct))
+        }
       }
     }
     case unknown => {
@@ -126,14 +120,15 @@ class ResourceActor[Rdf <: RDF,+SyntaxType](
 }
 
 class JenaResourceActor(file: File, path: String, url: URL) extends ResourceActor[Jena,Turtle](
-   file,path,url)(JenaOperations, JenaStore.toStore, JenaSPARQLOperations) {
+   file,path,url)(JenaOperations, JenaGraphSparqlEngine.makeSparqlEngine, JenaSparqlOps) {
 
-  def reader[S >: Turtle] = JenaRDFReader.TurtleReader
+  def reader[S >: Turtle] = Jena.turtleReader
 
-  def writer[S >: Turtle] = JenaRDFBlockingWriter.TurtleWriter
+  def writer[S >: Turtle] = Jena.turtleWriter
 
   val store = JenaStore(DatasetGraphFactory.createMem())
 
-  protected lazy val sparqlEngine = OpenSPARQLEngine(JenaSPARQLOperations,store)
+// not sure what happened to OpenSPARQLEngine
+//  protected lazy val sparqlEngine = OpenSPARQLEngine(JenaSPARQLOperations,store)
 
 }
