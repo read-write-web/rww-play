@@ -31,7 +31,7 @@ Getting going
 
 ```bash
  $ Play20/play
- > run  -Dhttps.port=8443  -Dhttps.server.clientTrust=noCA
+ > run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
 ```
 
 
@@ -48,7 +48,7 @@ The code to run this is a few lines in [Application](https://github.com/read-wri
 
 ```scala
  def webId(rg: String) =
-     AsyncAuthZ(AGuard(AWebIDFinder, _ => Promise.pure(WebIDAgent))) {
+     AsyncAuthZ(AGuard(AWebIDFinder, _ => Future.successful(WebIDAgent))) {
        Action {
          Ok("You are authorized. We found a WebID")
        }

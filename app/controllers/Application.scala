@@ -16,9 +16,7 @@
 
 package controllers
 
-import play.api._
 import play.api.mvc._
-import play.api.libs.concurrent._
 import org.w3.readwriteweb.play.auth._
 import concurrent.Future
 import org.w3.banana.jena.{JenaGraphSparqlEngine, Jena}

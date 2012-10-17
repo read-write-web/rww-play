@@ -161,7 +161,8 @@ class AWebIDFinder[Rdf <: RDF](implicit webidAuthN: WebIDAuthN[Rdf]) extends Asy
   def apply(headers: RequestHeader): Future[Subject] = {
     headers.certs(must(headers)).map{certs=>
       new Subject{
-       def principals = certs(0) match {
+       def principals = if (certs.size == 0) List()
+        else certs(0) match {
           case x509: X509Certificate => {
             val x509claim = Claim.ClaimMonad.point(x509)
             webidAuthN.verify(x509claim).map { bf => bf.inner }
