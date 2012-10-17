@@ -1,11 +1,33 @@
+/*
+ * Copyright 2012 Henry Story, http://bblfish.net/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.w3.play.rdf
 
 import java.net.URL
-import play.api.libs.iteratee.Iteratee
+import play.api.libs.iteratee.{Cont, Done, Input, Iteratee}
 import java.io.{IOException, PipedOutputStream, PipedInputStream}
 import play.api.libs.concurrent.Akka
+import org.w3.banana
 import org.w3.banana._
 import scalaz.Validation
+import scalax.io.Resource
+import concurrent.Future
+import util.{FutureValidation, BananaValidationW}
+import concurrent.util.Duration
+import java.util.concurrent.TimeUnit
 
 
 /**
@@ -23,28 +45,28 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType]
   extends RDFIteratee[Rdf#Graph, SyntaxType] {
 
   import play.api.Play.current
+  implicit val ec = Akka.system(play.api.Play.current).dispatcher
   import webid.Logger.log
 
+
+  //import shellac's rdfa parser:
   new net.rootdev.javardfa.jena.RDFaReader
   //import shellac's rdfa parser
-  type SIteratee[Result] = Iteratee[Array[Byte], Validation[Exception, Result]]
 
-  def apply(loc: Option[URL] = None): SIteratee[Rdf#Graph] = {
+  def apply(loc: Option[URL] = None): Iteratee[Array[Byte], Validation[Exception,Rdf#Graph]] = {
 
     val in = new PipedInputStream()
     val out = new PipedOutputStream(in)
-    val blockingIO = Akka.future {
-      try {
-        reader.read(in, loc.map(_.toString).orNull)
-      } finally {
-        in.close()
-      }
+    val blockingIO: BananaFuture[Rdf#Graph] = Akka.future {
+      reader.read(Resource.fromInputStream(in), loc.map(_.toString).orNull)
     }
 
-    Iteratee.fold[Array[Byte], PipedOutputStream](out) {
-      (out, bytes) => {
-        out.write(bytes);
-        out
+    Iteratee.fold1[Array[Byte], PipedOutputStream](out) {
+      (out, bytes) => try {
+        out.write(bytes);   //this is done synchronously on the thread - it should be fast, but should be tested
+        Future.successful(out)
+      } catch {
+        case ioe: IOException => Future.failed(ioe)
       }
     }.mapDone {
       finished =>
@@ -53,9 +75,8 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType]
         } catch {
           case e: IOException => log.warn("exception caught closing stream with " + loc, e)
         }
-        blockingIO.await(5000).get //todo: should be settable (but very likely much shorter than 5 seconds, since io succeeded)
+        blockingIO.await(Duration(2000,TimeUnit.MILLISECONDS)) //ugly!
     }
-
   }
 
 }

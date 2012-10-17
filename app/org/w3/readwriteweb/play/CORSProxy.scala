@@ -1,4 +1,20 @@
-package org.w3.readwriteweb.play
+/*
+ * Copyright 2012 Henry Story, http://bblfish.net/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.www.readwriteweb.play
 
 import play.api.mvc.{Controller, Action}
 import java.net.URL
@@ -11,6 +27,10 @@ import org.w3.play.remote.LocalException
 import scalaz.Success
 import scalaz.Failure
 import org.w3.play.remote.RemoteException
+import concurrent.ExecutionContext
+import akka.actor.ActorSystem
+import org.w3.play.rdf.IterateeSelector
+import org.w3.play.rdf.jena.JenaAsync
 
 /**
  * A <a href="http://www.w3.org/TR/cors/">CORS</a> proxy that allows a client to fetch remote RDF
@@ -20,18 +40,22 @@ import org.w3.play.remote.RemoteException
  * look like for a CORS proxy.
  *
  */
-class CORSProxy[Rdf<:RDF](fetcher: GraphFetcher[Rdf], writerSelector: WriterSelector[Rdf#Graph]) extends Controller {
+class CORSProxy[Rdf<:RDF](val graphSelector: IterateeSelector[Rdf#Graph], writerSelector: WriterSelector[Rdf#Graph]) extends Controller {
 
+  implicit val system = ActorSystem("MySystem")
+  implicit val executionContext = system.dispatcher
   // turn a header map into an (att,val) sequence
   private implicit def sequentialise(headers: Map[String,Seq[String]]) = headers.toSeq.flatMap(pair=>pair._2.map(v=>(pair._1,v)))
+  implicit val fetcher = new GraphFetcher[Rdf](graphSelector)
 
   def get(url: String) = Action {
     request =>
       System.out.println("in CORSProxy.get("+url+")")
       val iri = new URL(url)
       implicit val timeout = Timeout(10 * 1000)
-      val promiseResult = for (answer <- fetcher.corsFetch(iri, request.headers.toMap))
-      yield {
+      val promiseResult = for {
+        answer <- fetcher.corsFetch(iri, request.headers.toMap).inner
+      } yield {
         answer match {
           case Failure(RemoteException(msg, headers)) => ExpectationFailed(msg)
           case Failure(LocalException(msg)) =>  ExpectationFailed(msg)
@@ -57,7 +81,7 @@ class CORSProxy[Rdf<:RDF](fetcher: GraphFetcher[Rdf], writerSelector: WriterSele
   }
 }
 
-object JenaCORSProxy extends CORSProxy[Jena](JenaGraphFetcher,JenaRDFWriter.selector)
+object JenaCORSProxy extends CORSProxy[Jena](JenaAsync.graphIterateeSelector,JenaRDFWriter.selector)
 
 
 //class JenaServiceConnection extends ServiceConnection[Jena](JenaAsync.graphIterateeSelector)

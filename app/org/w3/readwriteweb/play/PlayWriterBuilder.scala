@@ -1,9 +1,27 @@
+/*
+ * Copyright 2012 Henry Story, http://bblfish.net/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.w3.readwriteweb.play
 
 import play.api.mvc.{ResponseHeader, SimpleResult, RequestHeader}
 import org.w3.banana.{WriterSelector, Writer, MediaRange}
 import java.io.ByteArrayOutputStream
 import play.api.libs.iteratee.Enumerator
+import scalax.io.Resource
+import scalax.io.managed.OutputStreamResource
 
 /**
  * Helps building Play Writers using RDFWriterSelectors
@@ -32,7 +50,7 @@ object PlayWriterBuilder {
   def result[Obj](code: Int, writer: Writer[Obj,_])(obj: Obj) = {
     SimpleResult(
       header = ResponseHeader(200, Map("Content-Type" -> writer.syntax.mime)),  //todo
-      body = toEnum(writer)(obj)
+      body   = toEnum(writer)(obj)
     )
   }
 
@@ -47,9 +65,9 @@ object PlayWriterBuilder {
    */
   def toEnum[Obj](writer: Writer[Obj,_]) =
     (obj: Obj) => {
-      val res = new ByteArrayOutputStream()
-      val tw = writer.write(obj, res, "http://localhost:8888/")
-      Enumerator(res.toByteArray)
+      val out = new ByteArrayOutputStream()
+      val tw = writer.write(obj,  Resource.fromOutputStream(out), "http://localhost:8888/")
+      Enumerator(out.toByteArray)
     }
 
 

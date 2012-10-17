@@ -1,12 +1,42 @@
+/*
+ * Copyright 2012 Henry Story, http://bblfish.net/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package controllers
 
 import play.api._
 import play.api.mvc._
 import play.api.libs.concurrent._
 import org.w3.readwriteweb.play.auth._
+import concurrent.Future
+import org.w3.banana.jena.{JenaGraphSparqlEngine, Jena}
+import akka.actor.ActorSystem
+import org.w3.play.remote.GraphFetcher
+import org.w3.play.rdf.jena.JenaAsync
+import org.w3.play.auth.WebIDAuthN
 
 object Application extends Controller {
-  
+
+  implicit val system = ActorSystem("MySystem")
+  implicit val executionContext = system.dispatcher
+  implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
+  implicit val JenaGraphFetcher = new GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
+  implicit val JenaWebIDAuthN = new WebIDAuthN[Jena]()
+
+  val AWebIDFinder = new AWebIDFinder[Jena]()
+
   def index(rg: String) = //Ok("this should be an authz app. Please fix")
    AuthZ(r => rg.startsWith("a")) {
         Action {
@@ -15,7 +45,7 @@ object Application extends Controller {
   }
 
   def webId(rg: String) =
-     AsyncAuthZ(AGuard(AWebIDFinder, _ => Promise.pure(WebIDAgent))) {
+     AsyncAuthZ(AGuard(AWebIDFinder, _ => Future.successful(WebIDAgent))) {
        Action {
          Ok("You are authorized. We found a WebID")
        }

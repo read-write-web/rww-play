@@ -9,9 +9,9 @@ GET     /test/webid/:rg             controllers.Application.webId(rg)
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
 
-GET     /2012/*file                 org.w3.readwriteweb.play.ReadWriteWeb_App.get(file)
-PUT     /2012/*file                 org.w3.readwriteweb.play.ReadWriteWeb_App.put(file)
-POST    /2012/*file                 org.w3.readwriteweb.play.ReadWriteWeb_App.post(file)
+GET     /2012/*file                 org.www.readwriteweb.play.ReadWriteWeb_App.get(file)
+PUT     /2012/*file                 org.www.readwriteweb.play.ReadWriteWeb_App.put(file)
+POST    /2012/*file                 org.www.readwriteweb.play.ReadWriteWeb_App.post(file)
 
-GET     /srv/cors                   org.w3.readwriteweb.play.JenaCORSProxy.get(url: String)
+GET     /srv/cors                   org.www.readwriteweb.play.JenaCORSProxy.get(url: String)
 

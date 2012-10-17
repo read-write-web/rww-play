@@ -1,3 +1,19 @@
+/*
+ * Copyright 2012 Henry Story, http://bblfish.net/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 //
 ///*
 // * Copyright (c) 2011 Henry Story (bblfish.net)
@@ -8,7 +24,7 @@
 // * this software and associated documentation files (the "Software"), to deal in the
 // * Software without restriction, including without limitation the rights to use, copy,
 // * modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-// * and to permit persons to whom the Software is furnished to do so, subject to the
+// * and to permit persons to whom the Software is furnished to do so, findSubject to the
 // * following conditions:
 // *
 // * The above copyright notice and this permission notice shall be included in all
@@ -121,25 +137,25 @@
 //  type T <: AnyRef
 //  val msg: String
 //  val cause: Option[Throwable]=None
-//  val subject: T
+//  val findSubject: T
 //}
 //
 //abstract class Fail extends Throwable with VerificationException
 //
 //abstract class WebIDClaimFailure extends Fail
 //
-//class UnsupportedKeyType(val msg: String, val subject: PublicKey) extends WebIDClaimFailure { type T = PublicKey }
+//class UnsupportedKeyType(val msg: String, val findSubject: PublicKey) extends WebIDClaimFailure { type T = PublicKey }
 //
 //
 //abstract class SANFailure extends WebIDClaimFailure { type T = String }
-//case class UnsupportedProtocol(val msg: String, subject: String) extends SANFailure
-//case class URISyntaxError(val msg: String, subject: String) extends SANFailure
+//case class UnsupportedProtocol(val msg: String, findSubject: String) extends SANFailure
+//case class URISyntaxError(val msg: String, findSubject: String) extends SANFailure
 //
-////The subject could be more refined than the URL, especially in the paring error
+////The findSubject could be more refined than the URL, especially in the paring error
 //abstract class ProfileError extends WebIDClaimFailure  { type T = URL }
-//case class ProfileGetError(val msg: String,  override val cause: Option[Throwable], subject: URL) extends ProfileError
-//case class ProfileParseError(val msg: String, override val cause: Option[Throwable], subject: URL) extends ProfileError
+//case class ProfileGetError(val msg: String,  override val cause: Option[Throwable], findSubject: URL) extends ProfileError
+//case class ProfileParseError(val msg: String, override val cause: Option[Throwable], findSubject: URL) extends ProfileError
 //
 ////it would be useful to pass the graph in
-//class WebIDVerificationFailure(val msg: String, val caused: Option[Throwable], val subject: WebIDClaim)
+//class WebIDVerificationFailure(val msg: String, val caused: Option[Throwable], val findSubject: WebIDClaim)
 //  extends WebIDClaimFailure { type T = WebIDClaim }

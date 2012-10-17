@@ -1,9 +1,24 @@
+/*
+ * Copyright 2012 Henry Story, http://bblfish.net/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.w3.play.remote
 
 import java.net.URL
-import org.w3.banana.{BananaException, MimeType, RDF}
+import org.w3.banana._
 import org.w3.play.rdf.IterateeSelector
-import play.api.libs.concurrent.Promise
 import play.api.libs.iteratee.{Input, Done, Iteratee}
 import play.api.libs.ws.WS
 import scala.Some
@@ -11,13 +26,14 @@ import play.api.libs.ws.ResponseHeaders
 import scalaz.{Failure, Success, Validation}
 import org.w3.banana.jena.Jena
 import org.w3.play.rdf.jena.JenaAsync
+import concurrent.{ExecutionContext, Future}
 
 /**
  * Fetches graphs remotely on the web
  * @param graphSelector graph transformers
  * @tparam Rdf
  */
-class GraphFetcher[Rdf<: RDF](val graphSelector: IterateeSelector[Rdf#Graph])  {
+class GraphFetcher[Rdf<: RDF](val graphSelector: IterateeSelector[Rdf#Graph])(implicit ec: ExecutionContext)  {
 
   /**
    * @param url
@@ -25,7 +41,7 @@ class GraphFetcher[Rdf<: RDF](val graphSelector: IterateeSelector[Rdf#Graph])  {
    * @return
    */
   def corsFetch(url: URL, headers: Map[String, Seq[String]]):
-   Promise[Validation[FetchException, GraphNHeaders[Rdf]]] = {
+   BananaFuture[GraphNHeaders[Rdf]] = {
     System.out.println("in ServiceConnection Fetching " + url)
     val hdrs = for (key <- (headers - "Accept").keys;
                     value <- (headers(key))) yield (key, value)
@@ -33,17 +49,17 @@ class GraphFetcher[Rdf<: RDF](val graphSelector: IterateeSelector[Rdf#Graph])  {
     //question: should I send back a Validation[Graph] or a Promise[Graph] or the complex Promise[Itera...] that I do
     //also this assumes that the method in flatMap is only run when the iteratee is finished. That is not so clear
     //from the documentation at the time of writing (2012/08/01)
-    val promiseResult: Promise[Validation[FetchException, GraphNHeaders[Rdf]]] = promiseIteratee.flatMap(_.run)
+    val promiseResult: Future[Validation[FetchException, GraphNHeaders[Rdf]]] = promiseIteratee.flatMap(_.run)
     promiseResult
   }
 
   //request for a URL
-  def fetch(url: URL): Promise[Validation[FetchException, GraphNHeaders[Rdf]]] = {
+  def fetch(url: URL): Future[Validation[FetchException, GraphNHeaders[Rdf]]] = {
     val promiseIteratee = fetch(url, Iterable.empty)
-    //question: should I send back a Validation[Graph] or a Promise[Graph] or the complex Promise[Itera...] that I do
+    //question: should I send back a Validation[Graph] or a Future[Graph] or the complex Future[Itera...] that I do
     //also this assumes that the method in flatMap is only run when the iteratee is finished. That is not so clear
     //from the documentation at the time of writing (2012/08/01)
-    val promiseResult: Promise[Validation[FetchException, GraphNHeaders[Rdf]]] = promiseIteratee.flatMap(_.run)
+    val promiseResult: Future[Validation[FetchException, GraphNHeaders[Rdf]]] = promiseIteratee.flatMap(_.run)
     promiseResult
   }
 
@@ -57,7 +73,7 @@ class GraphFetcher[Rdf<: RDF](val graphSelector: IterateeSelector[Rdf#Graph])  {
    * @return
    */
   def fetch(url: URL, headers: Iterable[(String,String)] ):
-    Promise[Iteratee[Array[Byte], Validation[FetchException, GraphNHeaders[Rdf]]]] =
+    Future[Iteratee[Array[Byte], Validation[FetchException, GraphNHeaders[Rdf]]]] =
       WS.url(url.toExternalForm)
         .withHeaders(headers.toSeq:_*)
         .withHeaders("Accept" -> "application/rdf+xml,text/turtle,application/xhtml+xml;q=0.8,text/html;q=0.7,text/n3;q=0.2")
@@ -103,4 +119,3 @@ case class RemoteException(msg: String, remote: ResponseHeaders) extends FetchEx
 case class LocalException(msg: String) extends FetchException
 case class WrappedException(msg: String, e: Exception) extends FetchException
 
-object JenaGraphFetcher extends GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
