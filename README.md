@@ -34,14 +34,32 @@ Getting going
  > run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
 ```
 
+* You can also start the server so that it only accepts WebID certificates - which we will currently
+ assume are those signed by an agent named "CN=WebID,O=∅"
+
+```bash
+ $ Play20/play
+ > run  -Dhttps.port=8443 -Dhttps.trustStore=webid.WebIDTrustManager
+```
+
+
+
 
 Usage 
 -----
 
+### Creating a WebID Certificate
+
+After starting your server you can go to http://localhost:9000/srv/certgen or to [the https equivalent](https://localhost:8443/srv/certgen) and create yourself a certificate for a WebID profile you may already have. The WebID will be signed by the agent with Distinguished Name "CN=WebID,O=∅" so that we can try out if making requests only for those certificates does the right thing.
+
+( Todo: later we will add functionality to add create a local webid that also published the RDF )
+To make the WebID valid you will need to publish the relavant rdf at that document location as explained in [the WebID spec](http://www.w3.org/2005/Incubator/webid/spec/#publishing-the-webid-profile-document)
+
 
 ### WebID test
 
-1. get yourself a WebID certificate ( e.g. [My-Profile](https://my-profile.eu/profile.php) will give you a nice one )
+1. get yourself a WebID certificate ( e.g. [My-Profile](https://my-profile.eu/profile.php) will give you a nice one ), or use
+  the certgen service described above.
 2. Use the browser you got a certificate above to connect to [https://localhost:8443/test/webid/eg](https://localhost:8443/test/webid/eg). Your browser will request a certificate from you and return a (way to simple message) - more advanced versions of this server will show a lot more info... 
 
 The code to run this is a few lines in [Application](https://github.com/read-write-web/rww-play/blob/master/app/controllers/Application.scala#L17):

@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-package test
+package webid
 
-import java.math.BigInteger
-import java.security.cert.X509Certificate
-import java.security.{KeyPairGenerator, SecureRandom, KeyPair}
-import java.util.Date
 import javax.net.ssl.X509TrustManager
+import java.security.cert.X509Certificate
+import java.security.{SecureRandom, KeyPair, KeyPairGenerator}
 import sun.security.x509._
+import java.math.BigInteger
+import java.util.Date
 
-
+/**
+ * A WebID TrustManager. If set on startup at TLS only WebID Certificates should
+ * be requested from the client.
+ * This is not an object, in order to make it easy to build.
+ */
 class WebIDTrustManager extends X509TrustManager {
 
   def checkClientTrusted(p1: Array[X509Certificate], p2: String) {}
@@ -38,7 +42,7 @@ class WebIDTrustManager extends X509TrustManager {
  * The only important part is the DnName, the rest is just to fill in the API
  **/
 object WebID {
-  val DnName = "CN=WebID, O=W3C"
+  val DnName = "CN=WebID,O=∅"
 
   val cert = {
     // Generate the key pair
@@ -57,7 +61,7 @@ object WebID {
 
     // Validity
     val validFrom = new Date()
-    val validTo = new Date(validFrom.getTime + 50l * 365l * 24l * 60l * 60l * 1000l)
+    val validTo = new Date(validFrom.getTime + (1*365*24*60*60*1000).toLong)
     val validity = new CertificateValidity(validFrom, validTo)
     certInfo.set(X509CertInfo.VALIDITY, validity)
 

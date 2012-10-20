@@ -13,7 +13,8 @@ object ApplicationBuild extends Build {
           "org.w3"                            %% "banana-sesame"              % "x07-20121013-SNAPSHOT",
           "net.rootdev"                       %  "java-rdfa"                  % "0.4.2-RC2",
           "nu.validator.htmlparser"           %  "htmlparser"                 % "1.2.1",
-          "org.scalaz"                        % "scalaz-core_2.10.0-M7"       % "7.0.0-M3"
+          "org.scalaz"                        %  "scalaz-core_2.10.0-M7"      % "7.0.0-M3",
+          "org.bouncycastle"                  %  "bcprov-jdk15on"             % "1.47"
 //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
       )
 

@@ -24,6 +24,7 @@ import akka.actor.ActorSystem
 import org.w3.play.remote.GraphFetcher
 import org.w3.play.rdf.jena.JenaAsync
 import org.w3.play.auth.WebIDAuthN
+import views._
 
 object Application extends Controller {
 
@@ -35,7 +36,11 @@ object Application extends Controller {
 
   val AWebIDFinder = new AWebIDFinder[Jena]()
 
-  def index(rg: String) = //Ok("this should be an authz app. Please fix")
+  def index = Action {
+    Ok(html.index("Read Write Web"));
+  }
+
+  def test(rg: String) =
    AuthZ(r => rg.startsWith("a")) {
         Action {
           Ok("hello "+rg)
