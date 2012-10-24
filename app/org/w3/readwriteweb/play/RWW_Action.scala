@@ -43,7 +43,7 @@ object ReadWriteWeb_App extends Controller {
   implicit val JenaGraphFetcher = new GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
   implicit val JenaWebIDAuthN = new WebIDAuthN[Jena]()
   implicit val jenaCORSProxy = JenaCORSProxy
-  implicit val jenaRwwBodyParser = new RwwBodyParser[Jena](JenaOperations, JenaSparqlOps,
+  val jenaRwwBodyParser = new RwwBodyParser[Jena](JenaOperations, JenaSparqlOps,
     JenaAsync.graphIterateeSelector, JenaSparqlQueryIteratee.sparqlSelector )
 
 
@@ -74,8 +74,9 @@ object ReadWriteWeb_App extends Controller {
 //    }.get
 
   def get(path: String) = Action { request =>
-
     System.out.println("in GET on resource <"+path+">")
+
+    Async {
     val future = for (graph <- rwwActor.get( path ) failMap { e => ExpectationFailed(e.getMessage)})
     yield {
             writerFor[Jena#Graph](request)(RDFWriterSelector).map {
@@ -84,7 +85,6 @@ object ReadWriteWeb_App extends Controller {
               UnsupportedMediaType("could not find serialiserfor Accept types"+request.headers.get(play.api.http.HeaderNames.ACCEPT))
             }
           }
-    Async {
      future.fold(f=>f,s=>s)
     }
 

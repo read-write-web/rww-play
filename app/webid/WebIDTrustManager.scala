@@ -38,8 +38,15 @@ class WebIDTrustManager extends X509TrustManager {
 }
 
 /**
- * An arbitrary WebID certificate
- * The only important part is the DnName, the rest is just to fill in the API
+ * An arbitrary WebID certificate.
+ *
+ * Useful for TrustManagers.
+ *
+ * The only important part is the Distinguished Name, the rest is just to fill in the API
+ * ( one could create a long term WebID certificate, and keep the key secret,
+ *   but that would be for cases where a Certificate Authority signs a certificate
+ *   by CN=WebID,O=∅ , which then signs others. Better have the root signed by WebID and then
+ *   forgotten )
  **/
 object WebID {
   val DnName = "CN=WebID,O=∅"

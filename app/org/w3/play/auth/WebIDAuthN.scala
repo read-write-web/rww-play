@@ -70,8 +70,11 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOps[Rdf],
 //    else wiv
 //  }
 
+  //todo: find a good sounding name for (String,PublicKey)
+  //todo document what is going on eg: sanPair.get(1)
+
   def verify(x509claim: Claim[X509Certificate]): List[BananaFuture[Principal]] = {
-      val webidClaims = for (x509 <- x509claim) yield {
+      val webidClaims: Claim[List[(String, PublicKey)]]= for (x509 <- x509claim) yield {
         Option(x509.getSubjectAlternativeNames).toList.flatMap { collOfNames =>
           import scala.collection.JavaConverters.iterableAsScalaIterableConverter
           for {
@@ -163,7 +166,7 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOps[Rdf],
               }
             }
             val result = s.find(_.isSuccess).getOrElse {
-              val failures: List[BananaException] = s.toList.map(_.fold(identity,throw new RuntimeException("impossible")))
+              val failures: List[BananaException] = s.toList.map(_.fold(identity,succ=>throw new RuntimeException("impossible")))
               if (failures.size == 0) WebIDVerificationFailure("no rsa keys found in profile for WebID.",uri,failures).failure
               else WebIDVerificationFailure("no keys matched the WebID in the profile",uri,failures).failure
             }

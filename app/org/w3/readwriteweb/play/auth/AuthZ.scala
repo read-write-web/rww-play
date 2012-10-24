@@ -25,60 +25,93 @@ import Scalaz._
 import java.util.Collections
 import org.w3.banana._
 import scala.concurrent.{ExecutionContext, Future}
-import play.api.mvc.AsyncResult
 import scala.Some
 import org.w3.play.auth.WebIDPrincipal
 import util.FutureValidation
+import play.api.mvc.AsyncResult
+import scala.Some
+import play.api.libs.iteratee.{Input, Done}
 
-trait Subject {
+
+/**
+ * Something that should end up working with javax.security.auth.Subject, but with a better API.
+ */
+case class Subject(principals: List[BananaValidation[Principal]])
+
+object Anonymous extends Subject(List())
+
+/**
+ * An Authorization Action
+ * Wraps an Action, which it authorizes (or not)
+ * @param guard a method that filters requests, into those that are authorized (maps to true) and those that are not
+ * @param action the action that will be run if authorized
+ * @tparam A the type of the request body
+ */
+//case class AuthZ[A](guard: RequestHeader => Boolean)(action: Action[A]) extends Action[A] {
+//
+//  def apply(request: Request[A]): Result = {
+//    if (guard(request)) action(request)
+//    else Results.Unauthorized
+//  }
+//
+//  override
+//  def parser = action.parser
+//}
+
+/**
+ * a group of agents
+ */
+trait Group {
+
   /**
-   *
-   * @return A List of Future Principals, as these can take time to verify, either with the Database or on the web
+   * determine if a subject is a member of the group
+   * We don't return boolean, because the subj passed is passed lazily and we want to recuperate its value, if it was
+   * calculated. We pass the subject lazily since we want to avoid the cost of authentication if possible )
+   * @param subj
+   * @return
    */
-  def principals: List[Future[BananaValidation[Principal]]]
-}
 
-/**
- * An Authorization Action
- * Wraps an Action, which it authorizes (or not)
- * @param guard a method that filters requests, into those that are authorized (maps to true) and those that are not
- * @param action the action that will be run if authorized
- * @tparam A the type of the request body
- */
-case class AuthZ[A](guard: RequestHeader => Boolean)(action: Action[A]) extends Action[A] {
+  def member(subj: => Subject): Option[Subject]
 
-  def apply(request: Request[A]): Result = {
-    if (guard(request)) action(request)
-    else Results.Unauthorized
-  }
-
-  override
-  def parser = action.parser
+  def asyncMembers(subj: => Future[Subject])(implicit ec: ExecutionContext): Future[Option[Subject]]  =
+    subj map { s => member(s) }
 }
 
 
 /**
- * An Authorization Action
- * Wraps an Action, which it authorizes (or not)
- * @param guard a method that filters requests, into those that are authorized (maps to true) and those that are not
- * @param action the action that will be run if authorized
- * @tparam A the type of the request body
+ *
+ * @param authn
+ * @param acl
+ * @param onUnauthorized
+ * @param ec
  */
-case class AsyncAuthZ[A](guard: RequestHeader => Future[Boolean])(action: Action[A])
-                        (implicit val ec: ExecutionContext) extends Action[A] {
+class Auth( authn: RequestHeader => Future[Subject],
+               acl: RequestHeader => Future[Group],
+               onUnauthorized: RequestHeader => Result)
+                        (implicit val ec: ExecutionContext)  {
 
-  def apply(request: Request[A]): Result = {
-    AsyncResult {
-      guard(request).map { bool =>
-        if (bool) action(request)
-        else Results.Unauthorized
+
+    def apply[A]( p: BodyParser[A])( action: AuthRequest[A] => Result): Action[A] =
+      Action(p) {  req =>
+          AsyncResult {
+            for {group <- acl(req)
+                 subject <- group.asyncMembers(authn(req))
+            } yield {
+              subject.map(s => action(AuthRequest(s, req))).getOrElse(onUnauthorized(req))
+            }
+          }
       }
-    }
-  }
 
-  override
-  def parser = action.parser
+  import play.api.mvc.BodyParsers._
+   def apply( action: AuthRequest[_] => Result): Action[AnyContent] = apply(parse.anyContent)(action)
+
 }
+
+
+
+case class AuthRequest[A]( val user: Subject, request: Request[A] ) extends WrappedRequest(request)
+
+
 
 
 /**
@@ -109,43 +142,60 @@ case class AsyncAuthZ[A](guard: RequestHeader => Future[Boolean])(action: Action
  * @param findSubject
  * @param findGroup
  */
-case class AGuard( findSubject: RequestHeader => Future[Subject],
-                   findGroup:   RequestHeader => Future[Group])
-  (implicit ec: ExecutionContext) extends (RequestHeader => Future[Boolean]) {
-  /**
-   * @param request the request made
-   * @return true, iff that request is allowed
-   */
-  def apply(request: RequestHeader): Future[Boolean] = findGroup(request).flatMap { g =>
-    g.asyncMember(findSubject(request))
-  }
-
-}
+//case class AGuard( findSubject: RequestHeader => Future[Subject],
+//                   findGroup:   RequestHeader => Future[Group])
+//  (implicit ec: ExecutionContext)  {
+//  /**
+//   * @param request the request made
+//   * @return true, iff that request is allowed
+//   */
+//  def apply(request: RequestHeader): Future[Subject] = findGroup(request).flatMap { g =>
+//    g.asyncMember(findSubject(request))
+//  }
+//
+//}
 //
 // Some obvious groups
 //
 
-trait Group {
-   def member(subj: => Subject)(implicit ec: ExecutionContext): Future[Boolean]
-   def asyncMember(subj: => Future[Subject])(implicit ec: ExecutionContext): Future[Boolean] = subj flatMap { s => member(s) }
-}
 
 /**
- * The findGroup that every agent is a member of .
+ * The Group that every agent is a member of .
  * There is therefore never any need to determine the findSubject: that calculation can be ignored.
  */
 object EveryBody extends Group {
-   val futureTrue = Future.successful(true)
-   def member(subj: => Subject)(implicit ec: ExecutionContext) = futureTrue
-   override def asyncMember(subj: => Future[Subject])(implicit ec: ExecutionContext) = futureTrue
+   val futureAnonymous = Future.successful(Some(Anonymous))
+
+  /**
+   * Since everybody is a member of this group, all users are equal.
+   * @param subj
+   * @return the anonymous agent ( todo: think about this )
+   */
+   override def asyncMembers(subj: => Future[Subject])(implicit ec: ExecutionContext) = futureAnonymous
+
+  /**
+   * determine if a subject is a member of the group
+   * We don't return boolean, because the subj passed is passed lazily and we want to recuperate its value, if it was
+   * calculated. We pass the subject lazily since we want to avoid the cost of authentication if possible )
+   * @param subj
+   * @return
+   */
+  def member(subj: => Subject) = Some(Anonymous)
 }
 
 /**
  * The group of people with a valid WebID
  */
-object WebIDAgent extends Group {
-  import scala.collection.JavaConversions.asScalaSet
-  def member(subj: => Subject)(implicit ec: ExecutionContext): Future[Boolean] = Future.find(subj.principals)( _.isSuccess).map(_.isDefined)
+object WebIDGroup extends Group {
+
+  def member(subj: => Subject): Option[Subject] = {
+    val subject = subj
+    if ( subject.principals.exists(_.exists(_.isInstanceOf[WebIDPrincipal])) )
+      Some(subject)
+    else None
+  }
+
+
 }
 
 //
@@ -154,24 +204,29 @@ object WebIDAgent extends Group {
 
 trait AsyncSubjectFinder extends (RequestHeader => Future[Subject])
 
-class AWebIDFinder[Rdf <: RDF](implicit webidAuthN: WebIDAuthN[Rdf]) extends AsyncSubjectFinder {
+class WebIDFinder[Rdf <: RDF](implicit webidAuthN: WebIDAuthN[Rdf]) extends AsyncSubjectFinder {
   import webidAuthN.ec
 
 
   def apply(headers: RequestHeader): Future[Subject] = {
-    headers.certs(must(headers)).map{certs=>
-      new Subject{
-       def principals = if (certs.size == 0) List()
-        else certs(0) match {
+    headers.certs(must(headers)).flatMap{ certs: Seq[Certificate]=>
+       val principals: List[Future[Validation[BananaException, Principal]]] =
+         certs.headOption.map { cert =>
+         cert match {
           case x509: X509Certificate => {
             val x509claim = Claim.ClaimMonad.point(x509)
             webidAuthN.verify(x509claim).map { bf => bf.inner }
           }
           case other => List()
         }
-      }
-    }
+       }.getOrElse(List())
 
+       //todo: is there a way to avoid loosing the granularity of the previous futures?
+       //this I think forces all of the WebIDs to be verified before the future is ready, where I may prefer
+       //to get going as soon as I find the first...
+       val futurePrincipals: Future[List[Validation[BananaException, Principal]]]  = Future.sequence(principals)
+       futurePrincipals.map { principals => Subject(principals) }
+      }
   }
 
   /**
@@ -187,7 +242,8 @@ class AWebIDFinder[Rdf <: RDF](implicit webidAuthN: WebIDAuthN[Rdf]) extends Asy
    *  It would be useful if this could be updated by server from time to  time from a file on the internet,
    *  so that changes to browsers could update server behavior.
    *
-   */
+   * bertails: could be an implicit class + value class
+   * */
   def must(req: RequestHeader): Boolean =  {
     req.headers.get("User-Agent") match {
       case Some(agent) => (agent contains "Java")  | (agent contains "AppleWebKit")  |

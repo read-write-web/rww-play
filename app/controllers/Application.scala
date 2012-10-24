@@ -34,24 +34,24 @@ object Application extends Controller {
   implicit val JenaGraphFetcher = new GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
   implicit val JenaWebIDAuthN = new WebIDAuthN[Jena]()
 
-  val AWebIDFinder = new AWebIDFinder[Jena]()
+  val AWebIDFinder = new WebIDFinder[Jena]()
+
+  object WebIDAuth extends Auth(AWebIDFinder, _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))
 
   def index = Action {
     Ok(html.index("Read Write Web"));
   }
 
-  def test(rg: String) =
-   AuthZ(r => rg.startsWith("a")) {
-        Action {
-          Ok("hello "+rg)
-        }
-  }
+//  def test(rg: String) =
+//   AuthZ(r => rg.startsWith("a")) {
+//        Action {
+//          Ok("hello "+rg)
+//        }
+//  }
 
   def webId(rg: String) =
-     AsyncAuthZ(AGuard(AWebIDFinder, _ => Future.successful(WebIDAgent))) {
-       Action {
-         Ok("You are authorized. We found a WebID")
-       }
+     WebIDAuth { authReq =>
+         Ok("You are authorized. We found a WebID: "+authReq.user)
      }
 
 //
