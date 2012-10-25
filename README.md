@@ -83,7 +83,7 @@ The code to run this is a few lines in [Application](https://github.com/read-wri
   }
   ```
 
-The [AsyncAuthZ](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L33) class still needs to be developed a bit but is as shown quite easy to use. The [AGuard](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L78) is there to make it easier to compose guards that function asynchronously - by sending creating on agent to authenticate the user (if needed) and the other to work out what groups of agents can get access . The WebId Authentication code [WebIDAuthN](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/play/auth/WebIDAuthN.scala) is quite short and makes use of Claims. All this is still very prone to change. 
+The [Auth](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L33) class can be tuned for any type of authentication, by passing the relevant `authentication` and `acl` function to it.  The WebId Authentication code [WebIDAuthN](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/play/auth/WebIDAuthN.scala) is quite short and makes use of the `Claim`s monad to help isolate what is verified and what is not.
 
 ### CORS 
 

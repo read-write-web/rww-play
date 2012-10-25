@@ -35,10 +35,9 @@ object Application extends Controller {
   implicit val JenaGraphFetcher = new GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
   implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
 
-  val JenaWebIDAuthN = new WebIDAuthN[Jena]()
 
   // Authorizes anyone with a valid WebID
-  object WebIDAuth extends Auth(JenaWebIDAuthN, _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))
+  object WebIDAuth extends Auth(new WebIDAuthN[Jena](), _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))
 
 
   def webId(path: String) = WebIDAuth { authReq =>
