@@ -24,9 +24,10 @@ import akka.actor.ActorSystem
 import akka.util.Timeout
 import com.hp.hpl.jena.sparql.core.DatasetGraphFactory
 import org.w3.play.remote.GraphFetcher
-import org.w3.play.auth.WebIDAuthN
+import org.w3.play.auth.WebIDVerifier
 import org.w3.play.rdf.jena.{JenaSparqlQueryIteratee, JenaAsync}
 import org.w3.readwriteweb.play.{RwwBodyParser, QueryRwwContent, GraphRwwContent}
+import org.w3.readwriteweb.play.auth.WebIDAuthN
 
 
 object ReadWriteWeb_App extends Controller {
@@ -37,15 +38,16 @@ object ReadWriteWeb_App extends Controller {
 
   implicit val timeout = Timeout(10 * 1000)
 
-  //todo: needed for WebIDAuthN, but that should be changed
+  //todo: needed for WebIDVerifier, but that should be changed
   implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
 
   implicit val JenaGraphFetcher = new GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
-  implicit val JenaWebIDAuthN = new WebIDAuthN[Jena]()
+  implicit val JenaWebIDAuthN = new WebIDVerifier[Jena]()
   implicit val jenaCORSProxy = JenaCORSProxy
   val jenaRwwBodyParser = new RwwBodyParser[Jena](JenaOperations, JenaSparqlOps,
     JenaAsync.graphIterateeSelector, JenaSparqlQueryIteratee.sparqlSelector )
 
+  val WebIDAuthN = new WebIDAuthN[Jena]()
 
 
   //  if this class were shipped as a plugin, then the code below might work.

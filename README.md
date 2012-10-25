@@ -65,13 +65,23 @@ To make the WebID valid you will need to publish the relavant rdf at that docume
 The code to run this is a few lines in [Application](https://github.com/read-write-web/rww-play/blob/master/app/controllers/Application.scala#L17):
 
 ```scala
- def webId(rg: String) =
-     AsyncAuthZ(AGuard(AWebIDFinder, _ => Future.successful(WebIDAgent))) {
-       Action {
-         Ok("You are authorized. We found a WebID")
-       }
-     }
-```
+ //setup: should be moved to a special init class
+  implicit val system = ActorSystem("MySystem")
+  implicit val executionContext = system.dispatcher
+  implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
+  implicit val JenaGraphFetcher = new GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
+  implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
+
+  val JenaWebIDAuthN = new WebIDAuthN[Jena]()
+
+  // Authorizes anyone with a valid WebID
+  object WebIDAuth extends Auth(JenaWebIDAuthN, _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))
+
+
+  def webId(path: String) = WebIDAuth { authReq =>
+      Ok("You are authorized for " + path + ". Your ids are: " + authReq.user)
+  }
+  ```
 
 The [AsyncAuthZ](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L33) class still needs to be developed a bit but is as shown quite easy to use. The [AGuard](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L78) is there to make it easier to compose guards that function asynchronously - by sending creating on agent to authenticate the user (if needed) and the other to work out what groups of agents can get access . The WebId Authentication code [WebIDAuthN](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/play/auth/WebIDAuthN.scala) is quite short and makes use of Claims. All this is still very prone to change. 
 

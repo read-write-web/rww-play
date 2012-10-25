@@ -35,7 +35,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import org.w3.play.rdf.jena.JenaAsync
 
 
-object WebIDAuthN {
+object WebIDVerifier {
 
   /*
   * Useful when converting the bytes from a BigInteger to a hex for inclusion in rdf
@@ -50,7 +50,7 @@ object WebIDAuthN {
 /**
  *
  */
-class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOps[Rdf],
+class WebIDVerifier[Rdf <: RDF](implicit ops: RDFOps[Rdf],
                  sparqlOps: SparqlOps[Rdf],
                  graphQuery: Rdf#Graph => SparqlEngine[Rdf,Id],
                  fetcher: GraphFetcher[Rdf],
@@ -59,16 +59,8 @@ class WebIDAuthN[Rdf <: RDF](implicit ops: RDFOps[Rdf],
   import ops._
   val dsl = Diesel[Rdf]
   import dsl._
-  import WebIDAuthN._
+  import WebIDVerifier._
 
-
-
-//  val webidVerifier = {
-//    val wiv = context.actorFor("webidVerifier")
-//    if (wiv == context.actorFor("/deadLetters"))
-//      context.actorOf(Props(classOf[WebIDClaimVerifier]),"webidVerifier")
-//    else wiv
-//  }
 
   //todo: find a good sounding name for (String,PublicKey)
   //todo document what is going on eg: sanPair.get(1)
@@ -223,30 +215,6 @@ object Claim {
   }
 
 }
-//
-//trait VClaim[+S,+V] {
-//  protected val claimed: S
-//  val verified: V
-//}
-//
-//object VClaim {
-//  implicit val VClaimMonad: Monad[Claim] with Traverse[Claim] =
-//    new Monad[Claim] with Traverse[Claim] {
-//
-//      def traverseImpl[G[_] : Applicative, A, B](fa: Claim[A])(f: A => G[B]): G[Claim[B]] =
-//        f(fa.statements).map(a => this.point(a))
-//
-//      def point[A](a: => A) = new Claim[A]{
-//        protected val statements : A = a;
-//        def verify[V](implicit fn: A=> V ) = fn(statements)
-//      }
-//
-//      def bind[A, B](fa: Claim[A])(f: (A) => Claim[B]) = f(fa.statements)
-//
-//    }
-//
-//}
-//
 
 case class WebIDPrincipal(webid: java.net.URI) extends Principal {
   val getName = webid.toString

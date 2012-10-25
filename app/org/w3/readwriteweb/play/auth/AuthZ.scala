@@ -19,7 +19,7 @@ package org.w3.readwriteweb.play.auth
 import play.api.mvc._
 import java.security.Principal
 import java.security.cert.{X509Certificate, Certificate}
-import org.w3.play.auth.{WebIDAuthN, Claim, WebIDPrincipal}
+import org.w3.play.auth.{WebIDVerifier, Claim, WebIDPrincipal}
 import scalaz._
 import Scalaz._
 import java.util.Collections
@@ -60,6 +60,7 @@ object Anonymous extends Subject(List())
 
 /**
  * a group of agents
+ * This is used to determine a Subject's membership of the Group
  */
 trait Group {
 
@@ -67,8 +68,10 @@ trait Group {
    * determine if a subject is a member of the group
    * We don't return boolean, because the subj passed is passed lazily and we want to recuperate its value, if it was
    * calculated. We pass the subject lazily since we want to avoid the cost of authentication if possible )
-   * @param subj
-   * @return
+   * todo: should the Subject returned be a filtered version of the original subject, containing only Principals
+   * that were accepted?
+   * @param subj the Subject as a lazy function so that unprotected resources don't need to ask for authentication
+   * @return The Subject authorized
    */
 
   def member(subj: => Subject): Option[Subject]
@@ -79,11 +82,22 @@ trait Group {
 
 
 /**
+ * Authenticated Action creator.
+ * objects of this class can be tuned to create authenticated actions given an Authentication function
+ * and an access control function.
  *
- * @param authn
- * @param acl
- * @param onUnauthorized
- * @param ec
+ * val WebIDAuthN = new WebIDAuthN[Jena]()
+ *
+ * def webId(rg: pathParams) =
+ *    WebIDAuthN { authReq =>
+ *        Ok("You are authorized. We found a WebID: "+authReq.user)
+ *    }
+ *
+ *
+ * @param authn An Authentication function from request headers to Future[Subject]
+ * @param acl   An Acl function from request to a Future[Group]. The Group can decide whether Subjects are members of it
+ * @param onUnauthorized Result to return on failure
+ * @param ec ExecutionContext
  */
 class Auth( authn: RequestHeader => Future[Subject],
                acl: RequestHeader => Future[Group],
@@ -102,13 +116,18 @@ class Auth( authn: RequestHeader => Future[Subject],
           }
       }
 
-  import play.api.mvc.BodyParsers._
+   import play.api.mvc.BodyParsers._
    def apply( action: AuthRequest[_] => Result): Action[AnyContent] = apply(parse.anyContent)(action)
 
 }
 
 
-
+/**
+ * An Authorized Request
+ * @param user  the user that is authorized
+ * @param request the request the user was authorized for
+ * @tparam A the type of the Request
+ */
 case class AuthRequest[A]( val user: Subject, request: Request[A] ) extends WrappedRequest(request)
 
 
@@ -198,14 +217,18 @@ object WebIDGroup extends Group {
 
 }
 
-//
-// Some useful Subject extractors
-//
+/**
+ * Authentication function
+ */
+trait AuthN extends (RequestHeader => Future[Subject])
 
-trait AsyncSubjectFinder extends (RequestHeader => Future[Subject])
-
-class WebIDFinder[Rdf <: RDF](implicit webidAuthN: WebIDAuthN[Rdf]) extends AsyncSubjectFinder {
-  import webidAuthN.ec
+/**
+ * WebID Authentication
+ * @param verifier verifier for an x509 claim
+ * @tparam Rdf Type of RDF library
+ */
+class WebIDAuthN[Rdf <: RDF](implicit verifier: WebIDVerifier[Rdf]) extends AuthN {
+  import verifier.ec
 
 
   def apply(headers: RequestHeader): Future[Subject] = {
@@ -215,7 +238,7 @@ class WebIDFinder[Rdf <: RDF](implicit webidAuthN: WebIDAuthN[Rdf]) extends Asyn
          cert match {
           case x509: X509Certificate => {
             val x509claim = Claim.ClaimMonad.point(x509)
-            webidAuthN.verify(x509claim).map { bf => bf.inner }
+            verifier.verify(x509claim).map { bf => bf.inner }
           }
           case other => List()
         }

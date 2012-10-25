@@ -23,45 +23,30 @@ import org.w3.banana.jena.{JenaGraphSparqlEngine, Jena}
 import akka.actor.ActorSystem
 import org.w3.play.remote.GraphFetcher
 import org.w3.play.rdf.jena.JenaAsync
-import org.w3.play.auth.WebIDAuthN
+import org.w3.play.auth.WebIDVerifier
 import views._
 
 object Application extends Controller {
 
+  //setup: should be moved to a special init class
   implicit val system = ActorSystem("MySystem")
   implicit val executionContext = system.dispatcher
   implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
   implicit val JenaGraphFetcher = new GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
-  implicit val JenaWebIDAuthN = new WebIDAuthN[Jena]()
+  implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
 
-  val AWebIDFinder = new WebIDFinder[Jena]()
+  val JenaWebIDAuthN = new WebIDAuthN[Jena]()
 
-  object WebIDAuth extends Auth(AWebIDFinder, _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))
+  // Authorizes anyone with a valid WebID
+  object WebIDAuth extends Auth(JenaWebIDAuthN, _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))
+
+
+  def webId(path: String) = WebIDAuth { authReq =>
+      Ok("You are authorized for " + path + ". Your ids are: " + authReq.user)
+  }
 
   def index = Action {
     Ok(html.index("Read Write Web"));
   }
 
-//  def test(rg: String) =
-//   AuthZ(r => rg.startsWith("a")) {
-//        Action {
-//          Ok("hello "+rg)
-//        }
-//  }
-
-  def webId(rg: String) =
-     WebIDAuth { authReq =>
-         Ok("You are authorized. We found a WebID: "+authReq.user)
-     }
-
-//
-//    Async {
-//      //timeouts should be set as transport specific options as explained in Netty's ChannelFuture
-//      //if done that way, then timeouts will break the connection anyway.
-//      req.certs.extend1{  
-//        case Redeemed(cert) => Ok("your cert is: \n\n "+cert ) 
-//        case Thrown(e) => InternalServerError("received error: \n"+e )
-//      } 
-//    } 
-  
 }
