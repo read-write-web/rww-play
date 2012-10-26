@@ -23,7 +23,7 @@ import org.w3.banana.jena.{JenaGraphSparqlEngine, Jena}
 import akka.actor.ActorSystem
 import org.w3.play.remote.GraphFetcher
 import org.w3.play.rdf.jena.JenaAsync
-import org.w3.play.auth.WebIDVerifier
+import org.w3.play.auth.{WebIDAuthN, WebIDVerifier}
 import views._
 
 object Application extends Controller {

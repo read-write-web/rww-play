@@ -24,10 +24,9 @@ import akka.actor.ActorSystem
 import akka.util.Timeout
 import com.hp.hpl.jena.sparql.core.DatasetGraphFactory
 import org.w3.play.remote.GraphFetcher
-import org.w3.play.auth.WebIDVerifier
+import org.w3.play.auth.{WebIDAuthN, WebIDVerifier}
 import org.w3.play.rdf.jena.{JenaSparqlQueryIteratee, JenaAsync}
 import org.w3.readwriteweb.play.{RwwBodyParser, QueryRwwContent, GraphRwwContent}
-import org.w3.readwriteweb.play.auth.WebIDAuthN
 
 
 object ReadWriteWeb_App extends Controller {

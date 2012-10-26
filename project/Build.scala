@@ -9,12 +9,15 @@ object ApplicationBuild extends Build {
 
 
     val appDependencies = Seq(
+          "org.scalatest"                     % "scalatest_2.10.0-M7"         % "2.0.M4-2.10.0-M7-B1",
           "org.w3"                            %% "banana-jena"                % "x07-20121013-SNAPSHOT",
           "org.w3"                            %% "banana-sesame"              % "x07-20121013-SNAPSHOT",
+          "org.w3"                            %% "banana-rdf"                 % "x07-20121013-SNAPSHOT",
           "net.rootdev"                       %  "java-rdfa"                  % "0.4.2-RC2",
           "nu.validator.htmlparser"           %  "htmlparser"                 % "1.2.1",
           "org.scalaz"                        %  "scalaz-core_2.10.0-M7"      % "7.0.0-M3",
-          "org.bouncycastle"                  %  "bcprov-jdk15on"             % "1.47"
+          "org.bouncycastle"                  %  "bcprov-jdk15on"             % "1.47",
+          "org.scala-lang"                    % "scala-actors"                % "2.10.0-M7" //for tests because of sbt for some reason
 //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
       )
 
