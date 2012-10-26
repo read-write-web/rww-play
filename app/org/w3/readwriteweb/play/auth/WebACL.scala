@@ -71,8 +71,11 @@ case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)(implicit ops: RDFOps[
       val auths: Seq[Authorization] = authorizations.filter{ auth=>
         auth.appliesToResource(resource)
       }
-      if (auths.exists(_.public)) true
-      else throw new Exception("todo")
+      if (!auths.exists(a=> a.modes.contains(method))) false //the method is not mentioned
+      else if (auths.exists(a=> a.public)) true //the resource is public
+      else {
+       throw new Exception("not implemented")
+    }
   }
 
   /**
