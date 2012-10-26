@@ -19,7 +19,8 @@ package test
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.scalatest.matchers.MustMatchers
 import org.w3.banana.{ RDFOps, Diesel, RDF}
-import org.w3.readwriteweb.play.auth.{Anonymous, ACLGroup, WebACL}
+import org.w3.readwriteweb.play.auth.{Anonymous, WebAccessControl, WebACL}
+import scala.Some
 
 
 class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
@@ -35,12 +36,13 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
        -- wac.agentClass ->- foaf("Agent")
     ).graph
 
-  "Access" in {
-    val aclgrp1 = ACLGroup[Rdf](URI("http://joe.example/pix/img"),acl1)(ops,diesel)
-    assert(aclgrp1.authorizations.size==1)
-    val subject = aclgrp1.member(fail("this should not be called"))
-    assert ( subject != None )
-    assert ( subject.get == Anonymous)
+  val wac1 = WebAccessControl[Rdf](acl1)
+
+  "Simple Public Access. see http://www.w3.org/wiki/WebAccessControl#Public_Access" in {
+    wac1.authorizations must have size(1)
+    val group = wac1.haveAccessTo(URI("http://joe.example/pix/img"))
+    val subject = group.member(fail("the subject should and need not be evaluated because this resource has world access"))
+    subject must be(Some(Anonymous))
   }
 
 }

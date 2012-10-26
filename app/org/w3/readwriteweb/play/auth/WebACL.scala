@@ -52,13 +52,13 @@ class WebACL[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("acl", "http://
 
 
 /**
- * a group of agents based on an ACL resource using the ontology at
+ * a set of Access Control Permissions based on the WebAccessControl ontology
  * http://www.w3.org/wiki/WebAccessControl
  *
- * @param res the Pointed graph containing the acl pointing to the resource for which acl is required
+ * @param aclGraph a graph containing Web Access Control statements
  * @tparam Rdf
  */
-case class ACLGroup[Rdf<:RDF](resource: Rdf#URI, aclGraph: Rdf#Graph)(implicit ops: RDFOps[Rdf], diesel: Diesel[Rdf]) extends Group {
+case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)(implicit ops: RDFOps[Rdf], diesel: Diesel[Rdf])  {
   import diesel._
   import ops._
 
@@ -67,15 +67,17 @@ case class ACLGroup[Rdf<:RDF](resource: Rdf#URI, aclGraph: Rdf#Graph)(implicit o
   /**
    * determine if a subject is a member of the group
    *
-   * @param subj the Subject as a lazy function so that unprotected resources don't need to ask for authentication
-   * @return The Subject authorized
+   * @param resource the resource for which access is being requested
+   * @return The Group of Agents that can access the resource
    */
-  def member(subj: => Subject): Option[Subject] = {
-    val auths = authorizations.filter{ auth=>
-     auth.appliesToResource(resource)
+  def haveAccessTo(resource: Rdf#URI): Group = new Group {
+    def member(subj: => Subject): Option[Subject] = {
+      val auths = authorizations.filter{ auth=>
+        auth.appliesToResource(resource)
+      }
+      if (auths.exists(_.public)) return Option(Anonymous)
+      else throw new Exception("todo")
     }
-    if (auths.exists(_.public)) return Option(Anonymous)
-    else throw new Exception("todo")
   }
 
   /**
