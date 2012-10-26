@@ -68,7 +68,7 @@ case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)(implicit ops: RDFOps[
    * @return The Group of Agents that can access the resource
    */
   def hasAccessTo(subj: SubjectFinder, method: Mode, resource: Rdf#URI): Boolean =  {
-      val auths = authorizations.filter{ auth=>
+      val auths: Seq[Authorization] = authorizations.filter{ auth=>
         auth.appliesToResource(resource)
       }
       if (auths.exists(_.public)) true
@@ -202,7 +202,7 @@ case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)(implicit ops: RDFOps[
 
     val public: Boolean = agentClass.exists(_.pointer == foaf("Agent"))
 
-    protected lazy val resourceSet: Set[ResourceSet] = agentClass.flatMap { pg =>
+    protected lazy val resourceSet: Set[ResourceSet] = accessToClass.flatMap { pg =>
       val groupVal = pg.as[ResourceSet]
       if (groupVal.isFailure) System.out.println("group is incomplete "+groupVal)
       groupVal.toOption

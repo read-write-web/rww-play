@@ -36,7 +36,6 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
        -- wac.agentClass ->- foaf("Agent")
     ).graph
 
-
   object nonEvaluabableSubject extends SubjectFinder {
     def subject = sys.error("the resource is public so the subject need not be evaluated")
   }
@@ -46,6 +45,20 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
   "Simple Public Access. see http://www.w3.org/wiki/WebAccessControl#Public_Access" in {
     wac1.authorizations must have size(1)
     wac1.hasAccessTo(nonEvaluabableSubject, wac1.Read, URI("http://joe.example/pix/img"))  must be(true)
+  }
+
+  val publicACLForRegexResource: Rdf#Graph = (
+    bnode("t1")
+      -- wac.accessToClass ->- ( bnode("t2") -- wac.regex ->- "http://joe.example/blog/.*" )
+      -- wac.agentClass ->- foaf("Agent")
+    ).graph
+
+  val wac2 = WebAccessControl[Rdf](publicACLForRegexResource)
+
+
+  "Regex Public Access" in {
+    wac2.authorizations must have size(1)
+    wac2.hasAccessTo(nonEvaluabableSubject, wac2.Read, URI("http://joe.example/blog/2012/firstPost")) must be(true)
   }
 
 }
