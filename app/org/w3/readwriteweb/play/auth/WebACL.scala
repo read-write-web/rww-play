@@ -48,9 +48,6 @@ class WebACL[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("acl", "http://
 
 }
 
-
-
-
 /**
  * a set of Access Control Permissions based on the WebAccessControl ontology
  * http://www.w3.org/wiki/WebAccessControl
@@ -70,14 +67,12 @@ case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)(implicit ops: RDFOps[
    * @param resource the resource for which access is being requested
    * @return The Group of Agents that can access the resource
    */
-  def haveAccessTo(resource: Rdf#URI): Group = new Group {
-    def member(subj: => Subject): Option[Subject] = {
+  def hasAccessTo(subj: SubjectFinder, method: Mode, resource: Rdf#URI): Boolean =  {
       val auths = authorizations.filter{ auth=>
         auth.appliesToResource(resource)
       }
-      if (auths.exists(_.public)) return Option(Anonymous)
+      if (auths.exists(_.public)) true
       else throw new Exception("todo")
-    }
   }
 
   /**
