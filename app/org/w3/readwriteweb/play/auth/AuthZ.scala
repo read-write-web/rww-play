@@ -28,7 +28,12 @@ import org.w3.play.auth.WebIDPrincipal
 /**
  * Something that should end up working with javax.security.auth.Subject, but with a better API.
  */
-case class Subject(principals: List[BananaValidation[Principal]])
+case class Subject(principals: List[BananaValidation[Principal]]) {
+  lazy val validPrincipals = principals.flatMap { pv =>
+    pv.toOption
+  }
+  lazy val webIds = validPrincipals.filter(_.isInstanceOf[WebIDPrincipal]).map(_.asInstanceOf[WebIDPrincipal].webid)
+}
 
 object Anonymous extends Subject(List())
 

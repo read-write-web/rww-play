@@ -18,9 +18,23 @@ package test
 
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.scalatest.matchers.MustMatchers
-import org.w3.banana.{READ, RDFOps, Diesel, RDF}
-import org.w3.readwriteweb.play.auth.{SubjectFinder, Anonymous, WebAccessControl, WebACL}
+import org.w3.banana._
+import org.w3.readwriteweb.play.auth._
 import scala.Some
+import scala.util.Success
+import concurrent.{Await, Future}
+import org.w3.play.auth.WebIDPrincipal
+import org.w3.play.auth.WebIDPrincipal
+import scala.util.Success
+import scala.Some
+import org.w3.readwriteweb.play.auth.WebAccessControl
+import org.w3.play.auth.WebIDPrincipal
+import scala.util.Success
+import scala.Some
+import org.w3.readwriteweb.play.auth.Subject
+import org.w3.readwriteweb.play.auth.WebAccessControl
+import java.security.Principal
+import concurrent.util.Duration
 
 
 class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
@@ -30,6 +44,13 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
   import ops._
 
   val wac = WebACL[Rdf]
+
+  val henry = new java.net.URI("http://bblfish.net/people/henry#me")
+  val henryFinder = new SubjectFinder {
+    def subject = Future(
+      Subject(List(scalaz.Success[BananaException,Principal](WebIDPrincipal(henry))))
+    )
+  }
 
   val publicACLForSingleResource: Rdf#Graph = (
     bnode("t1") -- wac.accessTo ->- URI("http://joe.example/pix/img")
@@ -47,13 +68,17 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
     (see http://www.w3.org/wiki/WebAccessControl#Public_Access)""" when {
     wac1.authorizations must have size(1)
     "read mode" in {
-      wac1.hasAccessTo(nonEvaluabableSubject, wac1.Read, URI("http://joe.example/pix/img"))  must be(true)
+      val fb=wac1.hasAccessTo(nonEvaluabableSubject, wac1.Read, URI("http://joe.example/pix/img"))
+      fb.value mustBe Some(Success(true))
     }
     "write mode" in {
-      wac1.hasAccessTo(nonEvaluabableSubject, wac1.Write, URI("http://joe.example/pix/img"))  must be(false)
+      val fb=wac1.hasAccessTo(nonEvaluabableSubject, wac1.Write, URI("http://joe.example/pix/img"))
+      fb.value mustBe Some(Success(false))
+
     }
     "control mode" in {
-      wac1.hasAccessTo(nonEvaluabableSubject, wac1.Control, URI("http://joe.example/pix/img"))  must be(false)
+      val fb=wac1.hasAccessTo(nonEvaluabableSubject, wac1.Control, URI("http://joe.example/pix/img"))
+      fb.value mustBe Some(Success(false))
     }
   }
 
@@ -70,21 +95,46 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
   "Access to Public resources defined by a regex" when {
     wac2.authorizations must have size(1)
     "read mode" in {
-      wac2.hasAccessTo(nonEvaluabableSubject, wac2.Read, URI("http://joe.example/blog/2012/firstPost")) must be(true)
+      val fb=wac2.hasAccessTo(nonEvaluabableSubject, wac2.Read, URI("http://joe.example/blog/2012/firstPost"))
+      fb.value mustBe Some(Success(true))
+
     }
     "write mode" in {
-      wac2.hasAccessTo(nonEvaluabableSubject, wac2.Write, URI("http://joe.example/blog/2012/firstPost")) must be(false)
+      val fb = wac2.hasAccessTo(nonEvaluabableSubject, wac2.Write, URI("http://joe.example/blog/2012/firstPost"))
+      fb.value mustBe Some(Success(false))
     }
     "control mode" in {
-      wac2.hasAccessTo(nonEvaluabableSubject, wac2.Control, URI("http://joe.example/blog/2012/firstPost")) must be(false)
+      val fb = wac2.hasAccessTo(nonEvaluabableSubject, wac2.Control, URI("http://joe.example/blog/2012/firstPost"))
+      fb.value mustBe Some(Success(false))
     }
   }
 
-  val wac3 = WebAccessControl[Rdf](publicACLForSingleResource)
+  val groupACLForRegexResource: Rdf#Graph = (
+    bnode("t1")
+      -- wac.accessToClass ->- ( bnode("t2") -- wac.regex ->- "http://bblfish.net/blog/editing/.*" )
+      -- wac.agentClass ->- ( bnode() -- foaf("member") ->- URI(henry.toString) )
+      -- wac.mode ->- wac.Read
+      -- wac.mode ->- wac.Write
+    ).graph
 
-  "Simple access for an identified agent. see http://www.w3.org/wiki/WebAccessControl#Public_Access" in {
+  val wac3 = WebAccessControl[Rdf](groupACLForRegexResource)
+
+  "Access to user protected resources described by a regex" when {
     wac3.authorizations must have size(1)
-    wac3.hasAccessTo(nonEvaluabableSubject, wac3.Read, URI("http://joe.example/pix/img"))  must be(true)
+
+    "read mode" in {
+      val fb=wac3.hasAccessTo(henryFinder, wac3.Read, URI("http://bblfish.net/blog/editing/post1"))
+      assert(Await.result(fb,Duration("1s")))
+    }
+    "write mode" in {
+      val fb=wac3.hasAccessTo(henryFinder, wac3.Write, URI("http://bblfish.net/blog/editing/post1"))
+      assert(Await.result(fb,Duration("1s")))
+    }
+    "control mode" in {
+      val fb=wac3.hasAccessTo(henryFinder, wac3.Control, URI("http://bblfish.net/blog/editing/post1"))
+      assert(Await.result(fb,Duration("1s")) == false)
+    }
+
   }
 
 

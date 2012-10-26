@@ -18,8 +18,8 @@ package org.w3.readwriteweb.play.auth
 
 import org.w3.banana._
 import play.api.mvc.RequestHeader
-import concurrent.Future
-import org.w3.play.auth.{Claim, WebIDVerifier}
+import concurrent.{ExecutionContext, Future}
+import org.w3.play.auth.{WebIDPrincipal, Claim, WebIDVerifier}
 import java.security.cert.{X509Certificate, Certificate}
 import java.security.Principal
 import scalaz.Validation
@@ -55,7 +55,8 @@ class WebACL[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("acl", "http://
  * @param aclGraph a graph containing Web Access Control statements
  * @tparam Rdf
  */
-case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)(implicit ops: RDFOps[Rdf], diesel: Diesel[Rdf])  {
+case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)
+                                     (implicit ops: RDFOps[Rdf], diesel: Diesel[Rdf],ec: ExecutionContext)  {
   import diesel._
   import ops._
 
@@ -67,14 +68,19 @@ case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)(implicit ops: RDFOps[
    * @param resource the resource for which access is being requested
    * @return The Group of Agents that can access the resource
    */
-  def hasAccessTo(subj: SubjectFinder, method: Mode, resource: Rdf#URI): Boolean =  {
+  def hasAccessTo(subjectFinder: SubjectFinder, method: Mode, resource: Rdf#URI): Future[Boolean] =  {
       val auths: Seq[Authorization] = authorizations.filter{ auth=>
         auth.appliesToResource(resource)
       }
-      if (!auths.exists(a=> a.modes.contains(method))) false //the method is not mentioned
-      else if (auths.exists(a=> a.public)) true //the resource is public
+      if (!auths.exists(a=> a.modes.contains(method))) Future.successful(false) //the method is not mentioned
+      else if (auths.exists(a=> a.public)) Future.successful(true) //the resource is public
       else {
-       throw new Exception("not implemented")
+//        throw new Exception("not implemented")
+        val subject = subjectFinder.subject
+        val listOfFutures = auths.map(a=>a.allows(subject,method))
+        Future.find(listOfFutures)(t=>t).map{ optRes =>
+          optRes.getOrElse(false)
+        }
     }
   }
 
@@ -195,6 +201,21 @@ case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)(implicit ops: RDFOps[
                            accessTo: Set[Rdf#URI]= Set.empty, accessToClass: Set[PointedGraph[Rdf]],
                            modes: Set[Mode]= Set.empty) {
     /**
+     * must be called after verification that the resource applies to this Authorization
+     * @param futureSubj
+     * @param mode
+     * @return
+     */
+    def allows(futureSubj: Future[Subject], mode: Mode): Future[Boolean] = {
+        futureSubj.map { subj =>
+           val res = subj.webIds.exists{ wid =>
+             agent.contains(URI(wid.toString)) || agentSet.exists( ac => ac.members.contains(URI(wid.toString)))
+           }
+           res
+        }
+    }
+
+    /**
      * does this authorization apply to the given resource?
      * @param uri
      * @return true if it does
@@ -209,6 +230,12 @@ case class WebAccessControl[Rdf<:RDF](aclGraph: Rdf#Graph)(implicit ops: RDFOps[
       val groupVal = pg.as[ResourceSet]
       if (groupVal.isFailure) System.out.println("group is incomplete "+groupVal)
       groupVal.toOption
+    }
+
+    protected lazy val agentSet: Set[AgentClass] = agentClass.flatMap { pg =>
+      val agentVal = pg.as[AgentClass]
+      if (agentVal.isFailure) System.out.println("agent is incomplete "+agentVal)
+      agentVal.toOption
     }
   }
 
