@@ -119,7 +119,7 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
 
   val wac3 = WebAccessControl[Rdf](groupACLForRegexResource)
 
-  "Access to user protected resources described by a regex" when {
+  "Access to group protected resources described by a regex" when {
     wac3.authorizations must have size(1)
 
     "read mode" in {

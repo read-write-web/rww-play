@@ -32,7 +32,12 @@ case class Subject(principals: List[BananaValidation[Principal]]) {
   lazy val validPrincipals = principals.flatMap { pv =>
     pv.toOption
   }
-  lazy val webIds = validPrincipals.filter(_.isInstanceOf[WebIDPrincipal]).map(_.asInstanceOf[WebIDPrincipal].webid)
+  lazy val webIds = validPrincipals.flatMap{ p =>
+    p match {
+      case wp: WebIDPrincipal => Some(wp.webid)
+      case _ => None
+    }
+  }
 }
 
 object Anonymous extends Subject(List())
