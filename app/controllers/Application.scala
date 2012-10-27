@@ -17,24 +17,22 @@
 package controllers
 
 import play.api.mvc._
-import org.w3.readwriteweb.play.auth._
+import org.www.readwriteweb.play.auth._
 import concurrent.Future
 import org.w3.banana.jena.{JenaGraphSparqlEngine, Jena}
 import akka.actor.ActorSystem
-import org.w3.play.remote.GraphFetcher
-import org.w3.play.rdf.jena.JenaAsync
-import org.w3.play.auth.{WebIDAuthN, WebIDVerifier}
+import org.www.play.remote.GraphFetcher
+import org.www.play.rdf.jena.{JenaConfig, JenaAsync}
+import org.www.play.auth.{WebIDAuthN, WebIDVerifier}
 import views._
 
 object Application extends Controller {
 
-  //setup: should be moved to a special init class
-  implicit val system = ActorSystem("MySystem")
-  implicit val executionContext = system.dispatcher
-  implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
-  implicit val JenaGraphFetcher = new GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
-  implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
+  import JenaConfig._
 
+  //setup: should be moved to a special init class
+  implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
+  implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
 
   // Authorizes anyone with a valid WebID
   object WebIDAuth extends Auth(new WebIDAuthN[Jena](), _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))

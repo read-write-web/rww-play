@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-package jena
+package org.www.play.rdf.jena
 
-import test.WebACLTestSuite
-import org.w3.banana.jena.{JenaDiesel, JenaOperations, Jena}
-import org.www.play.rdf.jena.{JenaConfig, JenaAsync}
-import org.www.readwriteweb.play.IterateeLDCache
-import akka.actor.ActorSystem
-import concurrent.ExecutionContext
+import org.www.play.rdf.{IterateeSelector, SparqlQueryIteratee}
+import org.w3.banana.jena.Jena
+import org.w3.banana.SparqlQuery
 
-object JenaCache extends IterateeLDCache[Jena](JenaConfig.jenaAsync.graphIterateeSelector)(JenaDiesel,JenaConfig.executionContext)
+object JenaSparqlQueryIteratee {
 
-class JenaWebACLTestSuite extends WebACLTestSuite[Jena](JenaCache)
+ implicit val apply = new SparqlQueryIteratee[Jena, SparqlQuery]
 
+ val sparqlSelector = IterateeSelector[Jena#Query, SparqlQuery]
 
+}

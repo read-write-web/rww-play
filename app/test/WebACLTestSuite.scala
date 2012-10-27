@@ -19,33 +19,39 @@ package test
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.scalatest.matchers.MustMatchers
 import org.w3.banana._
-import org.w3.readwriteweb.play.auth._
+import org.www.readwriteweb.play.auth._
 import scala.Some
 import scala.util.Success
 import concurrent.{Await, Future}
-import org.w3.play.auth.WebIDPrincipal
-import org.w3.play.auth.WebIDPrincipal
+import org.www.play.auth.WebIDPrincipal
+import org.www.play.auth.WebIDPrincipal
 import scala.util.Success
 import scala.Some
-import org.w3.readwriteweb.play.auth.WebAccessControl
-import org.w3.play.auth.WebIDPrincipal
+import org.www.readwriteweb.play.auth.WebAccessControl
+import org.www.play.auth.WebIDPrincipal
 import scala.util.Success
 import scala.Some
-import org.w3.readwriteweb.play.auth.Subject
-import org.w3.readwriteweb.play.auth.WebAccessControl
+import org.www.readwriteweb.play.auth.Subject
+import org.www.readwriteweb.play.auth.WebAccessControl
 import java.security.Principal
 import concurrent.util.Duration
+import org.www.readwriteweb.play.LinkedDataCache
+import util.FutureValidation
 
 
-class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
+class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel: Diesel[Rdf])
     extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper {
-
   import diesel._
-  import ops._
+  import diesel.ops._
+
 
   val wac = WebACL[Rdf]
 
-  val henry = new java.net.URI("http://bblfish.net/people/henry#me")
+  val dummyCache = new LinkedDataCache[Rdf]{
+    def get(uri: Rdf#URI) = throw new Exception("method should never be called")
+  }
+
+  val henry = new java.net.URI("http://bblfish.net/people/henry/card#me")
   val henryFinder = new SubjectFinder {
     def subject = Future(
       Subject(List(scalaz.Success[BananaException,Principal](WebIDPrincipal(henry))))
@@ -58,11 +64,14 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
        -- wac.mode ->- wac.Read
     ).graph
 
-  object nonEvaluabableSubject extends SubjectFinder {
+  val nonEvaluabableSubject = new SubjectFinder {
     def subject = sys.error("the resource is public so the subject need not be evaluated")
   }
 
-  val wac1 = WebAccessControl[Rdf](publicACLForSingleResource)
+  val wac1 = WebAccessControl[Rdf](
+    LinkedDataResource(URI("http://joe.example/pix/.meta"),
+      PointedGraph(bnode("t1"),publicACLForSingleResource)),
+      dummyCache)
 
   """Access to a Public resource by an individual
     (see http://www.w3.org/wiki/WebAccessControl#Public_Access)""" when {
@@ -89,8 +98,10 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
       -- wac.mode ->- wac.Read
     ).graph
 
-  val wac2 = WebAccessControl[Rdf](publicACLForRegexResource)
-
+  val wac2 = WebAccessControl[Rdf](
+    LinkedDataResource(URI("http://joe.example/blog/.meta"),
+      PointedGraph(bnode("t1"),publicACLForRegexResource)),
+    dummyCache)
 
   "Access to Public resources defined by a regex" when {
     wac2.authorizations must have size(1)
@@ -112,14 +123,17 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
   val groupACLForRegexResource: Rdf#Graph = (
     bnode("t1")
       -- wac.accessToClass ->- ( bnode("t2") -- wac.regex ->- "http://bblfish.net/blog/editing/.*" )
-      -- wac.agentClass ->- ( bnode() -- foaf("member") ->- URI(henry.toString) )
+      -- wac.agentClass ->- ( URI("http://bblfish.net/blog/editing/.meta#a1") -- foaf("member") ->- URI(henry.toString) )
       -- wac.mode ->- wac.Read
       -- wac.mode ->- wac.Write
     ).graph
 
-  val wac3 = WebAccessControl[Rdf](groupACLForRegexResource)
+  val wac3 = WebAccessControl[Rdf](
+    LinkedDataResource(URI("http://bblfish.net/blog/editing/.meta"),
+      PointedGraph(bnode("t1"),groupACLForRegexResource)),
+    dummyCache)
 
-  "Access to group protected resources described by a regex" when {
+  "Access to group (named with a local uri) protected resources described by a regex" when {
     wac3.authorizations must have size(1)
 
     "read mode" in {
@@ -133,6 +147,37 @@ class WebACLTestSuite[Rdf<:RDF](implicit  ops: RDFOps[Rdf], diesel: Diesel[Rdf])
     "control mode" in {
       val fb=wac3.hasAccessTo(henryFinder, wac3.Control, URI("http://bblfish.net/blog/editing/post1"))
       assert(Await.result(fb,Duration("1s")) == false)
+    }
+
+  }
+
+  val remoteGroupACLForRegexResource: Rdf#Graph = (
+    bnode("t1")
+      -- wac.accessToClass ->- ( bnode("t2") -- wac.regex ->- "http://bblfish.net/blog/editing/.*" )
+      -- wac.agentClass ->- URI("http://www.w3.org/2005/Incubator/webid/team#we")
+      -- wac.mode ->- wac.Read
+      -- wac.mode ->- wac.Write
+    ).graph
+
+   val wac4 = WebAccessControl[Rdf](
+    LinkedDataResource(URI("http://bblfish.net/blog/editing/.meta"),
+      PointedGraph(bnode("t1"),remoteGroupACLForRegexResource)),
+    cache)
+
+  "Access to protected resources described by a regex to a group described remotely" when {
+    wac4.authorizations must have size(1)
+
+    "read mode" in {
+      val fb=wac4.hasAccessTo(henryFinder, wac4.Read, URI("http://bblfish.net/blog/editing/post1"))
+      assert(Await.result(fb,Duration("10s")))
+    }
+    "write mode" in {
+      val fb=wac4.hasAccessTo(henryFinder, wac4.Write, URI("http://bblfish.net/blog/editing/post1"))
+      assert(Await.result(fb,Duration("10s")))
+    }
+    "control mode" in {
+      val fb=wac4.hasAccessTo(henryFinder, wac4.Control, URI("http://bblfish.net/blog/editing/post1"))
+      assert(Await.result(fb,Duration("10s")) == false)
     }
 
   }

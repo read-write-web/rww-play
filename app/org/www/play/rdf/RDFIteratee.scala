@@ -14,17 +14,27 @@
  * limitations under the License.
  */
 
-package jena
+package org.www.play.rdf
 
-import test.WebACLTestSuite
-import org.w3.banana.jena.{JenaDiesel, JenaOperations, Jena}
-import org.www.play.rdf.jena.{JenaConfig, JenaAsync}
-import org.www.readwriteweb.play.IterateeLDCache
-import akka.actor.ActorSystem
-import concurrent.ExecutionContext
+import java.net.URL
+import play.api.libs.iteratee.Iteratee
+import scalaz.Validation
+import org.w3.banana._
 
-object JenaCache extends IterateeLDCache[Jena](JenaConfig.jenaAsync.graphIterateeSelector)(JenaDiesel,JenaConfig.executionContext)
+/**
+ *
+ * @tparam Result The object resulting of the Iteratee application
+ * @tparam SyntaxType The Syntax type that this iteratee parses
+ */
+trait RDFIteratee[Result, +SyntaxType] {
 
-class JenaWebACLTestSuite extends WebACLTestSuite[Jena](JenaCache)
+  /**
+   * @param loc the location of the document to evaluate relative URLs (this will not make a connection)
+   * @return an iteratee to process a streams of bytes that will parse to an RDF#Graph
+   *
+   */
+  def apply(loc: Option[URL] = None): Iteratee[Array[Byte], Validation[Exception,Result]]
+
+}
 
 
