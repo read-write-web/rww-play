@@ -18,14 +18,11 @@ package org.www.play.remote
 
 import java.net.URL
 import org.w3.banana._
-import org.www.play.rdf.IterateeSelector
 import play.api.libs.iteratee.{Input, Done, Iteratee}
 import play.api.libs.ws.WS
 import scala.Some
 import play.api.libs.ws.ResponseHeaders
 import scalaz.{Failure, Success, Validation}
-import org.w3.banana.jena.Jena
-import org.www.play.rdf.jena.JenaAsync
 import concurrent.{ExecutionContext, Future}
 import org.www.play.rdf.IterateeSelector
 

@@ -16,7 +16,7 @@
 
 package org.www.play.rdf.jena
 
-import org.w3.banana.jena.{Jena, JenaGraphSyntax, JenaOperations}
+import org.w3.banana.jena.{Jena, JenaOperations}
 import org.w3.banana.{Syntax, Turtle, RDFXML, RDFReader}
 import org.www.play.rdf.{IterateeSelector, RDFIteratee, BlockingRDFIteratee}
 import concurrent.ExecutionContext

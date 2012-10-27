@@ -17,7 +17,6 @@
 package org.www.readwriteweb.play
 
 import org.w3.banana._
-import jena.{JenaSparqlOps, JenaOperations, Jena}
 import org.www.play.rdf.IterateeSelector
 import play.api.mvc.{RawBuffer, RequestHeader, BodyParser}
 import play.api.libs.iteratee.Done
@@ -26,7 +25,6 @@ import scala.Left
 import scala.Right
 import scala.Some
 import java.net.URL
-import org.www.play.rdf.jena.{JenaSparqlQueryIteratee, JenaAsync}
 import scalaz.{Failure, Success}
 
 /**

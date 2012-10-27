@@ -17,11 +17,9 @@
 package jena
 
 import test.WebACLTestSuite
-import org.w3.banana.jena.{JenaDiesel, JenaOperations, Jena}
-import org.www.play.rdf.jena.{JenaConfig, JenaAsync}
+import org.w3.banana.jena.{JenaDiesel, Jena}
+import org.www.play.rdf.jena.JenaConfig
 import org.www.readwriteweb.play.IterateeLDCache
-import akka.actor.ActorSystem
-import concurrent.ExecutionContext
 
 object JenaCache extends IterateeLDCache[Jena](JenaConfig.jenaAsync.graphIterateeSelector)(JenaDiesel,JenaConfig.executionContext)
 

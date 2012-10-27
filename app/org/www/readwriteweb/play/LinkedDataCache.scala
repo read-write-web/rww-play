@@ -3,7 +3,6 @@ package org.www.readwriteweb.play
 import org.w3.banana._
 import org.www.play.rdf.IterateeSelector
 import org.www.play.remote.{GraphNHeaders, GraphFetcher}
-import org.w3.banana.syntax.RDFSyntax
 import java.net.{MalformedURLException, URL}
 import concurrent.{ExecutionContext, Future}
 import org.w3.banana.LinkedDataResource

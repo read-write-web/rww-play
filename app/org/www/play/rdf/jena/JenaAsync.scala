@@ -20,8 +20,6 @@ import org.w3.banana.jena.Jena
 import org.w3.banana.RDFXML
 import org.www.play.rdf.{IterateeSelector, RDFIteratee}
 import concurrent.ExecutionContext
-import org.www.play.rdf.jena.{JenaBlockingRDFIteratee, JenaRdfXmlAsync}
-import org.www.play.rdf.jena.JenaRdfXmlAsync
 
 
 class JenaAsync(implicit ec: ExecutionContext) {

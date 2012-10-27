@@ -1,6 +1,5 @@
 package org.www.play.rdf.jena
 
-import concurrent.ExecutionContext
 import org.w3.banana.jena.{JenaRDFWriter, Jena}
 import org.www.readwriteweb.play.CORSProxy
 import org.www.play.remote.GraphFetcher

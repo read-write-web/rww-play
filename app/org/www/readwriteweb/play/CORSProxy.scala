@@ -19,7 +19,6 @@ package org.www.readwriteweb.play
 import play.api.mvc.{Controller, Action}
 import java.net.URL
 import org.w3.banana.{WriterSelector, RDF}
-import org.w3.banana.jena.{JenaRDFWriter, Jena}
 import org.www.readwriteweb.play.PlayWriterBuilder._
 import akka.util.Timeout
 import org.www.play.remote._
@@ -27,10 +26,8 @@ import org.www.play.remote.LocalException
 import scalaz.Success
 import scalaz.Failure
 import org.www.play.remote.RemoteException
-import concurrent.ExecutionContext
 import akka.actor.ActorSystem
 import org.www.play.rdf.IterateeSelector
-import org.www.play.rdf.jena.JenaAsync
 
 /**
  * A <a href="http://www.w3.org/TR/cors/">CORS</a> proxy that allows a client to fetch remote RDF

@@ -26,13 +26,10 @@ import org.w3.banana._
 import org.w3.banana.util._
 import java.math.BigInteger
 import java.security.interfaces.RSAPublicKey
-import jena._
-import play.api.libs.concurrent.Promise
 import scalaz.Semigroup._
 import scalaz.Success
 import org.www.play.remote.GraphNHeaders
 import scala.concurrent.{ExecutionContext, Future}
-import org.www.play.rdf.jena.JenaAsync
 
 
 object WebIDVerifier {

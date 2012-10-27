@@ -17,15 +17,13 @@
 package org.www.play.rdf
 
 import java.net.URL
-import play.api.libs.iteratee.{Cont, Done, Input, Iteratee}
+import play.api.libs.iteratee.Iteratee
 import java.io.{IOException, PipedOutputStream, PipedInputStream}
-import play.api.libs.concurrent.Akka
-import org.w3.banana
 import org.w3.banana._
 import scalaz.Validation
 import scalax.io.Resource
 import concurrent.{ExecutionContext, Future}
-import util.{FutureValidation, BananaValidationW}
+import util.FutureValidation
 import concurrent.util.Duration
 import java.util.concurrent.TimeUnit
 

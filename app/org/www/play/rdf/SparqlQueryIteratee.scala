@@ -16,10 +16,10 @@
 
 package org.www.play.rdf
 
-import org.w3.banana.{WrappedThrowable, BananaException, SparqlOps, RDF}
+import org.w3.banana.{SparqlOps, RDF}
 import java.net.URL
 import play.api.libs.iteratee.Iteratee
-import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
+import java.io.ByteArrayOutputStream
 
 /**
  * Iteratee for reading in SPARQL Queries

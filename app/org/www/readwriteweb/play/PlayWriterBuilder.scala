@@ -21,7 +21,6 @@ import org.w3.banana.{WriterSelector, Writer, MediaRange}
 import java.io.ByteArrayOutputStream
 import play.api.libs.iteratee.Enumerator
 import scalax.io.Resource
-import scalax.io.managed.OutputStreamResource
 
 /**
  * Helps building Play Writers using RDFWriterSelectors

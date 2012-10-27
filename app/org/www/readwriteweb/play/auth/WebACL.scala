@@ -17,12 +17,7 @@
 package org.www.readwriteweb.play.auth
 
 import org.w3.banana._
-import play.api.mvc.RequestHeader
 import concurrent.{ExecutionContext, Future}
-import org.www.play.auth.{WebIDPrincipal, Claim, WebIDVerifier}
-import java.security.cert.{X509Certificate, Certificate}
-import java.security.Principal
-import scalaz.{\/, Validation}
 import org.www.readwriteweb.play.LinkedDataCache
 import util.FutureValidation
 

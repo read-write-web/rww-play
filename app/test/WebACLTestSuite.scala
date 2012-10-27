@@ -20,14 +20,7 @@ import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.scalatest.matchers.MustMatchers
 import org.w3.banana._
 import org.www.readwriteweb.play.auth._
-import scala.Some
-import scala.util.Success
 import concurrent.{Await, Future}
-import org.www.play.auth.WebIDPrincipal
-import org.www.play.auth.WebIDPrincipal
-import scala.util.Success
-import scala.Some
-import org.www.readwriteweb.play.auth.WebAccessControl
 import org.www.play.auth.WebIDPrincipal
 import scala.util.Success
 import scala.Some
@@ -36,7 +29,6 @@ import org.www.readwriteweb.play.auth.WebAccessControl
 import java.security.Principal
 import concurrent.util.Duration
 import org.www.readwriteweb.play.LinkedDataCache
-import util.FutureValidation
 
 
 class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel: Diesel[Rdf])
@@ -169,15 +161,15 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
 
     "read mode" in {
       val fb=wac4.hasAccessTo(henryFinder, wac4.Read, URI("http://bblfish.net/blog/editing/post1"))
-      assert(Await.result(fb,Duration("10s")))
+      assert(Await.result(fb,Duration("15s")))
     }
     "write mode" in {
       val fb=wac4.hasAccessTo(henryFinder, wac4.Write, URI("http://bblfish.net/blog/editing/post1"))
-      assert(Await.result(fb,Duration("10s")))
+      assert(Await.result(fb,Duration("15s")))
     }
     "control mode" in {
       val fb=wac4.hasAccessTo(henryFinder, wac4.Control, URI("http://bblfish.net/blog/editing/post1"))
-      assert(Await.result(fb,Duration("10s")) == false)
+      assert(Await.result(fb,Duration("15s")) == false)
     }
 
   }

@@ -21,7 +21,6 @@ import java.io.File
 import org.w3.banana.jena._
 import java.net.URL
 import scalaz.Either3
-import org.www.readwriteweb.play.{RwwContent, QueryRwwContent}
 import concurrent.ExecutionContext
 
 

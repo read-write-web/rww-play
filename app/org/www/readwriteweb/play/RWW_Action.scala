@@ -20,13 +20,10 @@ import play.api.mvc._
 import java.net.URL
 import org.w3.banana.jena._
 import java.io.File
-import akka.actor.ActorSystem
 import akka.util.Timeout
 import com.hp.hpl.jena.sparql.core.DatasetGraphFactory
-import org.www.play.remote.GraphFetcher
 import org.www.play.auth.{WebIDAuthN, WebIDVerifier}
-import org.www.play.rdf.jena.{JenaSparqlQueryIteratee, JenaConfig, JenaAsync}
-import org.www.readwriteweb.play.{RwwBodyParser, QueryRwwContent, GraphRwwContent}
+import org.www.play.rdf.jena.{JenaSparqlQueryIteratee, JenaConfig}
 
 
 object ReadWriteWeb_App extends Controller {

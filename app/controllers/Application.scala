@@ -20,11 +20,9 @@ import play.api.mvc._
 import org.www.readwriteweb.play.auth._
 import concurrent.Future
 import org.w3.banana.jena.{JenaGraphSparqlEngine, Jena}
-import akka.actor.ActorSystem
-import org.www.play.remote.GraphFetcher
-import org.www.play.rdf.jena.{JenaConfig, JenaAsync}
 import org.www.play.auth.{WebIDAuthN, WebIDVerifier}
 import views._
+import org.www.play.rdf.jena.JenaConfig
 
 object Application extends Controller {
 

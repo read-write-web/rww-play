@@ -16,16 +16,9 @@
 
 package org.www.play.rdf
 
-import jena.JenaAsync
 import org.w3.banana._
-import org.w3.banana.jena.{JenaOperations, Jena}
-import java.net.URL
-import play.api.libs.ws.{ResponseHeaders, WS}
-import scala.Some
+import play.api.libs.ws.ResponseHeaders
 import akka.actor.Actor
-import scalaz.Validation
-import play.api.libs.iteratee.{Input, Done}
-import org.www.play.remote.{RemoteException, LocalException, WrappedException}
 
 /**
  * Fetch resources on the Web and cache them

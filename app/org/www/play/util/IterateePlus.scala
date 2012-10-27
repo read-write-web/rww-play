@@ -16,8 +16,6 @@
 
 package org.www.play.util
 
-import play.api.libs.concurrent.Promise
-import play.api.libs.iteratee.{Cont, Done, Iteratee, Input}
 
 /**
  * Extras needed for Iteratees

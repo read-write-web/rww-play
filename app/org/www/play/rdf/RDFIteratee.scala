@@ -19,7 +19,6 @@ package org.www.play.rdf
 import java.net.URL
 import play.api.libs.iteratee.Iteratee
 import scalaz.Validation
-import org.w3.banana._
 
 /**
  *
