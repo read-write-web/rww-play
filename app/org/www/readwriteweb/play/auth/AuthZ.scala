@@ -19,16 +19,22 @@ package org.www.readwriteweb.play.auth
 import play.api.mvc._
 import java.security.Principal
 import org.w3.banana._
+import jena.Jena
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.mvc.AsyncResult
 import scala.Some
-import org.www.play.auth.WebIDPrincipal
+import org.www.play.auth.{AuthN, WebIDAuthN, WebIDVerifier, WebIDPrincipal}
+import java.net.URL
+import org.www.readwriteweb.play.PlayWriterBuilder
+import scalaz.Validation
+import controllers.Application.WebIDAuth
+import play.api.mvc.BodyParsers.parse
 
 
 /**
  * Something that should end up working with javax.security.auth.Subject, but with a better API.
  */
-case class Subject(principals: List[BananaValidation[Principal]]) {
+case class Subject(principals: List[BananaValidation[Principal]], authzPrincipals: List[Principal]=List()) {
   lazy val validPrincipals = principals.flatMap { pv =>
     pv.toOption
   }
@@ -42,45 +48,71 @@ case class Subject(principals: List[BananaValidation[Principal]]) {
 
 object Anonymous extends Subject(List())
 
-/**
- * An Authorization Action
- * Wraps an Action, which it authorizes (or not)
- * @param guard a method that filters requests, into those that are authorized (maps to true) and those that are not
- * @param action the action that will be run if authorized
- * @tparam A the type of the request body
- */
-//case class AuthZ[A](guard: RequestHeader => Boolean)(action: Action[A]) extends Action[A] {
-//
-//  def apply(request: Request[A]): Result = {
-//    if (guard(request)) action(request)
-//    else Results.Unauthorized
-//  }
-//
-//  override
-//  def parser = action.parser
-//}
+trait WebRequest[Rdf<:RDF] {
+  def subject: Future[Subject]
+  def method: Mode
+  def meta: Rdf#URI
+  def uri: Rdf#URI
+}
 
 /**
- * a group of agents
- * This is used to determine a Subject's membership of the Group
+ * class to wrap web request methods, as these usually have information missing.
+ * Allows one to tie together information that is strongly related to the web
+ * request. For example it is important to know the full URL of a request in order
+ * to know if a remote ACL is speaking about it
+ *
+ * @param authn authentication function
+ * @param base base url, to turn a request into a full url
+ * @param metaFun: method to calculate metadata location
+ * @param req request header to wrap
+ * @param ops
+ * @tparam Rdf
  */
-trait Group {
+class PlayWebRequest[Rdf<:RDF](authn: AuthN, base: URL, metaFun: String => URL)(req: RequestHeader)
+                              (implicit ops: RDFOps[Rdf]) extends WebRequest[Rdf] {
+  lazy val subject: Future[Subject] = authn(req)
+
+  val method = req.method match {
+    case "GET" => Read
+    case "PUT" => Write
+    case "POST" => Control
+    case "DELETE" => Write
+  }
 
   /**
-   * determine if a subject is a member of the group
-   * We don't return boolean, because the subj passed is passed lazily and we want to recuperate its value, if it was
-   * calculated. We pass the subject lazily since we want to avoid the cost of authentication if possible )
-   * todo: should the Subject returned be a filtered version of the original subject, containing only Principals
-   * that were accepted?
-   * @param subj the Subject as a lazy function so that unprotected resources don't need to ask for authentication
-   * @return The Subject authorized
+   * location of metadata
    */
+  val meta = ops.URI(metaFun(req.path).toString)
 
-  def member(subj: => Subject): Option[Subject]
-
-  def asyncMembers(subj: => Future[Subject])(implicit ec: ExecutionContext): Future[Option[Subject]]  =
-    subj map { s => member(s) }
+  /**
+   * actual URI of the resource: needed to be able to work out from remote
+   */
+  lazy val uri = {
+    ops.URI(new URL(base,req.path).toString)
+  }
 }
+
+
+
+
+/**
+ * A guard determines access a request.
+ * This is parameterised on Refusal Type and Acceptance Types as a guard protecting access
+ * to resources by types not related to user identity, may want to return differnt types of objects
+ * @tparam AcceptT  The Type of the Acceptance
+ */
+trait Guard[AcceptT,Rdf<:RDF] {
+  /**
+   *
+   * @param request  the request to give access to - The full request is passed as it is possible that
+   *                 the body contains information needed for authorization
+   * @return A future answer on whether or not to allow access. The future will fail with an exception
+   *         reporting the reason of the failure.
+   */
+  def allow(request: WebRequest[Rdf]): Future[AcceptT]
+}
+
+trait IdGuard[Rdf<:RDF] extends Guard[Subject,Rdf]
 
 
 /**
@@ -96,30 +128,37 @@ trait Group {
  *    }
  *
  *
- * @param authn An Authentication function from request headers to Future[Subject]
- * @param acl   An Acl function from request to a Future[Group]. The Group can decide whether Subjects are members of it
- * @param onUnauthorized Result to return on failure
+ * @param guard The guard protecting the resource
+ * @param webRequest Wraps the request header into a WebRequest
  * @param ec ExecutionContext
  */
-class Auth( authn: RequestHeader => Future[Subject],
-               acl: RequestHeader => Future[Group],
-               onUnauthorized: RequestHeader => Result)
-                        (implicit val ec: ExecutionContext)  {
+class Auth[Rdf<:RDF](guard: IdGuard[Rdf],webRequest: RequestHeader => WebRequest[Rdf])
+                    (implicit ec: ExecutionContext)  {
 
 
-    def apply[A]( p: BodyParser[A])( action: AuthRequest[A] => Result): Action[A] =
-      Action(p) {  req =>
-          AsyncResult {
-            for {group <- acl(req)
-                 subject <- group.asyncMembers(authn(req))
-            } yield {
-              subject.map(s => action(AuthRequest(s, req))).getOrElse(onUnauthorized(req))
-            }
+  /**
+   *
+   * @param p
+   * @param onUnauthorized
+   * @param action
+   * @tparam A
+   * @return
+   */
+    def apply[A]( p: BodyParser[A]=parse.anyContent)
+                (onUnauthorized: AuthFailure[A] => Result)
+                ( action: AuthRequest[A] => Result): Action[A] =
+      Action(p) {  req: Request[A] =>
+        val futureSubj: Future[Subject] = guard.allow(webRequest(req))
+        AsyncResult {
+          futureSubj.map( subj => action(AuthRequest[A](subj, req))).recover{
+            case failure: Exception => onUnauthorized(AuthFailure(failure,req))  //what about other throwables?
           }
+        }
       }
 
-   import play.api.mvc.BodyParsers._
-   def apply( action: AuthRequest[_] => Result): Action[AnyContent] = apply(parse.anyContent)(action)
+//   import play.api.mvc.BodyParsers._
+//   def apply(onUnauthorized: AuthFailure[A] => Result)( action: AuthRequest[A] => Result): Action[AnyContent] =
+//     apply(parse.anyContent)(onUnauthorized)(action)
 
 }
 
@@ -132,6 +171,7 @@ class Auth( authn: RequestHeader => Future[Subject],
  */
 case class AuthRequest[A]( val user: Subject, request: Request[A] ) extends WrappedRequest(request)
 
+case class AuthFailure[A]( val exception: Exception, request: Request[A]) extends WrappedRequest(request)
 
 
 
@@ -180,41 +220,5 @@ case class AuthRequest[A]( val user: Subject, request: Request[A] ) extends Wrap
 //
 
 
-/**
- * The Group that every agent is a member of .
- * There is therefore never any need to determine the findSubject: that calculation can be ignored.
- */
-object EveryBody extends Group {
-   val futureAnonymous = Future.successful(Some(Anonymous))
-
-  /**
-   * Since everybody is a member of this group, all users are equal.
-   * @param subj
-   * @return the anonymous agent ( todo: think about this )
-   */
-   override def asyncMembers(subj: => Future[Subject])(implicit ec: ExecutionContext) = futureAnonymous
-
-  /**
-   * determine if a subject is a member of the group
-   * We don't return boolean, because the subj passed is passed lazily and we want to recuperate its value, if it was
-   * calculated. We pass the subject lazily since we want to avoid the cost of authentication if possible )
-   * @param subj
-   * @return
-   */
-  def member(subj: => Subject) = Some(Anonymous)
-}
-
-/**
- * The group of people with a valid WebID
- */
-object WebIDGroup extends Group {
-
-  def member(subj: => Subject): Option[Subject] = {
-    val subject = subj
-    if ( subject.principals.exists(_.exists(_.isInstanceOf[WebIDPrincipal])) )
-      Some(subject)
-    else None
-  }
 
 
-}

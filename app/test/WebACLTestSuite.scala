@@ -21,7 +21,7 @@ import org.scalatest.matchers.MustMatchers
 import org.w3.banana._
 import org.www.readwriteweb.play.auth._
 import concurrent.{Await, Future}
-import org.www.play.auth.WebIDPrincipal
+import org.www.play.auth.{AuthN, WebIDPrincipal}
 import scala.util.Success
 import scala.Some
 import org.www.readwriteweb.play.auth.Subject
@@ -29,6 +29,8 @@ import org.www.readwriteweb.play.auth.WebAccessControl
 import java.security.Principal
 import concurrent.util.Duration
 import org.www.readwriteweb.play.LinkedDataCache
+import java.net.URL
+import play.api.mvc.RequestHeader
 
 
 class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel: Diesel[Rdf])
@@ -37,18 +39,27 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
   import diesel.ops._
 
 
-  val wac = WebACL[Rdf]
+  implicit val wac = WebACL[Rdf]
 
-  val dummyCache = new LinkedDataCache[Rdf]{
-    def get(uri: Rdf#URI) = throw new Exception("method should never be called")
+  def dummyCache(loc: Rdf#URI, g: Rdf#Graph) = new LinkedDataCache[Rdf]{
+    def get(uri: Rdf#URI) =
+      if (uri==loc) Future(LinkedDataResource(uri, PointedGraph[Rdf](uri,g)))
+      else throw new Exception("method should never be called")
   }
+
+  def partialWebCache(loc: Rdf#URI, g: Rdf#Graph) = new LinkedDataCache[Rdf]{
+    def get(uri: Rdf#URI) =
+      if (uri==loc) Future(LinkedDataResource(uri, PointedGraph[Rdf](uri,g)))
+      else cache.get(uri)
+  }
+
+  case class DummyWebRequest(subject: Future[Subject],method: Mode, meta: Rdf#URI,uri: Rdf#URI) extends WebRequest[Rdf]
 
   val henry = new java.net.URI("http://bblfish.net/people/henry/card#me")
-  val henryFinder = new SubjectFinder {
-    def subject = Future(
-      Subject(List(scalaz.Success[BananaException,Principal](WebIDPrincipal(henry))))
-    )
-  }
+  val henrysubj = Subject(List(scalaz.Success[BananaException,Principal](WebIDPrincipal(henry))))
+  val henrysubjAnswer = Subject(List(scalaz.Success[BananaException,Principal](WebIDPrincipal(henry))),List(WebIDPrincipal(henry)))
+  val henryFuture = Future(henrysubj)
+
 
   val publicACLForSingleResource: Rdf#Graph = (
     bnode("t1") -- wac.accessTo ->- URI("http://joe.example/pix/img")
@@ -56,30 +67,41 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
        -- wac.mode ->- wac.Read
     ).graph
 
-  val nonEvaluabableSubject = new SubjectFinder {
-    def subject = sys.error("the resource is public so the subject need not be evaluated")
+  val nonEvaluabableSubject: Future[Subject] = Future {
+     sys.error("the resource is public so the subject need not be evaluated")
   }
 
-  val wac1 = WebAccessControl[Rdf](
-    LinkedDataResource(URI("http://joe.example/pix/.meta"),
-      PointedGraph(bnode("t1"),publicACLForSingleResource)),
-      dummyCache)
+  val wac1 = WebAccessControl[Rdf](dummyCache(URI("http://joe.example/pix/.meta"),publicACLForSingleResource))
+
 
   """Access to a Public resource by an individual
     (see http://www.w3.org/wiki/WebAccessControl#Public_Access)""" when {
-    wac1.authorizations must have size(1)
+//    wac1.authorizations must have size(1)
+    val webreq = DummyWebRequest( nonEvaluabableSubject, Read,
+        URI("http://joe.example/pix/.meta"),
+        URI("http://joe.example/pix/img")
+    )
     "read mode" in {
-      val fb=wac1.hasAccessTo(nonEvaluabableSubject, wac1.Read, URI("http://joe.example/pix/img"))
-      fb.value mustBe Some(Success(true))
+      val fb=wac1.allow(webreq)
+      Await.result(fb,Duration("1s")) mustBe Anonymous
     }
     "write mode" in {
-      val fb=wac1.hasAccessTo(nonEvaluabableSubject, wac1.Write, URI("http://joe.example/pix/img"))
-      fb.value mustBe Some(Success(false))
-
+      val fb=wac1.allow(webreq.copy(method=Write))
+      try {
+        Await.result(fb,Duration("1s"))
+        fail("Should throw an exception")
+      } catch {
+        case e: Exception => System.out.println("ok")
+      }
     }
     "control mode" in {
-      val fb=wac1.hasAccessTo(nonEvaluabableSubject, wac1.Control, URI("http://joe.example/pix/img"))
-      fb.value mustBe Some(Success(false))
+      val fb=wac1.allow(webreq.copy(method=Control))
+      try {
+        Await.result(fb,Duration("1s"))
+        fail("Should throw an exception")
+      } catch {
+        case e: Exception => System.out.println("ok")
+      }
     }
   }
 
@@ -90,25 +112,38 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
       -- wac.mode ->- wac.Read
     ).graph
 
-  val wac2 = WebAccessControl[Rdf](
-    LinkedDataResource(URI("http://joe.example/blog/.meta"),
-      PointedGraph(bnode("t1"),publicACLForRegexResource)),
-    dummyCache)
+  val wac2 = WebAccessControl[Rdf](dummyCache(URI("http://joe.example/blog/.meta"),publicACLForRegexResource))
+
 
   "Access to Public resources defined by a regex" when {
-    wac2.authorizations must have size(1)
+//    wac2.authorizations must have size(1)
+    val webreq = DummyWebRequest( nonEvaluabableSubject, Read,
+          URI("http://joe.example/blog/.meta"),
+          URI("http://joe.example/blog/2012/firstPost")
+    )
+
     "read mode" in {
-      val fb=wac2.hasAccessTo(nonEvaluabableSubject, wac2.Read, URI("http://joe.example/blog/2012/firstPost"))
-      fb.value mustBe Some(Success(true))
+      val fb=wac2.allow(webreq)
+      Await.result(fb,Duration("1s")) mustBe Anonymous
 
     }
     "write mode" in {
-      val fb = wac2.hasAccessTo(nonEvaluabableSubject, wac2.Write, URI("http://joe.example/blog/2012/firstPost"))
-      fb.value mustBe Some(Success(false))
+      val fb = wac2.allow(webreq.copy(method=Write))
+      try {
+        Await.result(fb,Duration("1s"))
+        fail("Should throw an exception")
+      } catch {
+        case e: Exception => System.out.println("ok:"+e)
+      }
     }
     "control mode" in {
-      val fb = wac2.hasAccessTo(nonEvaluabableSubject, wac2.Control, URI("http://joe.example/blog/2012/firstPost"))
-      fb.value mustBe Some(Success(false))
+      val fb = wac2.allow(webreq.copy(method=Control))
+      try {
+        Await.result(fb,Duration("1s"))
+        fail("Should throw an exception")
+      } catch {
+        case e: Exception => System.out.println("ok:"+e)
+      }
     }
   }
 
@@ -120,25 +155,32 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
       -- wac.mode ->- wac.Write
     ).graph
 
-  val wac3 = WebAccessControl[Rdf](
-    LinkedDataResource(URI("http://bblfish.net/blog/editing/.meta"),
-      PointedGraph(bnode("t1"),groupACLForRegexResource)),
-    dummyCache)
+  val wac3 = WebAccessControl[Rdf](dummyCache(URI("http://bblfish.net/blog/editing/.meta"),groupACLForRegexResource))
+
 
   "Access to group (named with a local uri) protected resources described by a regex" when {
-    wac3.authorizations must have size(1)
+//    wac3.authorizations must have size(1)
+    val webreq = DummyWebRequest( henryFuture, Read,
+      URI("http://bblfish.net/blog/editing/.meta"),
+      URI("http://bblfish.net/blog/editing/post1")
+    )
 
     "read mode" in {
-      val fb=wac3.hasAccessTo(henryFinder, wac3.Read, URI("http://bblfish.net/blog/editing/post1"))
-      assert(Await.result(fb,Duration("1s")))
+      val fb=wac3.allow(webreq)
+      Await.result(fb,Duration("1s")) mustBe henrysubjAnswer
     }
     "write mode" in {
-      val fb=wac3.hasAccessTo(henryFinder, wac3.Write, URI("http://bblfish.net/blog/editing/post1"))
-      assert(Await.result(fb,Duration("1s")))
+      val fb=wac3.allow(webreq.copy(method=Write))
+      Await.result(fb,Duration("1s")) mustBe henrysubjAnswer
     }
     "control mode" in {
-      val fb=wac3.hasAccessTo(henryFinder, wac3.Control, URI("http://bblfish.net/blog/editing/post1"))
-      assert(Await.result(fb,Duration("1s")) == false)
+      val fb=wac3.allow(webreq.copy(method=Control))
+      try {
+        Await.result(fb,Duration("1s"))
+        fail("Should throw an exception")
+      } catch {
+        case e: Exception => System.out.println("ok:"+e)
+      }
     }
 
   }
@@ -151,25 +193,32 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
       -- wac.mode ->- wac.Write
     ).graph
 
-   val wac4 = WebAccessControl[Rdf](
-    LinkedDataResource(URI("http://bblfish.net/blog/editing/.meta"),
-      PointedGraph(bnode("t1"),remoteGroupACLForRegexResource)),
-    cache)
+  val wac4 = WebAccessControl[Rdf](partialWebCache(URI("http://bblfish.net/blog/editing/.meta"),remoteGroupACLForRegexResource))
+
 
   "Access to protected resources described by a regex to a group described remotely" when {
-    wac4.authorizations must have size(1)
+//    wac4.authorizations must have size(1)
+    val webreq = DummyWebRequest( henryFuture, Read,
+      URI("http://bblfish.net/blog/editing/.meta"),
+      URI("http://bblfish.net/blog/editing/post1")
+    )
 
     "read mode" in {
-      val fb=wac4.hasAccessTo(henryFinder, wac4.Read, URI("http://bblfish.net/blog/editing/post1"))
-      assert(Await.result(fb,Duration("15s")))
+      val fb=wac4.allow(webreq)
+      Await.result(fb,Duration("15s")) mustBe henrysubjAnswer
     }
     "write mode" in {
-      val fb=wac4.hasAccessTo(henryFinder, wac4.Write, URI("http://bblfish.net/blog/editing/post1"))
-      assert(Await.result(fb,Duration("15s")))
+      val fb=wac4.allow(webreq.copy(method=Write))
+      Await.result(fb,Duration("15s")) mustBe henrysubjAnswer
     }
     "control mode" in {
-      val fb=wac4.hasAccessTo(henryFinder, wac4.Control, URI("http://bblfish.net/blog/editing/post1"))
-      assert(Await.result(fb,Duration("15s")) == false)
+      val fb=wac4.allow(webreq.copy(method=Control))
+      try {
+        Await.result(fb,Duration("15s"))
+        fail("Should throw an exception")
+      } catch {
+        case e: Exception => System.out.println("ok:"+e)
+      }
     }
 
   }

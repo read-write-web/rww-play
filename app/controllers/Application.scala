@@ -23,6 +23,7 @@ import org.w3.banana.jena.{JenaGraphSparqlEngine, Jena}
 import org.www.play.auth.{WebIDAuthN, WebIDVerifier}
 import views._
 import org.www.play.rdf.jena.JenaConfig
+import java.net.URL
 
 object Application extends Controller {
 
@@ -32,11 +33,21 @@ object Application extends Controller {
   implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
   implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
 
+  val base = new URL("http://localhost:8443/")
+  def meta(path: String) = new URL(base,path)
+
+  implicit val idGuard: IdGuard[Jena] = WebAccessControl[Jena](linkedDataCache)
+  def webReq(req: RequestHeader) : WebRequest[Jena] = new PlayWebRequest[Jena](new WebIDAuthN[Jena],base,meta _)(req)
+
   // Authorizes anyone with a valid WebID
-  object WebIDAuth extends Auth(new WebIDAuthN[Jena](), _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))
+  object WebIDAuth extends Auth[Jena](idGuard,webReq _)
+  //  new WebIDAuthN[Jena](), _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))
 
 
-  def webId(path: String) = WebIDAuth { authReq =>
+  def webId(path: String) = WebIDAuth() { authFailure =>
+    Unauthorized("You are not authorized "+ authFailure)
+  }
+  { authReq =>
       Ok("You are authorized for " + path + ". Your ids are: " + authReq.user)
   }
 

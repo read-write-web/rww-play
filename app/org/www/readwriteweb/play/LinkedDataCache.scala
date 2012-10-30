@@ -9,7 +9,7 @@ import org.w3.banana.LinkedDataResource
 import util.FutureValidation
 
 trait LinkedDataCache[Rdf<:RDF] {
-  def get(uri: Rdf#URI): BananaFuture[LinkedDataResource[Rdf]]
+  def get(uri: Rdf#URI): Future[LinkedDataResource[Rdf]]
 }
 
 /**
@@ -23,17 +23,20 @@ extends LinkedDataCache[Rdf] {
   import dsl._
   import dsl.ops._
 
-   def get(uri: Rdf#URI): BananaFuture[LinkedDataResource[Rdf]] = {
+   def get(uri: Rdf#URI): Future[LinkedDataResource[Rdf]] = {
      try {
        val url = new URL(uri.fragmentLess.toString)
-       val fvIteratee: BananaFuture[GraphNHeaders[Rdf]]=FutureValidation(graphFetcher.fetch(url))
+       val fvIteratee: Future[GraphNHeaders[Rdf]] =
+         graphFetcher.fetch(url).flatMap { validation =>
+           validation.fold(fail=>Future.failed(fail),succ=>Future.successful(succ))
+         }
        fvIteratee.map { gh =>
           val resURI = URI(url.toString)
           LinkedDataResource(resURI,new PointedGraph(uri,gh.graph))
        }
      } catch {
        case e: MalformedURLException =>
-         FutureValidation(Future.successful(scalaz.Failure[BananaException,LinkedDataResource[Rdf]](WrappedThrowable(e))))
+         Future.failed(WrappedThrowable(e))
      }
 
    }

@@ -11,7 +11,7 @@ trait SubjectFinder {
 }
 
 class WebIDSubjectFinder[Rdf<:RDF](request: RequestHeader)(implicit verifier: WebIDVerifier[Rdf]) extends SubjectFinder {
-  def subject = authn(request)
+  val subject: Future[Subject] = authn(request)
 
   private def authn = new WebIDAuthN[Rdf]()
 }

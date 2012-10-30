@@ -19,7 +19,11 @@ package org.www.readwriteweb.play.auth
 import org.w3.banana._
 import concurrent.{ExecutionContext, Future}
 import org.www.readwriteweb.play.LinkedDataCache
-import util.FutureValidation
+import org.w3.banana.util.FutureValidation
+import org.www.play.auth.WebIDPrincipal
+import org.w3.banana.LinkedDataResource
+import java.security.Principal
+import scalaz.{Scalaz, \/}
 
 
 object WebACL {
@@ -45,6 +49,41 @@ class WebACL[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("acl", "http://
 
 }
 
+sealed trait Mode
+
+object Mode {
+  implicit def binder[Rdf<:RDF](implicit dsl: Diesel[Rdf],wac: WebACL[Rdf]): PointedGraphBinder[Rdf, Mode] = new PointedGraphBinder[Rdf, Mode] {
+    def fromPointedGraph(pointed: PointedGraph[Rdf]): BananaValidation[Mode] =
+      Read.binder.fromPointedGraph(pointed) orElse Write.binder.fromPointedGraph(pointed) orElse
+        Control.binder.fromPointedGraph(pointed)
+
+    def toPointedGraph(mode: Mode): PointedGraph[Rdf] = mode match {
+      case Read => Read.binder.toPointedGraph(Read)
+      case Write => Write.binder.toPointedGraph(Write)
+      case Control => Control.binder.toPointedGraph(Control)
+    }
+  }
+}
+
+case object Read extends Mode {
+  implicit def binder[Rdf<:RDF](implicit dsl: Diesel[Rdf],wac: WebACL[Rdf]): PointedGraphBinder[Rdf, Read.type] =
+    dsl.constant(this, wac.Read)
+
+}
+case object Write extends Mode {
+  implicit def binder[Rdf<:RDF](implicit dsl: Diesel[Rdf],wac: WebACL[Rdf]): PointedGraphBinder[Rdf, Write.type] =
+    dsl.constant(this, wac.Write)
+
+}
+case object Control extends Mode {
+  implicit def binder[Rdf<:RDF](implicit dsl: Diesel[Rdf],wac: WebACL[Rdf]): PointedGraphBinder[Rdf, Control.type] =
+    dsl.constant(this, wac.Control)
+
+}
+
+case class NotAuthorized(message: String) extends BananaException
+object NoMatch extends BananaException
+
 /**
  * a set of Access Control Permissions based on the WebAccessControl ontology
  * http://www.w3.org/wiki/WebAccessControl
@@ -52,46 +91,53 @@ class WebACL[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("acl", "http://
  * @param webacl a graph containing Web Access Control statements
  * @tparam Rdf
  */
-case class WebAccessControl[Rdf<:RDF](webacl: LinkedDataResource[Rdf], cache: LinkedDataCache[Rdf])
-                                     (implicit ops: RDFOps[Rdf], diesel: Diesel[Rdf],ec: ExecutionContext)  {
+case class WebAccessControl[Rdf<:RDF](cache: LinkedDataCache[Rdf])//,base: Rdf#URI, , authn: AuthN
+(implicit ops: RDFOps[Rdf], diesel: Diesel[Rdf],ec: ExecutionContext, wac: WebACL[Rdf])
+extends IdGuard[Rdf] {
   import diesel._
   import ops._
-
-  val wac = WebACL(ops)
 
   /**
    * determine if a subject is a member of the group
    *
-   * @param resource the resource for which access is being requested
+   * @param request the request which needs to be authenticated
    * @return The Group of Agents that can access the resource
    */
-  def hasAccessTo(subjectFinder: SubjectFinder, method: Mode, resource: Rdf#URI): Future[Boolean] =  {
-      val auths: Seq[Authorization] = authorizations.filter{ auth=>
-        auth.appliesToResource(resource)
-      }
-      if (!auths.exists(a=> a.modes.contains(method))) Future.successful(false) //the method is not mentioned
-      else if (auths.exists(a=> a.public)) Future.successful(true) //the resource is public
-      else {
-//        throw new Exception("not implemented")
-        val subject = subjectFinder.subject
-        val listOfFutures = auths.map(a=>a.allows(subject,method))
-        Future.find(listOfFutures)(t=>t).map{ optRes =>
-          optRes.getOrElse(false)
+  def allow(request: WebRequest[Rdf]): Future[Subject] =  {
+      cache.get(request.meta).flatMap {acl =>
+        val auths: Seq[Authorization] = authorizations(acl).filter{ auth=>
+          auth.appliesToResource(request.uri)
         }
-    }
+        if (!auths.exists(a=> a.modes.contains(request.method)))
+          Future.failed(NotAuthorized("None of Subject's principals are mentioned in ACL at "+request.meta))
+        else if (auths.exists(a=> a.public))
+          Future.successful(Anonymous) //the resource is public
+        else {
+  //        throw new Exception("not implemented")
+          request.subject.flatMap { subj =>
+            val listOfFutures: Seq[Future[WebIDPrincipal]] = auths.map(_.allows(subj,request.method))
+            val res: Future[Option[WebIDPrincipal]] =  Future.find(listOfFutures)(_=>true)
+            res.flatMap[Subject]{ opt =>
+              opt.fold[Future[Subject]](Future.failed[Subject](NoMatch)){p : WebIDPrincipal =>
+                Future.successful(Subject(subj.principals,List(p)))
+              }
+            }
+          }
+        }
+      }
   }
 
   /**
    * The authorizations found in the webacl.
    * @return
    */
-  lazy val authorizations: Seq[Authorization] = {
-      authNodes.toSeq.flatMap { n =>
-        val localGraph = webacl.resource.graph
-        val valAuth = PointedGraph(n, localGraph).as[Authorization]
-        if (valAuth.isFailure) System.out.println("incomplete authoriztion:"+valAuth)
-        valAuth.toOption
-      }
+  def authorizations(acl: LinkedDataResource[Rdf]): Seq[Authorization] = {
+       authNodes(acl).toSeq.flatMap { n =>
+         val localGraph = acl.resource.graph
+         val valAuth = PointedGraph(n, localGraph).as[Authorization]
+         if (valAuth.isFailure) System.out.println("incomplete authorization:"+valAuth)
+         valAuth.toOption.map{a=>a.provenance=acl.uri;a }  //todo: UGLY: but need to inject provenance!!!
+       }
   }
 
   /**
@@ -102,7 +148,7 @@ case class WebAccessControl[Rdf<:RDF](webacl: LinkedDataResource[Rdf], cache: Li
    * triples only, since we could not get started without those.
    * @return  the sequence of nodes, as a Set to remove duplicates
    */
-  protected def authNodes: Set[Rdf#Node] = {
+  protected def authNodes(webacl: LinkedDataResource[Rdf]): Set[Rdf#Node] = {
      val localGraph = webacl.resource.graph
      val a = ops.find(localGraph,ANY,toConcreteNodeMatch(wac.accessTo),ANY).map(t=>fromTriple(t)._1).toSet
      val ac = ops.find(localGraph,ANY,toConcreteNodeMatch(wac.accessToClass),ANY).map(t=>fromTriple(t)._1).toSet
@@ -167,59 +213,37 @@ case class WebAccessControl[Rdf<:RDF](webacl: LinkedDataResource[Rdf], cache: Li
 
   }
 
-  sealed trait Mode
 
-  object Mode {
-    implicit val binder: PointedGraphBinder[Rdf, Mode] = new PointedGraphBinder[Rdf, Mode] {
-      def fromPointedGraph(pointed: PointedGraph[Rdf]): BananaValidation[Mode] =
-        Read.binder.fromPointedGraph(pointed) orElse Write.binder.fromPointedGraph(pointed) orElse
-          Control.binder.fromPointedGraph(pointed)
-
-      def toPointedGraph(mode: Mode): PointedGraph[Rdf] = mode match {
-        case Read => Read.binder.toPointedGraph(Read)
-        case Write => Write.binder.toPointedGraph(Write)
-        case Control => Control.binder.toPointedGraph(Control)
-      }
-    }
-  }
-
-  case object Read extends Mode {
-    implicit val binder: PointedGraphBinder[Rdf, Read.type] = constant(this, wac.Read)
-
-  }
-  case object Write extends Mode {
-    implicit val binder: PointedGraphBinder[Rdf, Write.type] = constant(this, wac.Write)
-
-  }
-  case object Control extends Mode {
-    implicit val binder: PointedGraphBinder[Rdf, Control.type] = constant(this, wac.Control)
-
-  }
 
   case class Authorization(agent: Set[Rdf#URI]= Set.empty, agentClasses: Set[PointedGraph[Rdf]],
                            accessTo: Set[Rdf#URI]= Set.empty, accessToClass: Set[PointedGraph[Rdf]],
                            modes: Set[Mode]= Set.empty) {
+    var provenance: Rdf#URI = _
     /**
      * must be called after verification that the resource applies to this Authorization
-     * @param futureSubj
+     * @param subj
      * @param mode
      * @return
      */
-    def allows(futureSubj: Future[Subject], mode: Mode): Future[Boolean] =
-      futureSubj.flatMap { subj: Subject =>
-        val resultFutures : List[Future[Boolean]] =subj.webIds.map { wid =>
-          if (agent.contains(URI(wid.toString))) Future.successful(true)
-          else {
-            val res: Future[Option[AgentClass]] = Future.find(agentSetFuture) {
-              agentClass =>
-                agentClass.members.contains(URI(wid.toString))
-            }
-            res.map(_.isDefined)
+    def allows(subj: Subject, mode: Mode): Future[WebIDPrincipal] = {
+      val resultFutures : List[Future[WebIDPrincipal]] = subj.webIds.map { wid =>
+        if (agent.contains(URI(wid.toString))) Future.successful(WebIDPrincipal(wid))
+        else {
+          val res: Future[Option[AgentClass]] = Future.find(setFutureAgents) {
+            agentClass =>
+              agentClass.members.contains(URI(wid.toString))
           }
+          res.flatMap(_.fold[Future[WebIDPrincipal]]( Future.failed(NoMatch))
+                            (agentcl => Future.successful(WebIDPrincipal(wid)))
+          )
         }
-        Future.find(resultFutures)(f=>f).map(_.getOrElse(false)) //just find the first one
       }
-
+      Future.find(resultFutures)(_=>true).flatMap{ opt =>
+        opt.fold[Future[WebIDPrincipal]](Future.failed[WebIDPrincipal](NoMatch)){p =>
+          Future.successful[WebIDPrincipal](p)
+        }
+      }//just find the first one
+    }
 
     /**
      * does this authorization apply to the given resource?
@@ -239,27 +263,38 @@ case class WebAccessControl[Rdf<:RDF](webacl: LinkedDataResource[Rdf], cache: Li
     }
 
     // only the valid futures
-    protected def agentSetFuture: Set[Future[AgentClass]] = agentSetBananaFuture.map { bf=>
-       bf.inner.filter( v => v.isSuccess ).map(_.toOption.get)
-    }
-    protected lazy val agentSetBananaFuture: Set[BananaFuture[AgentClass]] = {
+    protected def setFutureAgents: Set[Future[AgentClass]] = {
       agentClasses.map { pg =>
-        webacl.canonical(pg.pointer).fold(
+        val futureBananaVal = canonical(pg.pointer).fold(
           remoteUri => {
-            val futureValAgent: BananaFuture[AgentClass] =  {
-              val res =  cache.get(remoteUri).inner.map  { ldr: BananaValidation[LinkedDataResource[Rdf]] =>
-                val agentClass: BananaValidation[AgentClass] = ldr.flatMap(_.resource.as[AgentClass])
-                agentClass
+            val futureValAgent: Future[BananaValidation[AgentClass]] =  {
+              val res =  cache.get(remoteUri).map  { ldr: LinkedDataResource[Rdf] =>
+                ldr.resource.as[AgentClass]
               }
-              FutureValidation(res)
+              res
             }
             futureValAgent
           },
           r => {
-            FutureValidation(Future.successful(pg.as[AgentClass]))
+            Future.successful(pg.as[AgentClass])
           }
         )
+        futureBananaVal.flatMap {bv =>
+          bv.fold(fail=>Future.failed(fail),succ=>Future.successful(succ))
+        }
+
       }
+    }
+
+
+    //todo: this prooves that you really need to know where data comes from, even in the objects,
+    //todoor else you cannot know if information is defined in the object or elsewhere... ?? (3am)
+    private def canonical(node: Rdf#Node): \/[Rdf#URI,Rdf#Node] = {
+      import Scalaz._
+      node.fold(uri=>if (uri.toString.startsWith(provenance.toString)) uri.right else uri.left,
+        _=>node.right,
+        _=>node.right
+      )
     }
   }
 
