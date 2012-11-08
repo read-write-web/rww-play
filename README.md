@@ -149,3 +149,25 @@ or if you would rather it return json
 curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" -H "Accept: application/sparql-results+json" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> [ <http://xmlns.com/foaf/0.1/name> ?p ] . } " -i http://localhost:9000/2012/card.ttl
 ```
 
+### Proxy a Web Site
+
+Want to try out what an existing Web site would look like with WebID enabled? Just proxy it.
+Note: this currently only works well for sites whose URLs are all relative.
+
+To do this you need to do three things:
+
+1. In `conf/application.conf` set the `rww.proxy...` properties
+2. If you did not change `rww.proxy.acl` property then go to ```test_www/meta.ttl``` and edit the acls there.
+3. In `conf/routes` uncomment the `controllers.AuthProxyApp.proxy(rg)` . This has to be the root for urls to work correctl. This has to be the root for urls to work correctly
+
+
+You should then be able to run RWW_Play on the tls port
+
+```
+> run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
+```
+
+and on going to the [http://localhost:8443/] and see a version of the remote server.
+Todo: 
+ * make the access control better by not having the first page ask for a certificate.
+ * write a library to easily hook into the access control system so that mappers from WebIDs to other systems can be built quickly

@@ -24,6 +24,9 @@ import org.www.play.auth.{WebIDAuthN, WebIDVerifier}
 import views._
 import org.www.play.rdf.jena.JenaConfig
 import java.net.URL
+import play.api.libs.ws.WS
+import play.api.libs.iteratee.{Enumeratee, Enumerator, Iteratee}
+import java.io.{InputStream, PrintWriter, StringWriter}
 
 object Application extends Controller {
 
@@ -33,11 +36,19 @@ object Application extends Controller {
   implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
   implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
 
-  val base = new URL("http://localhost:8443/")
-  def meta(path: String) = new URL(base,path)
+  val base = new URL("http://localhost/~hjs/")
+  def meta(path: String) = {
+    val i = path.lastIndexOf('/')
+    val p = if (i < 0) path else path.substring(1,i+1)
+    val metaURL = new URL(base,p+".meta.ttl")
+    System.out.println("url: "+metaURL)
+    metaURL
+  }
+
 
   implicit val idGuard: IdGuard[Jena] = WebAccessControl[Jena](linkedDataCache)
-  def webReq(req: RequestHeader) : WebRequest[Jena] = new PlayWebRequest[Jena](new WebIDAuthN[Jena],base,meta _)(req)
+  def webReq(req: RequestHeader) : WebRequest[Jena] =
+    new PlayWebRequest[Jena](new WebIDAuthN[Jena],new URL("https://localhost:8443/"),meta _)(req)
 
   // Authorizes anyone with a valid WebID
   object WebIDAuth extends Auth[Jena](idGuard,webReq _)

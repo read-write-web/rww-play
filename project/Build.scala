@@ -21,7 +21,7 @@ object ApplicationBuild extends Build {
 //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
       )
 
-    val main = PlayProject(appName, appVersion, appDependencies, mainLang = SCALA).settings(
+    val main = PlayProject(appName, appVersion, appDependencies).settings(
       resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
       resolvers += "sesame-repo-releases" at "http://repo.aduna-software.org/maven2/releases/",
       resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots/"
