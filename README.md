@@ -158,7 +158,7 @@ To do this you need to do three things:
 
 1. In `conf/application.conf` set the `rww.proxy...` properties
 2. If you did not change `rww.proxy.acl` property then go to ```test_www/meta.ttl``` and edit the acls there.
-3. In `conf/routes` uncomment the `controllers.AuthProxyApp.proxy(rg)` . This has to be the root for urls to work correctl. This has to be the root for urls to work correctly
+3. In `conf/routes` uncomment the `controllers.AuthProxyApp.proxy(rg)` . This has to be the root for urls to work correctly. 
 
 
 You should then be able to run RWW_Play on the tls port
@@ -167,7 +167,10 @@ You should then be able to run RWW_Play on the tls port
 > run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
 ```
 
-and on going to the [http://localhost:8443/] and see a version of the remote server.
+and on going to the http://localhost:8443/ and see a version of the remote server.
+
 Todo: 
  * make the access control better by not having the first page ask for a certificate.
  * write a library to easily hook into the access control system so that mappers from WebIDs to other systems can be built quickly
+ * enable other methods such as PUT/POST/DELETE...
+ * have the metadata be more flexible - currently it only looks in one file, the acl system should follow links
