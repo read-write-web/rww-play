@@ -26,13 +26,13 @@ import com.hp.hpl.jena.rdf.model.{ModelFactory, Model}
 import patch.AsyncJenaParser
 import com.hp.hpl.jena.rdf.arp.SAX2Model
 import org.www.play.rdf.RDFIteratee
-import scalaz.{Failure, Success, Validation}
 import concurrent.Future
+import util.{Failure, Success, Try}
 
 
 object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
 
-  def apply(loc: Option[URL]): Iteratee[Array[Byte], Validation[Exception, Jena#Graph]] =  {
+  def apply(loc: Option[URL]): Iteratee[Array[Byte],Try[Jena#Graph]] =  {
     val it : Iteratee[Array[Byte],RdfXmlFeeder]= Iteratee.fold2[Array[Byte], RdfXmlFeeder](new RdfXmlFeeder(loc)) {
       (feeder, bytes) =>
         try {
@@ -62,8 +62,8 @@ object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
   protected case class RdfXmlFeeder(base: Option[URL]) {
     var err: Option[Exception] = None
 
-    def result: Validation[Exception,Jena#Graph] = err match {
-      case None => Success( BareJenaGraph(model.getGraph) )
+    def result: Try[Jena#Graph] = err match {
+      case None    => Success( BareJenaGraph(model.getGraph) )
       case Some(e) => Failure(e)
     }
 

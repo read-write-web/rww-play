@@ -18,7 +18,9 @@ object JenaConfig {
   val jenaAsync = new JenaAsync
   implicit val wac: WebACL[Jena] = WebACL[Jena]
   implicit val bestIterateeSlector: IterateeSelector[Jena#Graph] = jenaAsync.graphIterateeSelector
-  implicit val jenaCORSProxy: CORSProxy[Jena] = new CORSProxy[Jena](jenaAsync.graphIterateeSelector,JenaRDFWriter.selector)
+
   implicit val JenaGraphFetcher: GraphFetcher[Jena] = new GraphFetcher[Jena](jenaAsync.graphIterateeSelector)
   implicit val linkedDataCache: LinkedDataCache[Jena] = new IterateeLDCache[Jena](bestIterateeSlector)
 }
+
+object CORSProxy extends CORSProxy[Jena](JenaConfig.jenaAsync.graphIterateeSelector,JenaRDFWriter.selector)

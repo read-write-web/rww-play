@@ -25,7 +25,7 @@ import scala.Left
 import scala.Right
 import scala.Some
 import java.net.URL
-import scalaz.{Failure, Success}
+import util.{Success, Failure}
 
 /**
  * a RWW bodyParser, like all body parsers, parses content sent from the client

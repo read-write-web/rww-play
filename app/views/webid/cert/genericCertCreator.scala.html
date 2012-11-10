@@ -1,11 +1,12 @@
-@(certForm: Form[controllers.CertReq])
+@(certForm: play.api.data.Form[controllers.CertReq])
+
 @import helper._
 @import helper.twitterBootstrap._
-
 
 @title = {
     Create a Certificate for hand written profile
 }
+
 @main(title, nav="create cert") {
     <p>If you already have one or more hand written <a href="http://xmlns.com/foaf/0.1/">FOAF profile</a>(s),
         where you have a <a href="http://webid.info/">WebID</a>, then you can use

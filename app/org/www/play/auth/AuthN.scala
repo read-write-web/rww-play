@@ -25,12 +25,12 @@ class WebIDAuthN[Rdf <: RDF](implicit verifier: WebIDVerifier[Rdf]) extends Auth
 
   def apply(headers: RequestHeader): Future[Subject] = {
     headers.certs(must(headers)).flatMap{ certs: Seq[Certificate]=>
-      val principals: List[Future[Validation[BananaException, Principal]]] =
+      val principals: List[Future[Principal]] =
         certs.headOption.map { cert =>
           cert match {
             case x509: X509Certificate => {
               val x509claim = Claim.ClaimMonad.point(x509)
-              verifier.verify(x509claim).map { bf => bf.inner }
+              verifier.verify(x509claim)
             }
             case other => List()
           }
@@ -39,7 +39,7 @@ class WebIDAuthN[Rdf <: RDF](implicit verifier: WebIDVerifier[Rdf]) extends Auth
       //todo: is there a way to avoid loosing the granularity of the previous futures?
       //this I think forces all of the WebIDs to be verified before the future is ready, where I may prefer
       //to get going as soon as I find the first...
-      val futurePrincipals: Future[List[Validation[BananaException, Principal]]]  = Future.sequence(principals)
+      val futurePrincipals: Future[List[Principal]]  = Future.sequence(principals)
       futurePrincipals.map { principals => Subject(principals) }
     }
   }

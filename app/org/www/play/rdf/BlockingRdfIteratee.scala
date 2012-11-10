@@ -17,15 +17,15 @@
 package org.www.play.rdf
 
 import java.net.URL
-import play.api.libs.iteratee.Iteratee
+import play.api.libs.iteratee.{Done, Error, Iteratee}
 import java.io.{IOException, PipedOutputStream, PipedInputStream}
 import org.w3.banana._
 import scalaz.Validation
 import scalax.io.Resource
-import concurrent.{ExecutionContext, Future}
-import util.FutureValidation
-import concurrent.util.Duration
+import concurrent.{Await, ExecutionContext, Future}
 import java.util.concurrent.TimeUnit
+import concurrent.duration.Duration
+import util.{Failure, Success, Try}
 
 
 /**
@@ -49,13 +49,13 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, Syntax
   new net.rootdev.javardfa.jena.RDFaReader
   //import shellac's rdfa parser
 
-  def apply(loc: Option[URL] = None): Iteratee[Array[Byte], Validation[Exception,Rdf#Graph]] = {
+  def apply(loc: Option[URL] = None): Iteratee[Array[Byte], Try[Rdf#Graph]] = {
 
     val in = new PipedInputStream()
     val out = new PipedOutputStream(in)
-    val blockingIO: BananaFuture[Rdf#Graph] = FutureValidation(Future {
+    val blockingIO: Future[Try[Rdf#Graph]] = Future {
       reader.read(Resource.fromInputStream(in), loc.map(_.toString).orNull)
-    })
+    }
 
     Iteratee.fold1[Array[Byte], PipedOutputStream](out) {
       (out, bytes) => try {
@@ -64,14 +64,14 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, Syntax
       } catch {
         case ioe: IOException => Future.failed(ioe)
       }
-    }.mapDone {
+    } mapDone {
       finished =>
         try {
           out.flush(); out.close()
         } catch {
           case e: IOException => log.warn("exception caught closing stream with " + loc, e)
         }
-        blockingIO.await(Duration(2000,TimeUnit.MILLISECONDS)) //ugly!
+        Await.result(blockingIO, Duration(2000,TimeUnit.MILLISECONDS)) //ugly!
     }
   }
 

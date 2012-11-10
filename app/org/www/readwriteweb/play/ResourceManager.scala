@@ -21,7 +21,7 @@ import java.io.File
 import org.w3.banana.jena._
 import java.net.URL
 import scalaz.Either3
-import concurrent.ExecutionContext
+import concurrent.{Future, ExecutionContext}
 
 
 trait ReadWriteWebException extends Exception
@@ -39,28 +39,28 @@ case class Query[Rdf <: RDF](query: QueryRwwContent[Rdf], path: String)
 
 class ResourceMgr
 [Rdf <: RDF, +SyntaxType](file: File, url: URL,
-                          store: RDFStore[Rdf, BananaFuture])
+                          store: RDFStore[Rdf, Future])
                          (implicit ops: RDFOps[Rdf],
                           sparqlOps: SparqlOps[Rdf],
                           diesl: Diesel[Rdf],
                           ec: ExecutionContext ) {
   import ops._
-  val graphStore = GraphStore[Rdf, BananaFuture](store)
+  val graphStore = GraphStore[Rdf, Future](store)
 
   private def absolute(path: String) = URI(new URL(url,path).toString)
 
-  def put(path: String, model: Rdf#Graph): BananaFuture[Unit] = {
+  def put(path: String, model: Rdf#Graph): Future[Unit] = {
     val resourceURI =absolute(path)
     System.out.println("new resource name="+resourceURI)
     val res = store.execute(Command.PUT(LinkedDataResource(resourceURI, PointedGraph(resourceURI, model))))
     res
   }
 
-  def get(path: String): BananaFuture[Rdf#Graph] = {
+  def get(path: String): Future[Rdf#Graph] = {
     graphStore.getGraph(absolute(path))
   }
 
-  def query(q: Rdf#Query, path: String): BananaFuture[Either3[Rdf#Graph, Rdf#Solutions, Boolean]] = {
+  def query(q: Rdf#Query, path: String): Future[Either3[Rdf#Graph, Rdf#Solutions, Boolean]] = {
     val resourceURI =  absolute(path)
 
     import sparqlOps._
@@ -73,5 +73,5 @@ class ResourceMgr
   }
 }
 
-class JenaResourceMgr(file: File, url: URL, store: RDFStore[Jena, BananaFuture])(implicit ec: ExecutionContext)
+class JenaResourceMgr(file: File, url: URL, store: RDFStore[Jena, Future])(implicit ec: ExecutionContext)
   extends ResourceMgr[Jena, Turtle](file, url, store)(JenaOperations, JenaSparqlOps, JenaDiesel,ec)

@@ -33,11 +33,11 @@ import play.api.mvc.BodyParsers.parse
 
 /**
  * Something that should end up working with javax.security.auth.Subject, but with a better API.
+ * we distinguish the principals and the authorized principals - good idea?
  */
-case class Subject(principals: List[BananaValidation[Principal]], authzPrincipals: List[Principal]=List()) {
-  lazy val validPrincipals = principals.flatMap { pv =>
-    pv.toOption
-  }
+case class Subject(principals: List[Principal], authzPrincipals: List[Principal]=List()) {
+  @deprecated("principals are now valid principals","0.4")
+  lazy val validPrincipals = principals
   lazy val webIds = validPrincipals.flatMap{ p =>
     p match {
       case wp: WebIDPrincipal => Some(wp.webid)

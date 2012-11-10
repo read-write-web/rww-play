@@ -21,25 +21,23 @@ import org.scalatest.matchers.MustMatchers
 import org.w3.banana._
 import org.www.readwriteweb.play.auth._
 import concurrent.{Await, Future}
-import org.www.play.auth.{AuthN, WebIDPrincipal}
-import scala.util.Success
-import scala.Some
+import org.www.play.auth.WebIDPrincipal
 import org.www.readwriteweb.play.auth.Subject
 import org.www.readwriteweb.play.auth.WebAccessControl
 import java.security.Principal
-import concurrent.util.Duration
 import org.www.readwriteweb.play.LinkedDataCache
-import java.net.URL
-import play.api.mvc.RequestHeader
+import concurrent.duration.Duration
 
 
 class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel: Diesel[Rdf])
     extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper {
-  import diesel._
-  import diesel.ops._
 
+  import diesel.ops
+  import diesel.ops._
+  import diesel._
 
   implicit val wac = WebACL[Rdf]
+  val foaf = FOAFPrefix[Rdf]
 
   def dummyCache(loc: Rdf#URI, g: Rdf#Graph) = new LinkedDataCache[Rdf]{
     def get(uri: Rdf#URI) =
@@ -56,8 +54,8 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
   case class DummyWebRequest(subject: Future[Subject],method: Mode, meta: Rdf#URI,uri: Rdf#URI) extends WebRequest[Rdf]
 
   val henry = new java.net.URI("http://bblfish.net/people/henry/card#me")
-  val henrysubj = Subject(List(scalaz.Success[BananaException,Principal](WebIDPrincipal(henry))))
-  val henrysubjAnswer = Subject(List(scalaz.Success[BananaException,Principal](WebIDPrincipal(henry))),List(WebIDPrincipal(henry)))
+  val henrysubj = Subject(List(WebIDPrincipal(henry)))
+  val henrysubjAnswer = Subject(List(WebIDPrincipal(henry)),List(WebIDPrincipal(henry)))
   val henryFuture = Future(henrysubj)
 
 

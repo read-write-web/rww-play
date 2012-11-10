@@ -19,11 +19,11 @@ package org.www.readwriteweb.play.auth
 import org.w3.banana._
 import concurrent.{ExecutionContext, Future}
 import org.www.readwriteweb.play.LinkedDataCache
-import org.w3.banana.util.FutureValidation
 import org.www.play.auth.WebIDPrincipal
 import org.w3.banana.LinkedDataResource
 import java.security.Principal
 import scalaz.{Scalaz, \/}
+import util.Try
 
 
 object WebACL {
@@ -53,7 +53,7 @@ sealed trait Mode
 
 object Mode {
   implicit def binder[Rdf<:RDF](implicit dsl: Diesel[Rdf],wac: WebACL[Rdf]): PointedGraphBinder[Rdf, Mode] = new PointedGraphBinder[Rdf, Mode] {
-    def fromPointedGraph(pointed: PointedGraph[Rdf]): BananaValidation[Mode] =
+    def fromPointedGraph(pointed: PointedGraph[Rdf]): Try[Mode] =
       Read.binder.fromPointedGraph(pointed) orElse Write.binder.fromPointedGraph(pointed) orElse
         Control.binder.fromPointedGraph(pointed)
 
@@ -88,7 +88,7 @@ object NoMatch extends BananaException
  * a set of Access Control Permissions based on the WebAccessControl ontology
  * http://www.w3.org/wiki/WebAccessControl
  *
- * @param webacl a graph containing Web Access Control statements
+ * @param cache A Linked Data cache to fetch ACLs on the web
  * @tparam Rdf
  */
 case class WebAccessControl[Rdf<:RDF](cache: LinkedDataCache[Rdf])//,base: Rdf#URI, , authn: AuthN
@@ -97,6 +97,7 @@ extends IdGuard[Rdf] {
   import diesel._
   import ops._
 
+  val foaf = FOAFPrefix(ops)
   /**
    * determine if a subject is a member of the group
    *
@@ -265,24 +266,16 @@ extends IdGuard[Rdf] {
     // only the valid futures
     protected def setFutureAgents: Set[Future[AgentClass]] = {
       agentClasses.map { pg =>
-        val futureBananaVal = canonical(pg.pointer).fold(
+        canonical(pg.pointer).fold(
           remoteUri => {
-            val futureValAgent: Future[BananaValidation[AgentClass]] =  {
-              val res =  cache.get(remoteUri).map  { ldr: LinkedDataResource[Rdf] =>
-                ldr.resource.as[AgentClass]
+              cache.get(remoteUri).flatMap  { ldr: LinkedDataResource[Rdf] =>
+                ldr.resource.as[AgentClass].asFuture
               }
-              res
-            }
-            futureValAgent
           },
           r => {
-            Future.successful(pg.as[AgentClass])
+            pg.as[AgentClass].asFuture
           }
         )
-        futureBananaVal.flatMap {bv =>
-          bv.fold(fail=>Future.failed(fail),succ=>Future.successful(succ))
-        }
-
       }
     }
 
@@ -294,7 +287,7 @@ extends IdGuard[Rdf] {
       node.fold(uri=>if (uri.toString.startsWith(provenance.toString)) uri.right else uri.left,
         _=>node.right,
         _=>node.right
-      )
+      )(ops)
     }
   }
 
@@ -313,7 +306,7 @@ extends IdGuard[Rdf] {
       node.fold(uri=>if (uri.toString.startsWith(ldr.uri.toString)) uri.right else uri.left,
        _=>node.right,
        _=>node.right
-      )
+      )(ops)
     }
   }
 

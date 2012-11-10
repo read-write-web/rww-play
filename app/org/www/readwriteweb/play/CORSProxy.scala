@@ -50,31 +50,36 @@ class CORSProxy[Rdf<:RDF](val graphSelector: IterateeSelector[Rdf#Graph], writer
       System.out.println("in CORSProxy.get("+url+")")
       val iri = new URL(url)
       implicit val timeout = Timeout(10 * 1000)
-      val promiseResult = for {
-        answer <- fetcher.corsFetch(iri, request.headers.toMap).inner
-      } yield {
-        answer match {
-          case Failure(RemoteException(msg, headers)) => ExpectationFailed(msg)
-          case Failure(LocalException(msg)) =>  ExpectationFailed(msg)
-          case Success(GraphNHeaders(graph: Rdf#Graph, head)) => writerFor[Rdf#Graph](request)(writerSelector).map { wr =>
-            val hdrs = head.headers - "ContentType"
-            //todo: this needs to be refined a lot, and thought through quite a lot more carefully
-            val code = if (head.status == 200) 203
-                       else head.status
 
-            val corsHeaders = if (!hdrs.contains("Access-Control-Allow-Origin")) {
-               val origin = request.headers.get("Origin")
-               hdrs + ("Access-Control-Allow-Origin" -> Seq(origin.getOrElse("*")))
-            } else {
-              hdrs
+      Async {
+        val futureAnswer = for {
+          graphNhdr <- fetcher.corsFetch(iri, request.headers.toMap)
+        } yield {
+          graphNhdr match {
+            case GraphNHeaders(graph, head) => writerFor[Rdf#Graph](request)(writerSelector).map { wr =>
+              val hdrs = head.headers - "ContentType"
+              //todo: this needs to be refined a lot, and thought through quite a lot more carefully
+              val code = if (head.status == 200) 203
+                         else head.status
+
+              val corsHeaders = if (!hdrs.contains("Access-Control-Allow-Origin")) {
+                 val origin = request.headers.get("Origin")
+                 hdrs + ("Access-Control-Allow-Origin" -> Seq(origin.getOrElse("*")))
+              } else {
+                hdrs
+              }
+              result(code, wr)(graph).withHeaders(corsHeaders: _*)
+            } getOrElse {
+              UnsupportedMediaType("could not find serialiserfor Accept types"+
+                request.headers.get(play.api.http.HeaderNames.ACCEPT))
             }
-            result(code, wr)(graph).withHeaders(corsHeaders: _*)
-          } getOrElse {
-            UnsupportedMediaType("could not find serialiserfor Accept types"+request.headers.get(play.api.http.HeaderNames.ACCEPT))
           }
-        }
-     }
-     Async { promiseResult }
+       }
+       futureAnswer recover {
+         case RemoteException(msg, headers) => ExpectationFailed(msg)
+         case LocalException(msg) =>  ExpectationFailed(msg)
+       }
+    }
   }
 }
 

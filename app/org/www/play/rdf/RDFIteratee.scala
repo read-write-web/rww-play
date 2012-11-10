@@ -18,7 +18,7 @@ package org.www.play.rdf
 
 import java.net.URL
 import play.api.libs.iteratee.Iteratee
-import scalaz.Validation
+import util.Try
 
 /**
  *
@@ -32,7 +32,7 @@ trait RDFIteratee[Result, +SyntaxType] {
    * @return an iteratee to process a streams of bytes that will parse to an RDF#Graph
    *
    */
-  def apply(loc: Option[URL] = None): Iteratee[Array[Byte], Validation[Exception,Result]]
+  def apply(loc: Option[URL] = None): Iteratee[Array[Byte], Try[Result]]
 
 }
 

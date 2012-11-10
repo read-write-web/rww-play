@@ -72,33 +72,33 @@ object ReadWriteWeb_App extends Controller {
     System.out.println("in GET on resource <"+path+">")
 
     Async {
-    val future = for (graph <- rwwActor.get( path ) failMap { e => ExpectationFailed(e.getMessage)})
-    yield {
-            writerFor[Jena#Graph](request)(RDFWriterSelector).map {
-              wr => result(200, wr)(graph)
-            } getOrElse {
-              UnsupportedMediaType("could not find serialiserfor Accept types"+request.headers.get(play.api.http.HeaderNames.ACCEPT))
-            }
+      val res = for {
+        graph <- rwwActor.get( path )
+      } yield {
+          writerFor[Jena#Graph](request)(RDFWriterSelector).map {
+            wr => result(200, wr)(graph)
+          } getOrElse {
+            UnsupportedMediaType("could not find serialiser for Accept types "+
+              request.headers.get(play.api.http.HeaderNames.ACCEPT))
           }
-     future.fold(f=>f,s=>s)
+      }
+      res recover { case e => ExpectationFailed(e.getMessage) }
     }
-
   }
 
   def put(path: String) = Action(jenaRwwBodyParser) {
     request =>
       System.out.println("in PUT on <"+path+">")
       val msg = request.body match {
-        case GraphRwwContent(graph: Jena#Graph) => {
-          val future = for {
-            answer <- rwwActor.put(path, graph) failMap { e => ExpectationFailed(e.getMessage) }
-          } yield {
-             Ok("Succeeded")
-          }
+        case GraphRwwContent(graph: Jena#Graph) =>
           Async {
-            future.fold(f=>f,s=>s)
+            val future = for {
+              answer <- rwwActor.put(path, graph)
+            } yield {
+               Ok("Succeeded")
+            }
+            future recover { case e => ExpectationFailed(e.getMessage) }
           }
-        }
         case _ => throw new Exception("error")
       }
       msg
@@ -120,8 +120,8 @@ object ReadWriteWeb_App extends Controller {
             }
           }
         }
-        case QueryRwwContent(q: Jena#Query) => {
-          val future = for (answer <- rwwActor.query(q,path) failMap (e => ExpectationFailed(e.getMessage)))
+        case QueryRwwContent(q: Jena#Query) => Async {
+          val future = for (answer <- rwwActor.query(q,path))
           yield {
              answer.fold(
                graph => writerFor[Jena#Graph](request)(RDFWriterSelector).map {
@@ -135,9 +135,7 @@ object ReadWriteWeb_App extends Controller {
                 }
               ).getOrElse(UnsupportedMediaType("cannot parse content type".getBytes("UTF-8")))
           }
-          Async {
-            future.fold(f=>f,s=>s)
-          }
+          future recover { case e => ExpectationFailed(e.getMessage)}
         }
         case _ => Ok("received content")
       }

@@ -17,19 +17,19 @@
 package org.www.play.auth
 
 import java.security.cert.X509Certificate
-import scalaz._
+import scalaz.{ Success => _, Failure => _, Validation =>_ , _ }
 import Scalaz._
 import java.security.{Principal, PublicKey}
 import java.net.{MalformedURLException, URL, URISyntaxException}
 import org.www.play.remote.{ FetchException, GraphFetcher}
 import org.w3.banana._
-import org.w3.banana.util._
 import java.math.BigInteger
 import java.security.interfaces.RSAPublicKey
 import scalaz.Semigroup._
-import scalaz.Success
 import org.www.play.remote.GraphNHeaders
 import scala.concurrent.{ExecutionContext, Future}
+import util.{Failure, Success, Try}
+import org.w3.banana._
 
 
 object WebIDVerifier {
@@ -54,15 +54,13 @@ class WebIDVerifier[Rdf <: RDF](implicit ops: RDFOps[Rdf],
                  val ec: ExecutionContext)   {
   import sparqlOps._
   import ops._
-  val dsl = Diesel[Rdf]
-  import dsl._
   import WebIDVerifier._
 
 
   //todo: find a good sounding name for (String,PublicKey)
   //todo document what is going on eg: sanPair.get(1)
 
-  def verify(x509claim: Claim[X509Certificate]): List[BananaFuture[Principal]] = {
+  def verify(x509claim: Claim[X509Certificate]): List[Future[Principal]] = {
       val webidClaims: Claim[List[(String, PublicKey)]]= for (x509 <- x509claim) yield {
         Option(x509.getSubjectAlternativeNames).toList.flatMap { collOfNames =>
           import scala.collection.JavaConverters.iterableAsScalaIterableConverter
@@ -103,22 +101,24 @@ class WebIDVerifier[Rdf <: RDF](implicit ops: RDFOps[Rdf],
    * @param node the node - as a literal - that should be the positive integer
    * @return a Validation containing and exception or the number
    */
-  private def toPositiveInteger(node: Rdf#Node): BananaValidation[BigInteger] =
+  private def toPositiveInteger(node: Rdf#Node): Try[BigInteger] =
     node.fold(
-       _=> FailedConversion("node must be a typed literal; it was: "+node).failure[BigInteger],
-       _=> FailedConversion("node must be a typed literal; it was: "+node).failure[BigInteger],
+       _=> Failure(FailedConversion("node must be a typed literal; it was: "+node)),
+       _=> Failure(FailedConversion("node must be a typed literal; it was: "+node)),
        lit => lit.fold ( tl => try {
          fromTypedLiteral(tl) match {
            case (hexStr: String, xsd("hexBinary")) => Success(new BigInteger(stripSpace(hexStr), 16))
-           case (base10Str: String, base10Tp) if base10Types.contains(base10Tp) => new BigInteger(base10Str).success[BananaException]
-           case (_,tp) => FailedConversion(
-             "do not recognise datatype "+tp+" as one of the legal numeric ones in node: " + node).failure[BigInteger]
+           case (base10Str: String, base10Tp) if base10Types.contains(base10Tp) =>
+             Success(new BigInteger(base10Str))
+           case (_,tp) => Failure(
+               FailedConversion("do not recognise datatype "+tp+" as one of the legal numeric ones in node: " + node)
+             )
          }
        } catch {
          case num: NumberFormatException =>
-           FailedConversion("failed to convert to integer "+node+" - "+num.getMessage).failure[BigInteger]
+           Failure(FailedConversion("failed to convert to integer "+node+" - "+num.getMessage))
        },
-         langLit => FailedConversion("numbers don't have language tags: "+langLit).failure[BigInteger]
+         langLit => Failure(FailedConversion("numbers don't have language tags: "+langLit))
        )
     )
 
@@ -129,53 +129,61 @@ class WebIDVerifier[Rdf <: RDF](implicit ops: RDFOps[Rdf],
    * @param key
    * @return a Promise of a Validation of the WebIDPrincipal if it is
    */
-  def verifyWebID(san: String, key: PublicKey):  BananaFuture[Principal] =  try {
+  def verifyWebID(san: String, key: PublicKey):  Future[Principal] =  try {
     val uri = new java.net.URI(san)
     val webidProfile = new java.net.URI(san.split("#")(0))
     val scheme = webidProfile.getScheme
     if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))
-       FutureValidation(
-        Future(
-          UnsupportedProtocol("we only support http and https urls at present - this one was "+scheme, san).
-            failure[WebIDPrincipal])
+        Future.failed(
+          UnsupportedProtocol("we only support http and https urls at present - this one was "+scheme, san)
       )
     else key match {
       case rsaKey: RSAPublicKey =>  {
         val wid = ops.makeUri(san)
-        val p = fetcher.fetch(webidProfile.toURL).map { graphVal: Validation[FetchException, GraphNHeaders[Rdf]]   =>
-          graphVal.flatMap { case GraphNHeaders(graph,headers) =>
+        val p = fetcher.fetch(webidProfile.toURL).flatMap { case GraphNHeaders(graph,headers) =>
             val sols = graph.executeSelect(query, Map("webid" -> wid))
-            val s: Iterable[Validation[BananaException,WebIDPrincipal]] = solutionIterator(sols).map { sol: Rdf#Solution =>
-              val keyVal = ( getNode(sol,"m").flatMap{ toPositiveInteger(_) }
-                           ⊛ getNode(sol,"e").flatMap{ toPositiveInteger(_) } ) { RSAPubKey(_,_) }
+            val s: Iterable[Try[WebIDPrincipal]] = solutionIterator(sols).map { sol: Rdf#Solution =>
+
+              val keyVal = for { mod <- getNode(sol,"m").flatMap{ toPositiveInteger(_) }
+                    exp <- getNode(sol,"e").flatMap{ toPositiveInteger(_) }
+              } yield RSAPubKey(mod,exp)
+
               keyVal.flatMap { key =>
                 if (key.modulus == rsaKey.getModulus && key.exponent == rsaKey.getPublicExponent)
-                  WebIDPrincipal(uri).success[BananaException]
-                else new KeyMatchFailure("RSA key does not match one in profile",san,rsaKey,key).failure[WebIDPrincipal]
+                  Success(WebIDPrincipal(uri))
+                else Failure(new KeyMatchFailure("RSA key does not match one in profile",san,rsaKey,key))
               }
             }
-            val result = s.find(_.isSuccess).getOrElse {
-              val failures: List[BananaException] = s.toList.map(_.fold(identity,succ=>throw new RuntimeException("impossible")))
-              if (failures.size == 0) WebIDVerificationFailure("no rsa keys found in profile for WebID.",uri,failures).failure
-              else WebIDVerificationFailure("no keys matched the WebID in the profile",uri,failures).failure
+            val result: Try[WebIDPrincipal] = s.find(_.isSuccess).getOrElse {
+              val failures: List[BananaException] = s.toList.map(  t =>
+                t match {
+                  case Failure(e: BananaException) => e
+                  case Failure(e: Exception) => WrappedThrowable(e)
+                  case Failure(e) => throw e // a RunTimeException?
+                  case _ => throw new RuntimeException("impossible")
+                }
+              )
+              Failure(
+                if (failures.size == 0) WebIDVerificationFailure("no rsa keys found in profile for WebID.",uri,failures)
+                else WebIDVerificationFailure("no keys matched the WebID in the profile",uri,failures)
+              )
             }
-            result
+            result.asFuture
           }
-        }
         p
-
       }
-      case _ => Future(new UnsupportedKeyType("cannot verifyWebIDClaim WebID <"+san+"> with key of type "+
-        key.getAlgorithm,key).failure)
+      case _ => Future.failed(
+        new UnsupportedKeyType("cannot verifyWebIDClaim WebID <"+san+"> with key of type "+key.getAlgorithm,key)
+      )
    }
   } catch {
-    case e: URISyntaxException  =>   Future(URISyntaxError("could not parse uri",List(e),san).failure)
-    case e: MalformedURLException => Future(URISyntaxError("could not parse SAN as a URL",List(e),san).failure)
-    case e: Exception => Future(WrappedThrowable(e).failure)
+    case e: URISyntaxException  =>   Future.failed(URISyntaxError("could not parse uri",List(e),san))
+    case e: MalformedURLException => Future.failed(URISyntaxError("could not parse SAN as a URL",List(e),san))
+    case e: Exception => Future.failed(WrappedThrowable(e))
   }
 
 
-  def verifyWebIDClaim(webidClaim: Claim[Pair[String,PublicKey]]): BananaFuture[Principal] =
+  def verifyWebIDClaim(webidClaim: Claim[Pair[String,PublicKey]]): Future[Principal] =
     webidClaim.verify { sk => verifyWebID(sk._1,sk._2) }
 }
 
