@@ -48,7 +48,7 @@ Getting going
 Usage 
 -----
 
-### Creating a WebID Certificate
+## Creating a WebID Certificate
 
 After starting your server you can go to http://localhost:9000/srv/certgen or to [the https equivalent](https://localhost:8443/srv/certgen) and create yourself a certificate for a WebID profile you may already have. The WebID will be signed by the agent with Distinguished Name "CN=WebID,O=∅" so that we can try out if making requests only for those certificates does the right thing.
 
@@ -56,7 +56,7 @@ After starting your server you can go to http://localhost:9000/srv/certgen or to
 To make the WebID valid you will need to publish the relavant rdf at that document location as explained in [the WebID spec](http://www.w3.org/2005/Incubator/webid/spec/#publishing-the-webid-profile-document)
 
 
-### WebID test
+## WebID test
 
 1. get yourself a WebID certificate ( e.g. [My-Profile](https://my-profile.eu/profile.php) will give you a nice one ), or use
   the certgen service described above.
@@ -65,27 +65,30 @@ To make the WebID valid you will need to publish the relavant rdf at that docume
 The code to run this is a few lines in [Application](https://github.com/read-write-web/rww-play/blob/master/app/controllers/Application.scala#L17):
 
 ```scala
- //setup: should be moved to a special init class
-  implicit val system = ActorSystem("MySystem")
-  implicit val executionContext = system.dispatcher
-  implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
-  implicit val JenaGraphFetcher = new GraphFetcher[Jena](JenaAsync.graphIterateeSelector)
+  import JenaConfig._
   implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
+
 
   val JenaWebIDAuthN = new WebIDAuthN[Jena]()
 
+  implicit val idGuard: IdGuard[Jena] = WebAccessControl[Jena](linkedDataCache)
+  def webReq(req: RequestHeader) : WebRequest[Jena] =
+    new PlayWebRequest[Jena](new WebIDAuthN[Jena],new URL("https://localhost:8443/"),meta _)(req)
+
   // Authorizes anyone with a valid WebID
-  object WebIDAuth extends Auth(JenaWebIDAuthN, _ => Future.successful(WebIDGroup),_=>Unauthorized("no valid webid"))
+  object WebIDAuth extends Auth[Jena](idGuard,webReq _)
 
-
-  def webId(path: String) = WebIDAuth { authReq =>
+ def webId(path: String) = WebIDAuth() { authFailure =>
+    Unauthorized("You are not authorized "+ authFailure)
+  }
+  { authReq =>
       Ok("You are authorized for " + path + ". Your ids are: " + authReq.user)
   }
   ```
 
 The [Auth](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L33) class can be tuned for any type of authentication, by passing the relevant `authentication` and `acl` function to it.  The WebId Authentication code [WebIDAuthN](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/play/auth/WebIDAuthN.scala) is quite short and makes use of the `Claim`s monad to help isolate what is verified and what is not.
 
-### CORS 
+## CORS 
 
 To fetch a remote rdf resource in a CORS proxy friendly manner send an HTTP GET request to  
 `http://localhost:9000/srv/cors?url={remote-url}` replacing `{remoate-url}` with a URL-encoded
@@ -115,7 +118,7 @@ ETag: "125d8606-2ee6-45fd305ed0440"
 The usual use case for fetching such a resource is to make the query in JavaScript, using a library
 such as [rdflib](https://github.com/linkeddata/rdflib.js)
 
-### Linked Data
+## Linked Data
 
 You PUT an RDF resource to the  test_www directory with a command such as 
 
@@ -149,7 +152,7 @@ or if you would rather it return json
 curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" -H "Accept: application/sparql-results+json" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> [ <http://xmlns.com/foaf/0.1/name> ?p ] . } " -i http://localhost:9000/2012/card.ttl
 ```
 
-### Proxy a Web Site
+## Proxy a Web Site
 
 Want to try out what an existing Web site would look like with WebID enabled? Just proxy it.
 Note: this currently only works well for sites whose URLs are all relative.
