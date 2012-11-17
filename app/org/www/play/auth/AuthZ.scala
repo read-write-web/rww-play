@@ -14,21 +14,16 @@
  * limitations under the License.
  */
 
-package org.www.readwriteweb.play.auth
+package org.www.play.auth
 
 import play.api.mvc._
 import java.security.Principal
 import org.w3.banana._
-import jena.Jena
 import scala.concurrent.{ExecutionContext, Future}
+import java.net.URL
+import play.api.mvc.BodyParsers.parse
 import play.api.mvc.AsyncResult
 import scala.Some
-import org.www.play.auth.{AuthN, WebIDAuthN, WebIDVerifier, WebIDPrincipal}
-import java.net.URL
-import org.www.readwriteweb.play.PlayWriterBuilder
-import scalaz.Validation
-import controllers.Application.WebIDAuth
-import play.api.mvc.BodyParsers.parse
 
 
 /**

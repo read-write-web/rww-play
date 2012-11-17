@@ -5,15 +5,12 @@ import java.net.URL
 import play.api.libs.ws.WS
 import play.api.mvc._
 import play.api.libs.iteratee.Enumerator
-import org.www.play.rdf.jena.JenaConfig
 import org.w3.banana.jena.{Jena, JenaGraphSparqlEngine}
-import org.www.play.auth.{WebIDAuthN, WebIDVerifier}
-import org.www.readwriteweb.play.auth._
-import play.api.mvc.ResponseHeader
-import play.api.mvc.SimpleResult
-import org.www.readwriteweb.play.auth.WebAccessControl
-import webid.Logger
+import org.www.play.auth._
 import play.api
+import play.api.mvc.SimpleResult
+import play.api.mvc.ResponseHeader
+import controllers.setup._
 
 /**
  * A authorization proxy that can be used to demonstrate what existing web sites could look like
@@ -22,7 +19,6 @@ import play.api
  */
 object AuthProxyApp extends Controller {
 
-  import JenaConfig._
   val log = api.Logger("AuthProxyApp")
 
   //setup: should be moved to a special init class

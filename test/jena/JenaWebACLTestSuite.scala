@@ -18,10 +18,10 @@ package jena
 
 import test.WebACLTestSuite
 import org.w3.banana.jena.{JenaDiesel, Jena}
-import org.www.play.rdf.jena.JenaConfig
 import org.www.readwriteweb.play.IterateeLDCache
+import controllers.setup._
 
-object JenaCache extends IterateeLDCache[Jena](JenaConfig.jenaAsync.graphIterateeSelector)(JenaDiesel,JenaConfig.executionContext)
+object JenaCache extends IterateeLDCache[Jena](jenaAsync.graphIterateeSelector)(JenaDiesel,executionContext)
 
 class JenaWebACLTestSuite extends WebACLTestSuite[Jena](JenaCache)
 

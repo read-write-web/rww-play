@@ -2,10 +2,8 @@ package org.www.play.auth
 
 import play.api.mvc.RequestHeader
 import concurrent.Future
-import org.www.readwriteweb.play.auth.Subject
-import org.w3.banana.{BananaException, RDF}
+import org.w3.banana.RDF
 import java.security.cert.{X509Certificate, Certificate}
-import scalaz.Validation
 import java.security.Principal
 
 

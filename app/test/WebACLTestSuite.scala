@@ -19,14 +19,13 @@ package test
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.scalatest.matchers.MustMatchers
 import org.w3.banana._
-import org.www.readwriteweb.play.auth._
 import concurrent.{Await, Future}
-import org.www.play.auth.WebIDPrincipal
-import org.www.readwriteweb.play.auth.Subject
-import org.www.readwriteweb.play.auth.WebAccessControl
-import java.security.Principal
+import org.www.play.auth._
 import org.www.readwriteweb.play.LinkedDataCache
 import concurrent.duration.Duration
+import org.www.play.auth.Subject
+import org.w3.banana.LinkedDataResource
+import org.www.play.auth.WebIDPrincipal
 
 
 class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel: Diesel[Rdf])

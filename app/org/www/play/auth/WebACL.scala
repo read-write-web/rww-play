@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
-package org.www.readwriteweb.play.auth
+package org.www.play.auth
 
 import org.w3.banana._
 import concurrent.{ExecutionContext, Future}
 import org.www.readwriteweb.play.LinkedDataCache
-import org.www.play.auth.WebIDPrincipal
-import org.w3.banana.LinkedDataResource
-import java.security.Principal
 import scalaz.{Scalaz, \/}
 import util.Try
+import org.w3.banana.LinkedDataResource
 
 
 object WebACL {
   def apply[Rdf <: RDF](implicit ops: RDFOps[Rdf]) = new WebACL(ops)
 }
+
 
 class WebACL[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("acl", "http://www.w3.org/ns/auth/acl#")(ops) {
   val Authorization = apply("Authorization")
@@ -46,7 +45,7 @@ class WebACL[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("acl", "http://
   val Control = apply("Control")
   val owner = apply("owner")
   val regex = apply("regex")
-
+  val WebIDAgent = apply("WebIDAgent")
 }
 
 sealed trait Mode
@@ -85,8 +84,8 @@ case class NotAuthorized(message: String) extends BananaException
 object NoMatch extends BananaException
 
 /**
- * a set of Access Control Permissions based on the WebAccessControl ontology
- * http://www.w3.org/wiki/WebAccessControl
+ * A Guard that gives access to a resource according to the metadata for that resource
+ * specified in the WebAccessControl ontology  http://www.w3.org/wiki/WebAccessControl
  *
  * @param cache A Linked Data cache to fetch ACLs on the web
  * @tparam Rdf
@@ -114,7 +113,6 @@ extends IdGuard[Rdf] {
         else if (auths.exists(a=> a.public))
           Future.successful(Anonymous) //the resource is public
         else {
-  //        throw new Exception("not implemented")
           request.subject.flatMap { subj =>
             val listOfFutures: Seq[Future[WebIDPrincipal]] = auths.map(_.allows(subj,request.method))
             val res: Future[Option[WebIDPrincipal]] =  Future.find(listOfFutures)(_=>true)
@@ -229,6 +227,7 @@ extends IdGuard[Rdf] {
     def allows(subj: Subject, mode: Mode): Future[WebIDPrincipal] = {
       val resultFutures : List[Future[WebIDPrincipal]] = subj.webIds.map { wid =>
         if (agent.contains(URI(wid.toString))) Future.successful(WebIDPrincipal(wid))
+        else if (agentClasses exists  { _.pointer == wac.WebIDAgent } ) Future.successful(WebIDPrincipal(wid))
         else {
           val res: Future[Option[AgentClass]] = Future.find(setFutureAgents) {
             agentClass =>
