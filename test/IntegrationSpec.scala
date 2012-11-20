@@ -20,7 +20,15 @@ import org.specs2.mutable._
 
 import play.api.test._
 import play.api.test.Helpers._
-import play.api.libs.ws.WS
+import play.api.libs.ws.{WSTrait, WSx, WS}
+import javax.net.ssl.{SSLEngine, X509ExtendedKeyManager, KeyManager}
+import scala.Array
+import play.core.server.noCATrustManager
+import collection.mutable
+import java.security.cert.X509Certificate
+import java.security.{Principal, PrivateKey}
+import java.net.Socket
+import com.ning.http.client.AsyncHttpClient
 
 /**
 * add your integration spec here.
@@ -39,14 +47,27 @@ class IntegrationSpec extends Specification {
 //
 //      }
 //  }
-
-    "run in a server" in new WithServer(port=19001) {
-      val url = "http://localhost:" + port+"/test/webid/allRead"
-      val h = await(WS.url(url).get)
-      System.out.println("body of get("+url+")="+h.body)
+    // one has to send the FakeApplication too. See bug report
+    // http://play.lighthouseapp.com/projects/82401/tickets/860-21-rc1-playapitestwithserver-fails-when-port-is-given
+    "run in a server" in new WithServer(app=FakeApplication(),port=19001,sslPort=Some(19002)) {
+      val url = "https://localhost:" + sslPort.get +"/test/webid/allRead"
+      System.out.println("body of get("+url+")=")
+      val h = await(TestWS.url(url).get)
+      System.out.println(h.body)
       h.status must equalTo(OK)
     }
 
   }
 
+}
+
+object TestWS extends WSTrait {
+
+  val  trustAllservers = {
+    val sslctxt = javax.net.ssl.SSLContext.getInstance("TLS");
+    sslctxt.init(null, Array(noCATrustManager),null);
+    sslctxt
+  }
+
+  val client = new AsyncHttpClient(WS.asyncBuilder.setSSLContext(trustAllservers).build )
 }
