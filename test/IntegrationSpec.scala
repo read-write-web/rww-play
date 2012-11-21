@@ -20,14 +20,10 @@ import org.specs2.mutable._
 
 import play.api.test._
 import play.api.test.Helpers._
-import play.api.libs.ws.{WSTrait, WSx, WS}
-import javax.net.ssl.{SSLEngine, X509ExtendedKeyManager, KeyManager}
+import play.api.libs.ws.{WSTrait, WS}
+import javax.net.ssl.KeyManager
 import scala.Array
 import play.core.server.noCATrustManager
-import collection.mutable
-import java.security.cert.X509Certificate
-import java.security.{Principal, PrivateKey}
-import java.net.Socket
 import com.ning.http.client.AsyncHttpClient
 
 /**
@@ -36,7 +32,7 @@ import com.ning.http.client.AsyncHttpClient
 */
 class IntegrationSpec extends Specification {
 
-  "Application" should {
+  "Access controled resources /test/webid/*" should {
 //
 //    "work from within a browser" in {
 //      running(TestServer(3333), HTMLUNIT) { browser =>
@@ -49,19 +45,30 @@ class IntegrationSpec extends Specification {
 //  }
     // one has to send the FakeApplication too. See bug report
     // http://play.lighthouseapp.com/projects/82401/tickets/860-21-rc1-playapitestwithserver-fails-when-port-is-given
-    "run in a server" in new WithServer(app=FakeApplication(),port=19001,sslPort=Some(19002)) {
-      val url = "https://localhost:" + sslPort.get +"/test/webid/allRead"
-      System.out.println("body of get("+url+")=")
-      val h = await(TestWS.url(url).get)
-      System.out.println(h.body)
-      h.status must equalTo(OK)
+    // also need to put a test on all subtests annoyingly see:
+    // https://groups.google.com/d/topic/play-framework/YTgOMVt0Fqk/discussion
+    "when running locally" in  {
+
+      "allRead should be readable by anyone" in new WithServer(app=FakeApplication(),port=19001,sslPort=Some(19002)) {
+         val url = "https://localhost:" + sslPort.get +"/test/webid/allRead"
+         val h = await(AnonymousTestWS.url(url).get)
+         h.status must equalTo(OK)
+      }
+
+      "webIdRead should be readable only by an agent with a valid WebID" in new WithServer(app=FakeApplication(),port=19001,sslPort=Some(19002)) {
+        val url = "https://localhost:" + sslPort.get +"/test/webid/webIdRead"
+        val h = await(AnonymousTestWS.url(url).get)
+        h.status must equalTo(UNAUTHORIZED)
+      }
+
+
     }
 
   }
 
 }
 
-object TestWS extends WSTrait {
+class TestWS(km: KeyManager=null) extends WSTrait {
 
   val  trustAllservers = {
     val sslctxt = javax.net.ssl.SSLContext.getInstance("TLS");
@@ -69,5 +76,10 @@ object TestWS extends WSTrait {
     sslctxt
   }
 
-  val client = new AsyncHttpClient(WS.asyncBuilder.setSSLContext(trustAllservers).build )
+  val client = {
+   val builder = WS.asyncBuilder.setSSLContext(trustAllservers)
+    new AsyncHttpClient(builder.build)
+  }
 }
+
+object AnonymousTestWS extends TestWS
