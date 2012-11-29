@@ -5,6 +5,9 @@
 # set this if you want to proxy a web site ( say w3c.org to check out WebID )
 #GET     /*rg                       controllers.AuthProxyApp.proxy(rg)
 
+#Home page with doc
+GET     /                           controllers.Application.index
+
 # Home page
 GET     /test/webid/:rg             controllers.BasicApp.webId(rg)
 

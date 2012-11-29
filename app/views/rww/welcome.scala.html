@@ -1,0 +1,98 @@
+@(message: String, style: String = "Scala")
+
+@play.api.Play.maybeApplication.filterNot(_.mode != play.api.Mode.Dev).map { _ =>
+
+<link rel="stylesheet" media="screen" href="/@@documentation/resources/style/main.css">
+
+<section id="top">
+    <div class="wrapper">
+        <h1><a href="/@@documentation">@message</a></h1>
+        <nav>
+            <span class="versions">
+                <span>Browse APIs</span>
+                <select onchange="document.location=this.value">
+                    <option selected disabled>Select language</option>
+                    <option value="/@@documentation/api/scala/index.html">Scala</option>
+                    <option value="/@@documentation/api/java/index.html">Java</option>
+                </select>
+            </span>
+        </nav>
+    </div>
+</section>
+
+<div id="news">
+    <iframe src="http://www.playframework.org/widget?uid=@play.api.Play.maybeApplication.flatMap(_.configuration.getString("application.secret")).map(_.take(5)).map(play.api.libs.Codecs.sha1(_))&version=@play.core.PlayVersion.current&tag=@style.toUpperCase" scrolling="no" style="overflow: hidden; display: block; margin: 0 auto; width: 960px; height: 60px"></iframe>
+</div>
+
+
+<div id="content" class="wrapper doc">
+
+<article>
+
+    <h1>Welcome to RWW-Play-2.1-TLS</h1>
+
+    <p>
+        Congratulations, you’ve just started the RWW Play Application.
+    </p>
+
+    <blockquote>
+        <p>
+            You’re using Play @play.core.PlayVersion.current
+        </p>
+    </blockquote>
+
+    <h2>About</h2>
+    <p>This application intends to implement a suite of tools to build a read-write-web
+        <ul>
+            <li>The <a href="http://www.w3.org/2012/ldp/hg/ldp.html">Linked Data Platform</a> (LDP) defined at the W3C</li>
+            <li><a href="http://webid.info/">WebID Certificate Creation</a> </li>
+            <li><a href="http://webid.info/">WebID Authentication over TLS</a></li>
+            <li><a href="https://foafssl.org/srv/idp">A WebID Identity Provider</a></li>
+            <li><a href="http://www.w3.org/wiki/WebAccessControl">Web Access Control</a></li>
+            <li>Account creation and friend management</li>
+            <li>Blog engine</li>
+        </ul>
+    The aim is to have these pieces working together to build a use case, and later seperate the pieces
+    into libraries.
+    </p>
+
+    <h2>What is working now?</h2
+            >
+</article>
+<aside>
+    <h3>Browse</h3>
+    <ul>
+        <li><a href="/@@documentation">Local documentation</a></li>
+        <li><a href="/@@documentation/api/scala/index.html">Browse the Scala API</a></li>
+    </ul>
+    <h3>Start here</h3>
+    <ul>
+        <li><a href="/@@documentation/PlayConsole">Using the Play console</a></li>
+        <li><a href="/@@documentation/IDE">Setting up your preferred IDE</a></li>
+        <li><a href="/@@documentation/ScalaTodoList">Your first application</a></li>
+    </ul>
+</aside>
+
+<aside>
+    <h3>Browse</h3>
+    <ul>
+        <li><a href="/@@documentation">Local documentation</a></li>
+        <li><a href="/@@documentation/api/java/index.html">Browse the Java API</a></li>
+    </ul>
+    <h3>Start here</h3>
+    <ul>
+        <li><a href="/@@documentation/PlayConsole">Using the Play console</a></li>
+        <li><a href="/@@documentation/IDE">Setting up your preferred IDE</a></li>
+        <li><a href="/@@documentation/JavaTodoList">Your first application</a></li>
+    </ul>
+</aside>
+
+
+
+</div>
+
+}.getOrElse {
+
+<h1>@message</h1>
+
+}
