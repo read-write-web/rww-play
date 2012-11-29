@@ -1,0 +1,16 @@
+language: scala
+scala:
+  - 2.10.0-RC1
+before_install:
+  - git submodule update --init --recursive
+  - cd Play20
+  - PLAY_VERSION="2-TLS-`git log -n 1 --pretty=format:%H`"
+  - cd ..
+  - wget http://mail.spiroid.org/play/releases/play-${PLAY_VERSION}.tar.bz2
+  - tar -xjf play-${PLAY_VERSION}.tar.bz2
+script: play-${PLAY_VERSION}/play test  
+notifications:
+  # Email notifications are disabled to not annoy anybody.
+  # See http://about.travis-ci.org/docs/user/build-configuration/ to learn more
+  # about configuring notification recipients and more.
+  email: false
