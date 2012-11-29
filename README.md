@@ -9,6 +9,10 @@ It is very early stages at present and it implements sketches of the following
 
 This currently works in the [2.0.3-with-TLS branch of the bblfish fork of Play 2.0](https://github.com/bblfish/Play20), which comes with TLS support and a few more patches.
 
+We use [Travis CI](http://travis-ci.org/) to verify the build: [![Build Status](https://travis-ci.org/read-write-web/rww-play.png)](http://travis-ci.org/read-write-web/rww-play)
+
+
+
 
 Getting going
 -------------
