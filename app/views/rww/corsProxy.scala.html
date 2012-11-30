@@ -1,0 +1,30 @@
+@title = {
+  Cors Proxy
+}
+@main(title) {
+
+  <p> This cors proxy is very important javascript applications that
+      need to fetch public RDF resources on the Web which are not
+      <a href="http://www.w3.org/wiki/CORS_Enabled">CORS-enabled</a>.
+  </p>
+  <p>All the request headers passed from the client on to this one are passed on. And the
+      resulting response headers are passed along also, but with an additional
+      <code>Access-Control-Allow-Origin: *</code>
+      Header so that the JavaScript in the client can accept the request.
+  </p>
+  <form method="GET" action=".">
+     Remote RDF resource: <input type="url" size="50" name="url" placeholder="http://">
+     <input type="submit" value="GET"> document.
+  </form>
+
+  <p>Future todos:
+   <ul>
+    <li>Allow remote authenticated requests, for users known to this server, where
+  the remote resource is WebID protected.</li>
+    <li>Protect this resource only to a list of known users - in order to avoid the service becoming
+    a denial of service vector.</li>
+    <li>Enable this form to pass on some http headers for quick experimenting.</li>
+    <li>Security review is needed.</li>
+   </ul>
+  </p>
+}

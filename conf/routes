@@ -18,7 +18,8 @@ GET     /2012/*file                 org.www.readwriteweb.play.ReadWriteWeb_App.g
 PUT     /2012/*file                 org.www.readwriteweb.play.ReadWriteWeb_App.put(file)
 POST    /2012/*file                 org.www.readwriteweb.play.ReadWriteWeb_App.post(file)
 
-GET     /srv/cors                   org.www.play.rdf.jena.CORSProxy.get(url: String)
+GET     /srv/cors/about             controllers.CORSProxy.about()
+GET     /srv/cors/                  controllers.CORSProxy.get(url: String)
 
 POST    /srv/certgen                controllers.ClientCertificateApp.generate
 GET     /srv/certgen                controllers.ClientCertificateApp.get
