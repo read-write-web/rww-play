@@ -26,6 +26,7 @@ Getting going
  $ git submodule init
  $ git submodule update
  $ cd Play20/framework
+ $ git checkout TLS
  $ ./build
  > publish-local 
   ... [exit scala shell]
