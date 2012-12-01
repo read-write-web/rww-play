@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.www.readwriteweb.play
+package controllers
 
 import play.api.mvc._
 import java.net.URL
@@ -24,9 +24,10 @@ import akka.util.Timeout
 import com.hp.hpl.jena.sparql.core.DatasetGraphFactory
 import org.www.play.auth.{WebIDAuthN, WebIDVerifier}
 import org.www.play.rdf.jena.JenaSparqlQueryIteratee
+import org.www.readwriteweb.play.{QueryRwwContent, GraphRwwContent, JenaResourceMgr, RwwBodyParser}
 
 
-object ReadWriteWeb_App extends Controller {
+object ReadWriteWebApp extends Controller {
   import play.api.libs.concurrent._
   import controllers.setup._
 
@@ -45,7 +46,7 @@ object ReadWriteWeb_App extends Controller {
 //  But it is a bit odd given that you have to specify whether something is secure or not.
 //
 //  lazy val url = call.absoluteURL(true)
-//  def call : Call = org.w3.readwriteweb.play.routes.ReadWriteWeb_App.get
+//  def call : Call = org.w3.readwriteweb.play.routes.ReadWriteWebApp.get
 
   val store = JenaStore(DatasetGraphFactory.createMem())
 
@@ -58,6 +59,10 @@ object ReadWriteWeb_App extends Controller {
   import JenaSolutionsWriter.{solutionsWriterSelector=>SparqWriterSelector}
   import org.w3.banana.BooleanWriter.{selector=>BoolWriterSelector}
   import org.www.readwriteweb.play.PlayWriterBuilder._
+
+  def about = Action {
+    Ok( views.html.rww.ldp() )
+  }
 
   //    JenaRDFBlockingWriter.WriterSelector()
 //    req.accept.collectFirst {

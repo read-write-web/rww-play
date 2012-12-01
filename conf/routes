@@ -14,9 +14,10 @@ GET     /test/webid/:rg             controllers.BasicApp.webId(rg)
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
 
-GET     /2012/*file                 org.www.readwriteweb.play.ReadWriteWeb_App.get(file)
-PUT     /2012/*file                 org.www.readwriteweb.play.ReadWriteWeb_App.put(file)
-POST    /2012/*file                 org.www.readwriteweb.play.ReadWriteWeb_App.post(file)
+GET     /2012                       controllers.ReadWriteWebApp.about
+GET     /2012/*file                 controllers.ReadWriteWebApp.get(file)
+PUT     /2012/*file                 controllers.ReadWriteWebApp.put(file)
+POST    /2012/*file                 controllers.ReadWriteWebApp.post(file)
 
 GET     /srv/cors/about             controllers.CORSProxy.about()
 GET     /srv/cors/                  controllers.CORSProxy.get(url: String)
