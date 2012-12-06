@@ -2,14 +2,13 @@ package org.www.readwriteweb.play
 
 import org.w3.banana._
 import org.www.play.rdf.IterateeSelector
-import org.www.play.remote.{GraphNHeaders, GraphFetcher}
+import org.www.play.remote.GraphFetcher
 import java.net.{URISyntaxException, MalformedURLException, URL}
 import concurrent.{ExecutionContext, Future}
 import org.w3.banana.LinkedDataResource
 import java.io.File
-import play.api.libs.iteratee.{Enumerator, Enumeratee, Iteratee}
+import play.api.libs.iteratee.Enumerator
 import util.{Failure, Success}
-import org.www.play.auth.WebIDAuthObj
 import play.api.Logger
 
 trait LinkedDataCache[Rdf<:RDF] {
@@ -27,13 +26,17 @@ extends LinkedDataCache[Rdf] {
   import dsl._
   import dsl.ops._
 
-  //todo: this should be found elsewhere
+  //todo: this should be found elsewhere, in the graphFetcher for example
   val documentRoot = {
     val r = new File(Option(System.getProperty("document.root")).getOrElse("test_www"))
     Logger("rww").info("document root="+r.getAbsolutePath)
     r
   }
-  val base = WebIDAuthObj.base
+
+  //todo: This is very fragile: won't work if the server is running on non secure port.
+  //todo: Yet, how should one know which one to resolve this to?
+  //todo: needs refactoring ( this was done quickly at TPAC2012 )
+  val base = controllers.setup.secureHost
 
   val r = """^(.*)\.(\w{0,4})$""".r
 

@@ -43,11 +43,9 @@ object AuthProxyApp extends Controller {
 
   implicit val idGuard: IdGuard[Jena] = WebAccessControl[Jena](linkedDataCache)
 
-  def webReq(req: RequestHeader) : WebRequest[Jena] =
-    new PlayWebRequest[Jena](new WebIDAuthN[Jena],new URL("https://localhost:8443/"),meta _)(req)
 
   // Authorizes anyone with a valid WebID
-  val WebIDAuth = new Auth[Jena](idGuard,webReq _)
+  val WebIDAuth = new Auth[Jena](idGuard,new WebIDAuthN[Jena],meta _)
 
   def proxy(path: String) = WebIDAuth() { authFailure =>
     val sw =new StringWriter()

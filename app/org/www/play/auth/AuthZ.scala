@@ -20,7 +20,7 @@ import play.api.mvc._
 import java.security.Principal
 import org.w3.banana._
 import scala.concurrent.{ExecutionContext, Future}
-import java.net.URL
+import java.net.{URI, URL}
 import play.api.mvc.BodyParsers.parse
 import play.api.mvc.AsyncResult
 import scala.Some
@@ -33,7 +33,7 @@ import scala.Some
 case class Subject(principals: List[Principal], authzPrincipals: List[Principal]=List()) {
   @deprecated("principals are now valid principals","0.4")
   lazy val validPrincipals = principals
-  lazy val webIds = validPrincipals.flatMap{ p =>
+  lazy val webIds = principals.flatMap{ p =>
     p match {
       case wp: WebIDPrincipal => Some(wp.webid)
       case _ => None
@@ -43,15 +43,28 @@ case class Subject(principals: List[Principal], authzPrincipals: List[Principal]
 
 object Anonymous extends Subject(List())
 
-trait WebRequest[Rdf<:RDF] {
+trait WebRequest[+A] extends Request[A] {
   def subject: Future[Subject]
-  def method: Mode
-  def meta: Rdf#URI
-  def uri: Rdf#URI
+
+  def mode: Mode
+
+  /**
+   * location of metadata about this resource.
+   */
+  val meta: URL
+
+  /**
+   * actual URL of the resource. Useful for example when dealing with
+   * remote ACLs that make claims about this resource. If one does not
+   * know the name of this resource, one cannot correctly interpret those
+   * remote ACLs ( see: WebAccessControl ontology )
+   */
+  def url: URL
 }
 
 /**
- * class to wrap web request methods, as these usually have information missing.
+ * Enhance a request with information that the server can determine from the request.
+ *
  * Allows one to tie together information that is strongly related to the web
  * request. For example it is important to know the full URL of a request in order
  * to know if a remote ACL is speaking about it
@@ -60,31 +73,34 @@ trait WebRequest[Rdf<:RDF] {
  * @param base base url, to turn a request into a full url
  * @param metaFun: method to calculate metadata location
  * @param req request header to wrap
- * @param ops
- * @tparam Rdf
  */
-class PlayWebRequest[Rdf<:RDF](authn: AuthN, base: URL, metaFun: String => URL)(req: RequestHeader)
-                              (implicit ops: RDFOps[Rdf]) extends WebRequest[Rdf] {
-  lazy val subject: Future[Subject] = authn(req)
+class WebReq[A](authn: AuthN, base: URL, metaFun: String => URL)(req: Request[A])
+  extends WrappedRequest[A](req) with WebRequest[A] {
 
-  val method = req.method match {
+  //todo: this is incorrect - finding the type of the method is a lot more complicated than this
+  //todo see the modes in http://www.w3.org/wiki/WebAccessControl#Public_Access
+
+  val mode = method match {
     case "GET" => Read
     case "PUT" => Write
     case "POST" => Control
     case "DELETE" => Write
   }
 
-  /**
-   * location of metadata
-   */
-  val meta = ops.URI(metaFun(req.path).toString)
+  lazy val subject: Future[Subject] = authn(req)
 
   /**
-   * actual URI of the resource: needed to be able to work out from remote
+   * location of metadata about this resource.
    */
-  lazy val uri = {
-    ops.URI(new URL(base,req.path).toString)
-  }
+  val meta = metaFun(req.path)
+
+  /**
+   * actual URL of the resource. Useful for example when dealing with
+   * remote ACLs that make claims about this resource. If one does not
+   * know the name of this resource, one cannot correctly interpret those
+   * remote ACLs ( see: WebAccessControl ontology )
+   */
+  lazy val url = new URL(base,req.path)
 }
 
 
@@ -92,8 +108,8 @@ class PlayWebRequest[Rdf<:RDF](authn: AuthN, base: URL, metaFun: String => URL)(
 
 /**
  * A guard determines access a request.
- * This is parameterised on Refusal Type and Acceptance Types as a guard protecting access
- * to resources by types not related to user identity, may want to return differnt types of objects
+ * This is parametrised on Refusal Type and Acceptance Types as a guard protecting access
+ * to resources by types not related to user identity, may want to return different types of objects
  * @tparam AcceptT  The Type of the Acceptance
  */
 trait Guard[AcceptT,Rdf<:RDF] {
@@ -104,7 +120,7 @@ trait Guard[AcceptT,Rdf<:RDF] {
    * @return A future answer on whether or not to allow access. The future will fail with an exception
    *         reporting the reason of the failure.
    */
-  def allow(request: WebRequest[Rdf]): Future[AcceptT]
+  def allow[A](request: WebRequest[A]): Future[AcceptT]
 }
 
 trait IdGuard[Rdf<:RDF] extends Guard[Subject,Rdf]
@@ -124,12 +140,15 @@ trait IdGuard[Rdf<:RDF] extends Guard[Subject,Rdf]
  *
  *
  * @param guard The guard protecting the resource
- * @param webRequest Wraps the request header into a WebRequest
+ * @param authn: Authentication logic
  * @param ec ExecutionContext
+ * todo: should the metaFun be in IdGuard or here?
  */
-class Auth[Rdf<:RDF](guard: IdGuard[Rdf],webRequest: RequestHeader => WebRequest[Rdf])
+class Auth[Rdf<:RDF](guard: IdGuard[Rdf], authn: AuthN, metaFun: String => URL)
                     (implicit ec: ExecutionContext)  {
 
+
+  def enhance[A](req: Request[A]) = new WebReq[A](authn, controllers.setup.secureHost, metaFun)(req)
 
   /**
    *
@@ -143,10 +162,11 @@ class Auth[Rdf<:RDF](guard: IdGuard[Rdf],webRequest: RequestHeader => WebRequest
                 (onUnauthorized: AuthFailure[A] => Result)
                 ( action: AuthRequest[A] => Result): Action[A] =
       Action(p) {  req: Request[A] =>
-        val futureSubj: Future[Subject] = guard.allow(webRequest(req))
+        val webReq = enhance(req)
+        val futureSubj: Future[Subject] = guard.allow(webReq)
         AsyncResult {
-          futureSubj.map( subj => action(AuthRequest[A](subj, req))).recover{
-            case failure: Exception => onUnauthorized(AuthFailure(failure,req))  //what about other throwables?
+          futureSubj.map( subj => action(AuthRequest[A](subj, webReq))).recover{
+            case failure: Exception => onUnauthorized(AuthFailure(failure,webReq))  //what about other throwables?
           }
         }
       }
@@ -164,9 +184,9 @@ class Auth[Rdf<:RDF](guard: IdGuard[Rdf],webRequest: RequestHeader => WebRequest
  * @param request the request the user was authorized for
  * @tparam A the type of the Request
  */
-case class AuthRequest[A]( val user: Subject, request: Request[A] ) extends WrappedRequest(request)
+case class AuthRequest[A]( val user: Subject, request: WebRequest[A] )
 
-case class AuthFailure[A]( val exception: Exception, request: Request[A]) extends WrappedRequest(request)
+case class AuthFailure[A]( val exception: Exception, request: WebRequest[A])
 
 
 

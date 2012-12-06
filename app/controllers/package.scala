@@ -8,9 +8,10 @@ import org.www.play.rdf.IterateeSelector
 import org.www.play.rdf.jena.JenaAsync
 import org.www.play.remote.GraphFetcher
 import org.www.readwriteweb.play.{IterateeLDCache, LinkedDataCache}
-import play.api.mvc.Controller
+import play.api.mvc.{Request, Controller}
 import org.www.play.auth.WebAccessControl
 import play.api.Logger
+import java.net.{URI, URL}
 
 /**
  * sets the useful objects needed for running a web server.
@@ -22,6 +23,19 @@ import play.api.Logger
 object setup {
   implicit val system = ActorSystem("MySystem")
   implicit val executionContext: ExecutionContext = system.dispatcher
+
+  //Play setup: needed for WebID info
+  //todo: need to refactor this so that it uses Play's setup so that there is no possibility code shift
+  lazy val securePort: Int = Option(System.getProperty("https.port")).orElse(Some("8443")).map { port =>
+    Integer.parseInt(port)
+  }.get
+
+  lazy val secureHost: URL = {
+    Option(System.getProperty("http.hostname")).orElse(Some("localhost")).map { host =>
+      new URL("https",host,securePort,"/")
+    }.get
+  }
+
   val logger = Logger("rww")
   //
   //when changing from Jena to Sesame the following group of variables would need to be changed

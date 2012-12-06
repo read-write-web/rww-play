@@ -26,12 +26,14 @@ import concurrent.duration.Duration
 import org.www.play.auth.Subject
 import org.w3.banana.LinkedDataResource
 import org.www.play.auth.WebIDPrincipal
-
+import java.net.URL
+import play.api.mvc.Headers
+import java.security.cert.Certificate
 
 class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel: Diesel[Rdf])
     extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper {
 
-  import diesel.ops
+
   import diesel.ops._
   import diesel._
 
@@ -50,7 +52,27 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
       else cache.get(uri)
   }
 
-  case class DummyWebRequest(subject: Future[Subject],method: Mode, meta: Rdf#URI,uri: Rdf#URI) extends WebRequest[Rdf]
+  case class DummyWebRequest(subject: Future[Subject], mode: Mode, meta: URL, url: URL)
+    extends WebRequest[Any] {
+
+    def copy2(subject: Future[Subject] = this.subject, mode: Mode = this.mode,
+               meta: URL=this.meta, url: URL=this.url) = {
+      val (_subj, _mode, _meta, _url) = (subject,mode,meta,url)
+      DummyWebRequest(_subj,_mode,_meta,_url)
+    }
+
+    def id = ???
+    def uri = ???
+    def method = ???
+    def tags = ???
+    def path = ???
+    def version = ???
+    def queryString = ???
+    def headers = ???
+    def certs(required: Boolean) = ???
+    def remoteAddress = ???
+    def body = ???
+  }
 
   val henry = new java.net.URI("http://bblfish.net/people/henry/card#me")
   val henrysubj = Subject(List(WebIDPrincipal(henry)))
@@ -75,15 +97,15 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
     (see http://www.w3.org/wiki/WebAccessControl#Public_Access)""" when {
 //    wac1.authorizations must have size(1)
     val webreq = DummyWebRequest( nonEvaluabableSubject, Read,
-        URI("http://joe.example/pix/.meta"),
-        URI("http://joe.example/pix/img")
+        new URL("http://joe.example/pix/.meta"),
+        new URL("http://joe.example/pix/img")
     )
     "read mode" in {
       val fb=wac1.allow(webreq)
       Await.result(fb,Duration("1s")) mustBe Anonymous
     }
     "write mode" in {
-      val fb=wac1.allow(webreq.copy(method=Write))
+      val fb=wac1.allow(webreq.copy2(mode=Write))
       try {
         Await.result(fb,Duration("1s"))
         fail("Should throw an exception")
@@ -92,7 +114,7 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
       }
     }
     "control mode" in {
-      val fb=wac1.allow(webreq.copy(method=Control))
+      val fb=wac1.allow(webreq.copy2(mode=Control))
       try {
         Await.result(fb,Duration("1s"))
         fail("Should throw an exception")
@@ -115,8 +137,8 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
   "Access to Public resources defined by a regex" when {
 //    wac2.authorizations must have size(1)
     val webreq = DummyWebRequest( nonEvaluabableSubject, Read,
-          URI("http://joe.example/blog/.meta"),
-          URI("http://joe.example/blog/2012/firstPost")
+          new URL("http://joe.example/blog/.meta"),
+          new URL("http://joe.example/blog/2012/firstPost")
     )
 
     "read mode" in {
@@ -125,7 +147,7 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
 
     }
     "write mode" in {
-      val fb = wac2.allow(webreq.copy(method=Write))
+      val fb = wac2.allow(webreq.copy2(mode=Write))
       try {
         Await.result(fb,Duration("1s"))
         fail("Should throw an exception")
@@ -134,7 +156,7 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
       }
     }
     "control mode" in {
-      val fb = wac2.allow(webreq.copy(method=Control))
+      val fb = wac2.allow(webreq.copy2(mode=Control))
       try {
         Await.result(fb,Duration("1s"))
         fail("Should throw an exception")
@@ -158,8 +180,8 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
   "Access to group (named with a local uri) protected resources described by a regex" when {
 //    wac3.authorizations must have size(1)
     val webreq = DummyWebRequest( henryFuture, Read,
-      URI("http://bblfish.net/blog/editing/.meta"),
-      URI("http://bblfish.net/blog/editing/post1")
+      new URL("http://bblfish.net/blog/editing/.meta"),
+      new URL("http://bblfish.net/blog/editing/post1")
     )
 
     "read mode" in {
@@ -167,11 +189,11 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
       Await.result(fb,Duration("1s")) mustBe henrysubjAnswer
     }
     "write mode" in {
-      val fb=wac3.allow(webreq.copy(method=Write))
+      val fb=wac3.allow(webreq.copy2(mode=Write))
       Await.result(fb,Duration("1s")) mustBe henrysubjAnswer
     }
     "control mode" in {
-      val fb=wac3.allow(webreq.copy(method=Control))
+      val fb=wac3.allow(webreq.copy2(mode=Control))
       try {
         Await.result(fb,Duration("1s"))
         fail("Should throw an exception")
@@ -196,8 +218,8 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
   "Access to protected resources described by a regex to a group described remotely" when {
 //    wac4.authorizations must have size(1)
     val webreq = DummyWebRequest( henryFuture, Read,
-      URI("http://bblfish.net/blog/editing/.meta"),
-      URI("http://bblfish.net/blog/editing/post1")
+      new URL("http://bblfish.net/blog/editing/.meta"),
+      new URL("http://bblfish.net/blog/editing/post1")
     )
 
     "read mode" in {
@@ -205,11 +227,11 @@ class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel
       Await.result(fb,Duration("15s")) mustBe henrysubjAnswer
     }
     "write mode" in {
-      val fb=wac4.allow(webreq.copy(method=Write))
+      val fb=wac4.allow(webreq.copy2(mode=Write))
       Await.result(fb,Duration("15s")) mustBe henrysubjAnswer
     }
     "control mode" in {
-      val fb=wac4.allow(webreq.copy(method=Control))
+      val fb=wac4.allow(webreq.copy2(mode=Control))
       try {
         Await.result(fb,Duration("15s"))
         fail("Should throw an exception")

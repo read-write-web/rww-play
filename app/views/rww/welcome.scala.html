@@ -2,7 +2,8 @@
 
 @play.api.Play.maybeApplication.filterNot(_.mode != play.api.Mode.Dev).map { _ =>
 
-<link rel="stylesheet" media="screen" href="/@@documentation/resources/style/main.css">
+<link rel="stylesheet" media="screen" href="/@@documentation/resources/style/main.css"
+      xmlns="http://www.w3.org/1999/html">
 
 <section id="top">
     <div class="wrapper">
@@ -29,10 +30,13 @@
 
 <article>
 
-    <h1>Welcome to RWW-Play-2.1-TLS</h1>
+    <h1>Welcome to RWW-Play</h1>
 
     <p>
-        Congratulations, you’ve just started the RWW Play Application.
+        Congratulations, you’ve just started the RWW Play Application, running in
+        <a href="https://github.com/bblfish/Play20">Play-2.1 updated with TLS.</a>.
+        This page is to help get you going with the latest Play documentation, and
+        pointers to some running services.
     </p>
 
     <blockquote>
@@ -42,18 +46,38 @@
     </blockquote>
 
     <h2>About</h2>
-    <p>This application intends to implement a suite of tools to build a read-write-web
-        <ul>
-            <li>The <a href="http://www.w3.org/2012/ldp/hg/ldp.html">Linked Data Platform</a> (LDP) defined at the W3C</li>
-            <li><a href="http://webid.info/">WebID Certificate Creation</a> </li>
-            <li><a href="http://webid.info/">WebID Authentication over TLS</a></li>
-            <li><a href="https://foafssl.org/srv/idp">A WebID Identity Provider</a></li>
-            <li><a href="http://www.w3.org/wiki/WebAccessControl">Web Access Control</a></li>
-            <li>Account creation and friend management</li>
-            <li>Blog engine</li>
-        </ul>
+    <p>This Web Application is putting together the tools to build the read-write-web.
+    This requires a number of pieces:
+    <ul>
+        <li>The Linked Data Platform (<a href="http://www.w3.org/2012/ldp/hg/ldp.html">LDP spec</a>) defined at the W3C,
+        to specify how a client can create, update, query and delete resources.</li>
+        <li>Authentication using WebID ( see <a href="http://webid.info">WebID.info</a> ). </li>
+        <li>Authorization using the <a href="http://www.w3.org/wiki/WebAccessControl">Web Access Control</a> ontology,
+        together with WebID.</li>
+    </ul>
+    </p>
+    <p>This should be complemented with the help of some Web2.0 services:
+    <ul>
+        <li>WebID Certificate Creation for people with existing profiles</li>
+        <li>A WebID Identity Provider ( such as <a href="https://foafssl.org/srv/idp">this one</a> )
+            so that other apps that don't have TLS can join easily.
+        </li>
+        <li><a href="https://foafssl.org/test/WebId">A WebID client test service</a>: so that authentication
+            problems can be quickly found and understood.
+        </li>
+        <li>WebID server tester: this will be useful to help people with new WebID implementations.</li>
+    </ul>
+    </p>
+    <p>It will be then useful to build some simple and useful apps to demonstrate the platform such as:
+      <ul>
+        <li>Blog engine</li>
+        <li>Profile page where friends can be added</li>
+        <li>Pingback</li>
+      </ul>
+    </p>
+
     The aim is to have these pieces working together to build a use case, and later seperate the pieces
-    into libraries.
+    into autonomous libraries.
     </p>
 
     <h2>What is working now?</h2>
@@ -61,7 +85,7 @@
     <p>At this point this is still very much work in progress. But some pieces are already working.</p>
     <ul>
         <li>WebID Certificate Creation: <a href="@routes.ClientCertificateApp.get">@routes.ClientCertificateApp.get</a>
-            for people that allready have a WebID and wish to have an easy way to create a certificate. (does not work
+            for people that already have a WebID and wish to have an easy way to create a certificate. (does not work
             with IE yet ).
         </li>
         <li>CORS Proxy: <a href="@routes.CORSProxy.about">@routes.CORSProxy.about</a> </li>
@@ -69,6 +93,21 @@
             present, does not even save information in long term memory.
             See <a href="https://github.com/read-write-web/rww-play#linked-data">the LinkedData section in the Wiki</a>
         for usage.</li>
+        <li><a href="http://www.w3.org/wiki/WebAccessControl">Web Access Control</a>, which can be demonstrated with
+            this very basic applications
+            <a href='@routes.BasicApp.webId("something")'>@routes.BasicApp.webId("something")</a>
+        </li>
+    </ul>
+
+    <h2>Todo</h2>
+
+    <ul>
+        <li>The <a href="http://www.w3.org/2012/ldp/hg/ldp.html">Linked Data Platform</a> (LDP) defined at the W3C</li>
+        <li><a href="http://webid.info/">WebID Certificate Creation</a> </li>
+        <li><a href="http://webid.info/">WebID Authentication over TLS</a></li>
+        <li><a href="https://foafssl.org/srv/idp">A WebID Identity Provider</a></li>
+        <li>Account creation and friend management</li>
+        <li>Blog engine</li>
     </ul>
 
 </article>

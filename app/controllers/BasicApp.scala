@@ -22,6 +22,11 @@ import views._
 import java.net.URL
 import concurrent.ExecutionContext
 import org.w3.banana.RDFOps
+import scalax.io.Resource
+import java.io.InputStream
+import org.w3.banana.sesame.SesameRDFWriter
+import util.Success
+import org.w3.banana.jena.JenaRDFWriter
 
 
 /**
@@ -42,11 +47,37 @@ class BasicApp extends WebIDAuthController {
     metaURL
   }
 
+  def rulesFor(path: String) = {
+     import ops.URI
+     val metaURI = URI(meta(path).toString)
+     val fldr = setup.linkedDataCache.get(metaURI)
+     fldr.map { ldr =>
+       val ts = JenaRDFWriter.turtleWriter.asString(ldr.resource.graph,ldr.uri.toString).recover { case err =>
+         Success("could not fetch metadata at "+metaURI+" caught error "+err.toString)
+       }
+       ts.get
+     }
+
+// http://jesseeichar.github.com/scala-io-doc/0.4.1-seq/index.html
+//     import scalax.io.JavaConverters._
+//    new String(meta(path).asInput.byteArray,"UTF-8")
+  }
+
   def webId(path: String) = WebIDAuth() { authFailure =>
-    Unauthorized("You are not authorized access to "+ authFailure.request+ " because "+ authFailure.exception )
+    Async {
+      rulesFor(authFailure.request.path).map { rules =>
+        Unauthorized(views.html.rww.wacTest("You are not authorized access to "+ authFailure.request+
+           " because "+ authFailure.exception, false,rules.toString ))
+      }
+    }
   }
   { authReq =>
-      Ok("You are authorized for " + path + ". Your ids are: " + authReq.user)
+    Async {
+      rulesFor(authReq.request.path).map { rules =>
+       Ok(views.html.rww.wacTest("You are authorized for " + path + ". Your ids are: " + authReq.user,
+         true, rules.toString))
+      }
+    }
   }
 
   def index = Action {
