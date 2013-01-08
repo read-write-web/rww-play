@@ -18,9 +18,9 @@ package test
 
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.scalatest.matchers.MustMatchers
-import org.w3.banana._
+import org.w3.banana.{WebACL=>_,_}
 import concurrent.{Await, Future}
-import org.www.play.auth._
+import org.www.play.auth.{_}
 import org.www.readwriteweb.play.LinkedDataCache
 import concurrent.duration.Duration
 import org.www.play.auth.Subject
@@ -30,12 +30,12 @@ import java.net.URL
 import play.api.mvc.Headers
 import java.security.cert.Certificate
 
-class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val diesel: Diesel[Rdf])
+class WebACLTestSuite[Rdf<:RDF](cache: LinkedDataCache[Rdf])(implicit val dsl: Diesel[Rdf])
     extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper {
 
 
-  import diesel.ops._
-  import diesel._
+  import dsl._
+  import dsl.ops._
 
   implicit val wac = WebACL[Rdf]
   val foaf = FOAFPrefix[Rdf]

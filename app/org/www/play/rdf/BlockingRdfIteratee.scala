@@ -57,7 +57,7 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, Syntax
       reader.read(Resource.fromInputStream(in), loc.map(_.toString).orNull)
     }
 
-    Iteratee.fold1[Array[Byte], PipedOutputStream](out) {
+    Iteratee.foldM[Array[Byte], PipedOutputStream](out) {
       (out, bytes) => try {
         out.write(bytes);   //this is done synchronously on the thread - it should be fast, but should be tested
         Future.successful(out)

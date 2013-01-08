@@ -26,7 +26,7 @@ object AuthProxyApp extends Controller {
   implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
 
   val aclBase: URL = {
-    val baseFile = new File(".").toURL
+    val baseFile = new File(".").toURI.toURL
     val base = System.getProperty("rww.proxy.acl","test_www/")
     new URL(baseFile,base)
   }
