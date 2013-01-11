@@ -15,9 +15,10 @@ GET     /test/webid/:rg             controllers.BasicApp.webId(rg)
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
 
 GET     /2012                       controllers.ReadWriteWebApp.about
-GET     /2012/*file                 controllers.ReadWriteWebApp.get(file)
-PUT     /2012/*file                 controllers.ReadWriteWebApp.put(file)
-POST    /2012/*file                 controllers.ReadWriteWebApp.post(file)
+GET     /2012/$file<.*>             controllers.ReadWriteWebApp.get(file)
+PUT     /2012/$file<.*>             controllers.ReadWriteWebApp.put(file)
+POST    /2012/$file<.*>             controllers.ReadWriteWebApp.post(file)
+DELETE  /2012/$file<.*>             controllers.ReadWriteWebApp.delete(file)
 
 GET     /srv/cors/about             controllers.CORSProxy.about()
 GET     /srv/cors/                  controllers.CORSProxy.get(url: String)

@@ -42,11 +42,11 @@ object PlayWriterBuilder {
    * The Play Result object for a HTTP code and a blockingWriter
    * @param code
    * @param writer
-   * @param obj
-   * @tparam Obj
-   * @return
+   * @param obj the object that is to be published
+   * @tparam Obj The type of the object to publish
+   * @return A simple result
    */
-  def result[Obj](code: Int, writer: Writer[Obj,_])(obj: Obj) = {
+  def result[Obj](code: Int, writer: Writer[Obj,_], headers: Map[String,String]=Map.empty)(obj: Obj) = {
     SimpleResult(
       header = ResponseHeader(200, Map("Content-Type" -> writer.syntax.mime)),  //todo
       body   = toEnum(writer)(obj)

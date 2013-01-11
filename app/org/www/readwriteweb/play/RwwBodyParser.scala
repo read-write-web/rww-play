@@ -18,14 +18,15 @@ package org.www.readwriteweb.play
 
 import org.w3.banana._
 import org.www.play.rdf.IterateeSelector
-import play.api.mvc.{RawBuffer, RequestHeader, BodyParser}
-import play.api.libs.iteratee.Done
+import play.api.mvc.{Result, RequestHeader, BodyParser}
+import play.api.libs.iteratee.{Iteratee, Done}
 import play.api.libs.iteratee.Input.Empty
 import scala.Left
 import scala.Right
 import scala.Some
 import java.net.URL
 import util.{Success, Failure}
+import play.api.libs.Files.TemporaryFile
 
 /**
  * a RWW bodyParser, like all body parsers, parses content sent from the client
@@ -38,17 +39,16 @@ import util.{Success, Failure}
  * @param sparqlSelector
  * @tparam Rdf
  */
-class RwwBodyParser[Rdf <: RDF]
-(val ops: RDFOps[Rdf],
- val sparqlOps: SparqlOps[Rdf],
- val graphSelector: IterateeSelector[Rdf#Graph],
- val sparqlSelector: IterateeSelector[Rdf#Query])
+class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
+                                sparqlOps: SparqlOps[Rdf],
+                                graphSelector: IterateeSelector[Rdf#Graph],
+                                sparqlSelector: IterateeSelector[Rdf#Query])
   extends BodyParser[RwwContent] {
 
   import play.api.mvc.Results._
   import play.api.mvc.BodyParsers.parse
 
-  def apply(rh: RequestHeader) =  {
+  def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[Result,RwwContent]] =  {
     if (rh.method == "GET" || rh.method == "HEAD") Done(Right(emptyContent), Empty)
     else rh.contentType.map { str =>
       MimeType(str) match {
@@ -60,8 +60,13 @@ class RwwBodyParser[Rdf <: RDF]
           case Failure(e) => Left(BadRequest("cought " + e))
           case Success(graph) => Right(GraphRwwContent(graph))
         }
-        case mime: MimeType => parse.raw(rh).mapDone {
-          _.right.map(rb => BinaryRwwContent(rb, mime.mime))
+        //todo: it would nice not to have to go through temporary files, but be able to pass on the iteratee
+        //todo: on systems where the result may be on a remote file system this would be very important.
+        case mime: MimeType => {
+          val parser = parse.temporaryFile.map {
+            file => BinaryRwwContent(file, mime.mime)
+          }
+          parser(rh)
         }
       }
     }.getOrElse {
@@ -84,7 +89,7 @@ case class GraphRwwContent[Rdf<:RDF](graph: Rdf#Graph) extends RwwContent
 
 case class QueryRwwContent[Rdf<:RDF](query: Rdf#Query) extends RwwContent
 
-case class BinaryRwwContent(binary: RawBuffer, mime: String) extends RwwContent
+case class BinaryRwwContent(file: TemporaryFile, mime: String) extends RwwContent
 
 
 

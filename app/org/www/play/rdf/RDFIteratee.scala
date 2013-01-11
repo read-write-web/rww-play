@@ -34,6 +34,12 @@ trait RDFIteratee[Result, +SyntaxType] {
    */
   def apply(loc: Option[URL] = None): Iteratee[Array[Byte], Try[Result]]
 
+  def map[OtherResult](trans: Result => OtherResult): RDFIteratee[OtherResult,SyntaxType] =
+    new RDFIteratee[OtherResult,SyntaxType] {
+    def apply(loc: Option[URL]) = RDFIteratee.this.apply(loc).map{ it =>
+      it.map{res => trans.apply(res)}
+    }
+  }
 }
 
 

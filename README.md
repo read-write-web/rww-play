@@ -122,15 +122,23 @@ ETag: "125d8606-2ee6-45fd305ed0440"
 The usual use case for fetching such a resource is to make the query in JavaScript, using a library
 such as [rdflib](https://github.com/linkeddata/rdflib.js)
 
-## Linked Data
+## Linked Data Platform
 
-You PUT an RDF resource to the  test_www directory with a command such as 
+A very initial implementation of the (LDP)[http://www.w3.org/2012/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2012/
 
+First you can create a new resource with POST
 ```
-$ curl -X PUT -i -T card.ttl -H "Content-Type: text/turtle; utf-8"  http://localhost:9000/2012/card.ttl
+$ curl -X POST -i -T card.ttl -H "Content-Type: text/turtle; utf-8"  http://localhost:9000/2012/
+
+Location: http://localhost:9000/2012/newresource
 ```
 
-and you can query it on the command line with curl as follows
+This will then create a remote resource at the given location.
+
+Then you can POST some more triples on that resource to APPEND to it,
+and you can GET it and DELETE it. 
+
+Query support as shown below no longer works right now.
 
 ```
 $ curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> ?p . } " -i http://localhost:9000/2012/card.ttl
@@ -181,6 +189,24 @@ Todo:
  * write a library to easily hook into the access control system so that mappers from WebIDs to other systems can be built quickly
  * enable other methods such as PUT/POST/DELETE...
  * have the metadata be more flexible - currently it only looks in one file, the acl system should follow links
+
+Development Tricks
+------------------
+
+# publishing libraries to local play repository
+
+If you are working on a library that is needed as part of this project, and in order
+to avoid having to upload that library to a remote server during the debugging phase 
+( which slows down development ) then you need to publish those libaries in the local
+Play repository that you are using. So before running the `publish-local` command
+for your library, run the following
+
+```bash
+$ export $play=$rwwHome/Play20
+$ export SBT_PROPS="-Dsbt.ivy.home=$play/repository -Dplay.home=$play/framework"
+$ ./sbt
+> publish-local
+```
 
 Licence
 -------
