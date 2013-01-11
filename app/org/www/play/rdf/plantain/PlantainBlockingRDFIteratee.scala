@@ -31,24 +31,18 @@ import org.w3.banana.plantain.{Plantain, Graph}
 
 class PlantainBlockingRDFIteratee(implicit ec: ExecutionContext)  {
   implicit val ops = SesameOperations
-  import org.w3.banana.sesame.Sesame.{turtleReader,rdfxmlReader}
+  import org.w3.banana.plantain.Plantain.{turtleReader,rdfxmlReader}
 
-  def apply[SyntaxType](reader: RDFReader[Sesame, SyntaxType]) =
-    new BlockingRDFIteratee[Sesame,SyntaxType](reader)
+  def apply[SyntaxType](reader: RDFReader[Plantain, SyntaxType]) =
+    new BlockingRDFIteratee[Plantain,SyntaxType](reader)
 
-  implicit val RDFXMLIteratee: RDFIteratee[Plantain#Graph,RDFXML] = apply[RDFXML](rdfxmlReader).map(sesame2plantain(_))
-  implicit val TurtleIteratee: RDFIteratee[Plantain#Graph,Turtle] = apply[Turtle](turtleReader).map(sesame2plantain(_))
+  implicit val RDFXMLIteratee: RDFIteratee[Plantain#Graph,RDFXML] = apply[RDFXML](rdfxmlReader)
+  implicit val TurtleIteratee: RDFIteratee[Plantain#Graph,Turtle] = apply[Turtle](turtleReader)
 
   val rdfxmlSelector = IterateeSelector[Plantain#Graph, RDFXML](Syntax.RDFXML,RDFXMLIteratee)
   val turtleSelector = IterateeSelector[Plantain#Graph, Turtle](Syntax.Turtle,TurtleIteratee)
 
   implicit val BlockingIterateeSelector: IterateeSelector[Plantain#Graph] =
     rdfxmlSelector combineWith turtleSelector
-
-  private def sesame2plantain(sesameGraph : Sesame#Graph) =
-    Sesame.ops.graphToIterable(sesameGraph).foldLeft(Graph.empty){
-      case (graph,statement) => graph + org.w3.banana.plantain.Triple.fromSesame(statement)
-    }
-
 
 }

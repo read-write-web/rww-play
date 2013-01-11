@@ -127,16 +127,46 @@ such as [rdflib](https://github.com/linkeddata/rdflib.js)
 A very initial implementation of the (LDP)[http://www.w3.org/2012/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2012/
 
 First you can create a new resource with POST
-```
+```bash
 $ curl -X POST -i -T card.ttl -H "Content-Type: text/turtle; utf-8"  http://localhost:9000/2012/
-
-Location: http://localhost:9000/2012/newresource
+...
+HTTP/1.1 200 OK
+Location: /2012/newresource
 ```
 
-This will then create a remote resource at the given location.
+This will then create a remote resource at the given location, in the above example
+`http://localhost:9000/2012/newresource`
 
 Then you can POST some more triples on that resource to APPEND to it,
 and you can GET it and DELETE it. 
+
+For example to append the triples in some file 'other.ttl' you can use
+
+```bash
+$ curl -i -X POST -H "Content-Type: text/turtle" http://localhost:9000/2012/newresource -d @other.ttl
+```
+
+you can then see that they have been correctly added with
+
+```bash
+$ curl -i -X GET -H "Accept: text/turtle" http://localhost:9000/2012/newresource
+```
+
+or if you prefer RDF/XML use:
+
+```bash
+$ curl -i -X GET -H "Accept: application/rdf+xml" http://localhost:9000/2012/newresource
+```
+
+finally if you wish to delete it you can run
+
+```bash
+$ curl -i -X DELETE http://localhost:9000/2012/newresource
+```
+
+A GET on that resource with from then on return an error.
+
+### Todo
 
 Query support as shown below no longer works right now.
 
