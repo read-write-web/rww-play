@@ -7,7 +7,6 @@ import play.api.mvc.ResponseHeader
 import play.api.mvc.SimpleResult
 import play.api.mvc.Results._
 import concurrent.ExecutionContext
-import play.api.libs.iteratee.Enumerator
 import java.io.{StringWriter, PrintWriter}
 
 /**
@@ -83,6 +82,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
         }
       }
       res recover {
+        case nse: NoSuchElementException => NotFound(nse.getMessage+stackTrace(nse))
         case e => ExpectationFailed(e.getMessage+"\n"+stackTrace(e))
       }
     }
@@ -96,6 +96,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
         Ok("Succeeded")
       }
       future recover {
+        case nse: NoSuchElementException => NotFound(nse.getMessage+stackTrace(nse))
         case e => ExpectationFailed(e.getMessage +"\n"+stackTrace(e))
       }
     }
@@ -110,6 +111,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
         Ok.withHeaders("Content-Location"->location.toString)
       }
       future recover {
+        case nse: NoSuchElementException => NotFound(nse.getMessage+stackTrace(nse))
         case e => ExpectationFailed(e.getMessage+"\n"+stackTrace(e))
       }
     }
@@ -121,9 +123,10 @@ trait ReadWriteWeb[Rdf <: RDF]{
       val future = for {
         _ <- rwwActor.delete(path)
       } yield {
-        Ok
+        Gone
       }
       future recover {
+        case nse: NoSuchElementException => NotFound(nse.getMessage+stackTrace(nse))
         case e => ExpectationFailed(e.getMessage+"\n"+stackTrace(e))
       }
     }
