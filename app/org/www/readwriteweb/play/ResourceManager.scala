@@ -17,33 +17,21 @@
 package org.www.readwriteweb.play
 
 import org.w3.banana._
-import plantain.LDPCommand._
+import org.w3.banana.plantain.LDPCommand._
 import concurrent.{Future, ExecutionContext}
-import plantain._
+import org.w3.banana.plantain._
 import play.api.libs.iteratee.Enumerator
 import scala.Some
 
-
-trait ReadWriteWebException extends Exception
-
-case class CannotCreateResource(msg: String) extends ReadWriteWebException
-
-
-case class Request(method: String, path: String)
-
-case class Put[Rdf <: RDF](path: String, content: RwwContent)
-
-case class Query[Rdf <: RDF](query: QueryRwwContent[Rdf], path: String)
-
-
-
-class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])
-                         (implicit ops: RDFOps[Rdf],
-                          sparqlOps: SparqlOps[Rdf],
-                          ec: ExecutionContext ) {
-  import ops._
+class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
+                              sparqlOps: SparqlOps[Rdf],
+                              ec: ExecutionContext) {
+  import dsl._
+  import dsl.ops._
   import System.out
 
+  val ldp = LDPPrefix[Rdf]
+  val rdfs = RDFsPrefix[Rdf]
   /**
    * @param path of the resource
    * @return the pair consisting of the collection and the name of the resource to make a request on
@@ -103,13 +91,7 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])
     val (collection, file) = split(path)
     for {
         ldpc <- ldps.getLDPC(URI(collection))
-         x   <- ldpc.execute{
-           if ("" == file) {
-              ???
-           } else {
-             for { r <- getResource(URI(file)) } yield r
-           }
-         }
+        x   <- ldpc.execute{ getResource(URI(file)) }
     } yield x
   }
 
@@ -124,12 +106,16 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])
         if ("" == file) {
           for{
             ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
-            xx = out.println("got to here")
             name: Option[Rdf#URI] = slug.map(u=>URI(u))
-            uri <- ldpc.execute(createLDPR(name, graph))
-          } yield { uri }
+            uri <- ldpc.execute(
+                for {
+                  r <- createLDPR(name, graph)
+                  git =  ( ldpc.uri -- rdfs.member ->- r ).graph.toIterable
+                  _ <- updateLDPR(ldpc.uri,add=git)
+              } yield r
+            )
+          } yield uri
         } else {
-          out.println("in else clause of post")
           for {
             ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
             gr <- ldpc.execute {
@@ -149,7 +135,12 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])
     out.println(s"($collection, $file)")
     for{
       ldpc <- ldps.getLDPC(URI(collection))
-      _ <- ldpc.execute(deleteResource(URI(file)))
+      _ <- ldpc.execute{
+        for {
+          x <- deleteResource(URI(file))
+          y <- updateLDPR(URI(file),remove=List(Tuple3[Rdf#NodeMatch,Rdf#NodeMatch,Rdf#NodeMatch](URI(file),dsl.ops.ANY,dsl.ops.ANY)).toIterable)
+        } yield y
+      }
     } yield { Unit }
   }
 
@@ -167,3 +158,33 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])
 
 }
 
+trait ReadWriteWebException extends Exception
+
+case class CannotCreateResource(msg: String) extends ReadWriteWebException
+
+
+case class Request(method: String, path: String)
+
+case class Put[Rdf <: RDF](path: String, content: RwwContent)
+
+case class Query[Rdf <: RDF](query: QueryRwwContent[Rdf], path: String)
+
+object LDPPrefix {
+  def apply[Rdf <: RDF](implicit ops: RDFOps[Rdf]) = new FOAFPrefix(ops)
+}
+
+class LDPPrefix[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("ldp", "http://www.w3.org/ns/ldp#")(ops) {
+  val Container = apply("container")
+  val membershipSubject = apply("membershipSubject")
+  val membershipPredicate = apply("membershipPredicate")
+  val nextPage = apply("nextPage")
+  val pageOf = apply("pageOf")
+}
+
+object RDFsPrefix {
+  def apply[Rdf <: RDF](implicit ops: RDFOps[Rdf]) = new RDFsPrefix(ops)
+}
+
+class RDFsPrefix[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("ldp", "http://www.w3.org/2000/01/rdf-schema#")(ops) {
+  val member = apply("member")
+}
