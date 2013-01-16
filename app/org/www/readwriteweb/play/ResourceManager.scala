@@ -21,6 +21,9 @@ import org.w3.banana.plantain.LDPCommand._
 import concurrent.{Future, ExecutionContext}
 import org.w3.banana.plantain._
 import play.api.libs.iteratee.Enumerator
+import scalaz.Either3
+import scalaz.Either3._
+import scala.Tuple3
 import scala.Some
 
 class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
@@ -96,37 +99,33 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
   }
 
 
-  def post(path: String, content: RwwContent,  slug: Option[String] ): Future[Rdf#URI] = {
+  def postGraph(path: String, content: GraphRwwContent[Rdf],  slug: Option[String] ): Future[Rdf#URI] = {
     // just on RWWPlay we can adopt the convention that if the object ends in a "/"
     // then it is a collection, anything else is not a collection
     val (collection, file) = split(path)
     out.println(s"($collection, $file)")
-    content match {
-      case GraphRwwContent(graph: Rdf#Graph) => {
-        if ("" == file) {
-          for{
-            ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
-            name: Option[Rdf#URI] = slug.map(u=>URI(u))
-            uri <- ldpc.execute(
-                for {
-                  r <- createLDPR(name, graph)
-                  git =  ( ldpc.uri -- rdfs.member ->- r ).graph.toIterable
-                  _ <- updateLDPR(ldpc.uri,add=git)
-              } yield r
-            )
-          } yield uri
-        } else {
+    if ("" == file) {
+      for {
+        ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
+        name: Option[Rdf#URI] = slug.map(u=>URI(u))
+        uri <- ldpc.execute(
+            for {
+              r <- createLDPR(name, content.graph)
+              git =  ( ldpc.uri -- rdfs.member ->- r ).graph.toIterable
+              _ <- updateLDPR(ldpc.uri,add=git)
+          } yield r
+        )
+      } yield uri
+    } else {
+      for {
+        ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
+        gr <- ldpc.execute {
           for {
-            ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
-            gr <- ldpc.execute {
-              for {
-                gr <- updateLDPR(URI(file),remove=Iterable.empty,add=graph.toIterable)
-                newGr <- getLDPR(URI(file))
-              } yield newGr
-            }
-          } yield URI(path)
+            gr <- updateLDPR(URI(file),remove=Iterable.empty,add=content.graph.toIterable)
+            newGr <- getLDPR(URI(file))
+          } yield newGr
         }
-      }
+      } yield URI(path)
     }
   }
 
@@ -144,17 +143,27 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
     } yield { Unit }
   }
 
-
-  //  def query(q: Rdf#Query, path: String): Future[Either3[Rdf#Graph, Rdf#Solutions, Boolean]] = {
-//    val resourceURI =  absolute(path)
-//
-//    import sparqlOps._
-//     import Either3._
-//     fold(q)(
-//       select => store.executeSelect(select).map(middle3[Rdf#Graph, Rdf#Solutions, Boolean]_),
-//       construct => store.executeConstruct(construct).map(left3[Rdf#Graph, Rdf#Solutions, Boolean]_),
-//       ask => store.executeAsk(ask).map(right3[Rdf#Graph, Rdf#Solutions, Boolean]_)
-//     )
+  def postQuery(path: String, query: QueryRwwContent[Rdf]): Future[Either3[Rdf#Graph,Rdf#Solutions,Boolean]] = {
+    val (collection, file) = split(path)
+    import sparqlOps._
+    for {
+      ldpc <- ldps.getLDPC(URI(collection))
+      e3 <- ldpc.execute {
+        if ("" != file)
+          fold(query.query)(
+            select => selectLDPR(URI(file), select, Map.empty).map(middle3[Rdf#Graph, Rdf#Solutions, Boolean] _),
+            construct => constructLDPR(URI(file), construct, Map.empty).map(left3[Rdf#Graph, Rdf#Solutions, Boolean] _),
+            ask => askLDPR(URI(file), ask, Map.empty).map(right3[Rdf#Graph, Rdf#Solutions, Boolean] _)
+          )
+        else
+          fold(query.query)(
+            select => selectLDPC(select, Map.empty).map(middle3[Rdf#Graph, Rdf#Solutions, Boolean] _),
+            construct => constructLDPC( construct, Map.empty).map(left3[Rdf#Graph, Rdf#Solutions, Boolean] _),
+            ask => askLDPC(ask, Map.empty).map(right3[Rdf#Graph, Rdf#Solutions, Boolean] _)
+          )
+      }
+    } yield e3
+  }
 
 }
 

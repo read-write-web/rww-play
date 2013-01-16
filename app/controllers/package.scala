@@ -77,6 +77,7 @@ object plantain extends Setup {
   implicit val sparqlOps = Plantain.sparqlOps
   val blockingIteratee = new PlantainBlockingRDFIteratee
   implicit val writerSelector = Plantain.rdfWriterSelector
+  implicit val solutionsWriterSelector = Plantain.solutionsWriterSelector
 
   //we don't have an iteratee selector for Plantain
   implicit val iterateeSelector: IterateeSelector[Plantain#Graph] = blockingIteratee.BlockingIterateeSelector

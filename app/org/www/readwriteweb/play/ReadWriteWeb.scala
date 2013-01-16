@@ -3,11 +3,11 @@ package org.www.readwriteweb.play
 import play.api.mvc.Action
 import org.w3.banana._
 import org.w3.banana.plantain.{BinaryResource, LDPR}
-import play.api.mvc.ResponseHeader
-import play.api.mvc.SimpleResult
 import play.api.mvc.Results._
 import concurrent.ExecutionContext
 import java.io.{StringWriter, PrintWriter}
+import play.api.mvc.SimpleResult
+import play.api.mvc.ResponseHeader
 
 /**
  * ReadWriteWeb Controller for Play
@@ -15,29 +15,12 @@ import java.io.{StringWriter, PrintWriter}
 trait ReadWriteWeb[Rdf <: RDF]{
 
   def rwwActor: ResourceMgr[Rdf]
-  implicit def writerSelector: WriterSelector[Rdf#Graph]
   implicit def rwwBodyParser: RwwBodyParser[Rdf]
   implicit def ec: ExecutionContext
 
-
-  //todo: needed for WebIDVerifier, but that should be changed
-  //  implicit def mkSparqlEngine = sparqlEngine.makeSparqlEngine _
-
-  //  val jenaRwwBodyParser = new RwwBodyParser[Rdf]//(JenaOperations, JenaSparqlOps, jenaAsync.graphIterateeSelector, JenaSparqlQueryIteratee.sparqlSelector )
-
-  //val WebIDAuthN = new WebIDAuthN[Jena]()
-
-
-  //  if this class were shipped as a plugin, then the code below might work.
-  //  But it is a bit odd given that you have to specify whether something is secure or not.
-  //
-  //  lazy val url = call.absoluteURL(true)
-  //  def call : Call = org.w3.readwriteweb.play.routes.ReadWriteWebApp.get
-
-
-  //  val url = new URL("http://localhost:9000/2012/")
-  //  lazy val rwwActor = system.actorOf(Props(new JenaResourceManager(new File("test_www"), url, store)), name = "rwwActor")
-  //lazy val rwwActor =  new JenaResourceMgr(new File("test_www"), url, store)
+  implicit def graphWriterSelector: WriterSelector[Rdf#Graph]
+  implicit def solutionsWriterSelector: WriterSelector[Rdf#Solutions]
+  implicit val boolWriterSelector: WriterSelector[Boolean] = BooleanWriter.selector
 
   import org.www.readwriteweb.play.PlayWriterBuilder._
 
@@ -67,7 +50,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
       } yield {
         namedRes match {
           case ldpr: LDPR[Rdf] =>
-            writerFor[Rdf#Graph](request)(writerSelector).map {
+            writerFor[Rdf#Graph](request).map {
               wr => result(200, wr)(ldpr.graph)
             } getOrElse {
               UnsupportedMediaType("could not find serialiser for Accept types " +
@@ -105,10 +88,33 @@ trait ReadWriteWeb[Rdf <: RDF]{
   def post(path: String) = Action(rwwBodyParser) { request =>
     Async {
       System.out.println(s"post($path)")
-      val future = for {
-        location <- rwwActor.post(path, request.body, None)
-      } yield {
-        Ok.withHeaders("Content-Location"->location.toString)
+      val future = request.body match {
+        case rwwGraph: GraphRwwContent[Rdf] => {
+           for {
+            location <- rwwActor.postGraph(path, rwwGraph, None)
+          } yield {
+            Ok.withHeaders("Content-Location" -> location.toString)
+          }
+        }
+        case rwwQuery: QueryRwwContent[Rdf] => {
+          for {
+            answer <- rwwActor.postQuery(path,rwwQuery)
+          } yield {
+             answer.fold(
+               graph => writerFor[Rdf#Graph](request).map {
+                 wr => result(200, wr)(graph)
+               },
+               sol => writerFor[Rdf#Solutions](request).map {
+                  wr => result(200, wr)(sol)
+                },
+                bool => writerFor[Boolean](request).map {
+                  wr => result(200, wr)(bool)
+                }
+              ).getOrElse(UnsupportedMediaType(s"Cannot publish anser of type ${answer.getClass} as"+
+                s"one of the mime types given ${request.headers.get("Accept")}"))
+          }
+        }
+//        case _ => Ok("received content")
       }
       future recover {
         case nse: NoSuchElementException => NotFound(nse.getMessage+stackTrace(nse))
@@ -131,29 +137,6 @@ trait ReadWriteWeb[Rdf <: RDF]{
       }
     }
   }
-
-
-  //      import play.api.Play.current
-  // keeping this for when I get back to queries....
-  //        case QueryRwwContent(q: Jena#Query) => Async {
-  //          val future = for (answer <- rwwActor.query(q,path))
-  //          yield {
-  //             answer.fold(
-  //               graph => writerFor[Jena#Graph](request)(RDFWriterSelector).map {
-  //                 wr => result(200, wr)(graph)
-  //               },
-  //               sol => writerFor[Jena#Solutions](request)(SparqWriterSelector).map {
-  //                  wr => result(200, wr)(sol)
-  //                },
-  //                bool => writerFor[Boolean](request)(BoolWriterSelector).map {
-  //                  wr => result(200, wr)(bool)
-  //                }
-  //              ).getOrElse(UnsupportedMediaType("cannot parse content type".getBytes("UTF-8")))
-  //          }
-  //          future recover { case e => ExpectationFailed(e.getMessage)}
-  //        }
-  //        case _ => Ok("received content")
-  //      }
 }
 
 

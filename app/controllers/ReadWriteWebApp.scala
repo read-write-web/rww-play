@@ -29,7 +29,8 @@ class ReadWriteWebApp(base: URI, path: Path)(implicit ops: RDFOps[Plantain],
             sparqlOps: SparqlOps[Plantain],
             iterateeSelector: IterateeSelector[Plantain#Graph],
             sparqlIterateeSelector: IterateeSelector[Plantain#Query],
-            val writerSelector: WriterSelector[org.w3.banana.plantain.Plantain#Graph],
+            val graphWriterSelector: WriterSelector[org.w3.banana.plantain.Plantain#Graph],
+            val solutionsWriterSelector: WriterSelector[Plantain#Solutions],
             val ec: ExecutionContext) extends ReadWriteWeb[Plantain] {
 
 
