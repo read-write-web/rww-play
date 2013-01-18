@@ -55,11 +55,11 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
         //todo: arbitrarily for the moment we only allow a PUT of same type things graphs on graphs, and other on other
         case GraphRwwContent(graph: Rdf#Graph) => {
           for {
-            ldpc <-  ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
-            uri <- ldpc.execute(for {
+            ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
+            uri  <- ldpc.execute(for {
                resrc <- getResource(URI(file))
                x <- resrc match {
-                   case ldpr: LDPR[Rdf] =>  createLDPR[Rdf](Some(resrc.uri),graph)
+                   case ldpr: LDPR[Rdf] =>  deleteResource(ldpr.uri).flatMap(_ => createLDPR[Rdf](Some(file),graph))
                    case _ =>                throw new Error("yoyo")
                  }
             } yield resrc.uri)
@@ -107,7 +107,7 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
     if ("" == file) {
       for {
         ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
-        name: Option[Rdf#URI] = slug.map(u=>URI(u))
+        name = slug.orElse(Some(file))
         uri <- ldpc.execute(
             for {
               r <- createLDPR(name, content.graph)
@@ -137,7 +137,8 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
       _ <- ldpc.execute{
         for {
           x <- deleteResource(URI(file))
-          y <- updateLDPR(URI(file),remove=List(Tuple3[Rdf#NodeMatch,Rdf#NodeMatch,Rdf#NodeMatch](URI(file),dsl.ops.ANY,dsl.ops.ANY)).toIterable)
+          y <- updateLDPR(URI(""),remove=List(
+              Tuple3[Rdf#NodeMatch,Rdf#NodeMatch,Rdf#NodeMatch](ldpc.uri,dsl.ops.ANY,URI(file))).toIterable)
         } yield y
       }
     } yield { Unit }

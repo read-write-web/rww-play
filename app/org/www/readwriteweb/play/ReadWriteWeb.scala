@@ -8,6 +8,7 @@ import concurrent.ExecutionContext
 import java.io.{StringWriter, PrintWriter}
 import play.api.mvc.SimpleResult
 import play.api.mvc.ResponseHeader
+import java.net.URLDecoder
 
 /**
  * ReadWriteWeb Controller for Play
@@ -85,15 +86,18 @@ trait ReadWriteWeb[Rdf <: RDF]{
     }
   }
 
+
   def post(path: String) = Action(rwwBodyParser) { request =>
     Async {
       System.out.println(s"post($path)")
       val future = request.body match {
         case rwwGraph: GraphRwwContent[Rdf] => {
            for {
-            location <- rwwActor.postGraph(path, rwwGraph, None)
+            location <- rwwActor.postGraph(path, rwwGraph,
+              request.headers.get("Slug").map( t => URLDecoder.decode(t,"UTF-8"))
+            )
           } yield {
-            Ok.withHeaders("Content-Location" -> location.toString)
+            Created.withHeaders("Location" -> location.toString)
           }
         }
         case rwwQuery: QueryRwwContent[Rdf] => {
@@ -129,7 +133,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
       val future = for {
         _ <- rwwActor.delete(path)
       } yield {
-        Gone
+        Ok
       }
       future recover {
         case nse: NoSuchElementException => NotFound(nse.getMessage+stackTrace(nse))
