@@ -50,7 +50,9 @@ class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
 
   def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[Result,RwwContent]] =  {
     if (rh.method == "GET" || rh.method == "HEAD") Done(Right(emptyContent), Empty)
-    else rh.contentType.map { str =>
+    else if ( ! rh.headers.get("Content-Length").exists( Integer.parseInt(_) > 0 )) {
+      Done(Right(emptyContent), Empty)
+    } else rh.contentType.map { str =>
       MimeType(str) match {
         case sparqlSelector(iteratee) => iteratee().mapDone {
           case Failure(e) => Left(BadRequest("could not parse query "+e))

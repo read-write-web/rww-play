@@ -2,13 +2,22 @@ package org.www.readwriteweb.play
 
 import play.api.mvc.Action
 import org.w3.banana._
-import org.w3.banana.plantain.{BinaryResource, LDPR}
+import plantain._
+import plantain.ParentDoesNotExist
+import plantain.ResourceExists
 import play.api.mvc.Results._
-import concurrent.ExecutionContext
+import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
 import play.api.mvc.SimpleResult
 import play.api.mvc.ResponseHeader
 import java.net.URLDecoder
+import play.api.libs.Files.TemporaryFile
+import org.www.readwriteweb.play.QueryRwwContent
+import org.www.readwriteweb.play.GraphRwwContent
+import scala.Some
+import play.api.mvc.SimpleResult
+import play.api.mvc.ResponseHeader
+import org.www.readwriteweb.play.BinaryRwwContent
 
 /**
  * ReadWriteWeb Controller for Play
@@ -72,6 +81,38 @@ trait ReadWriteWeb[Rdf <: RDF]{
     }
   }
 
+  /**
+   * http://tools.ietf.org/html/rfc4918#section-9.3
+   * @param path
+   * @return
+   */
+  def mkcol(path: String) = Action(rwwBodyParser) { request =>
+    val correctedPath = if (!path.endsWith("/")) path else path+"/"
+    Async {
+      def mk(graph: Option[Rdf#Graph]): Future[SimpleResult[String]] = {
+        for {
+          answer <- rwwActor.makeCollection(correctedPath, graph)
+        } yield {
+          val res = Created("Created Collection at " + answer)
+          if (path == correctedPath) res
+          else res.withHeaders(("Location" -> answer.toString))
+        }
+      }
+      val res = request.body match {
+        case rww: GraphRwwContent[Rdf]  => mk(Some(rww.graph))
+        case emptyContent => mk(None)
+        case _ => Future.successful(UnsupportedMediaType("We only support RDF media types, for appending to collection."))
+      }
+
+      res recover {
+        case ResourceExists(e) => MethodNotAllowed(e)
+        case ParentDoesNotExist(e) => Conflict(e)
+        case AccessDenied(e) => Forbidden(e)
+        case e => InternalServerError(e.toString+"\n"+stackTrace(e))
+      }
+    }
+  }
+
   def put(path: String) = Action(rwwBodyParser) { request =>
     Async {
       val future = for {
@@ -116,6 +157,16 @@ trait ReadWriteWeb[Rdf <: RDF]{
                 }
               ).getOrElse(UnsupportedMediaType(s"Cannot publish anser of type ${answer.getClass} as"+
                 s"one of the mime types given ${request.headers.get("Accept")}"))
+          }
+        }
+        case BinaryRwwContent(file: TemporaryFile, mime: String) => {
+          for {
+            location <- rwwActor.postBinary(path,
+                request.headers.get("Slug").map( t => URLDecoder.decode(t,"UTF-8")),
+                file,
+                MimeType(mime))
+          } yield {
+            Created.withHeaders("Location" -> location.toString)
           }
         }
 //        case _ => Ok("received content")

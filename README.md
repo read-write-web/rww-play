@@ -7,10 +7,9 @@ It is very early stages at present and it implements sketches of the following
 * A [CORS](http://www.w3.org/TR/cors/) proxy
 * An initial implementation of [Linked Data Basic Profile](http://www.w3.org/2012/ldp/wiki/Main_Page)
 
-This currently works in the [2.0.3-with-TLS branch of the bblfish fork of Play 2.0](https://github.com/bblfish/Play20), which comes with TLS support and a few more patches.
+This currently works in the [TLS branch of the bblfish fork of Play 2.x](https://github.com/bblfish/Play20), which comes with TLS support and a few more patches.
 
 We use [Travis CI](http://travis-ci.org/) to verify the build: [![Build Status](https://travis-ci.org/read-write-web/rww-play.png)](http://travis-ci.org/read-write-web/rww-play)
-
 
 
 
@@ -166,6 +165,12 @@ $ curl -i -X DELETE http://localhost:9000/2012/newresource
 
 A GET on that resource with from then on return an error.
 
+To make a collection we use the MKCOL method as defined by [RFC4918: HTTP Extensions for WebDAV](http://tools.ietf.org/html/rfc4918#section-9.3)
+
+```bash
+$ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2012/pix/duck
+HTTP/1.1 201 Created
+```
 ### Todo
 
 Query support as shown below no longer works right now.

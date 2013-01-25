@@ -25,6 +25,7 @@ import scalaz.Either3
 import scalaz.Either3._
 import scala.Tuple3
 import scala.Some
+import play.api.libs.Files.TemporaryFile
 
 class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
                               sparqlOps: SparqlOps[Rdf],
@@ -98,27 +99,39 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
     } yield x
   }
 
+  def makeLDPR(collectionPath: String, content: GraphRwwContent[Rdf],  slug: Option[String]) = {
+    for {
+      ldpc <- ldps.getLDPC(URI(collectionPath)) recoverWith { case _ => ldps.createLDPC(URI(collectionPath)) }
+      uri <- ldpc.execute(
+        for {
+          r <- createLDPR(slug, content.graph)
+          git =  ( ldpc.uri -- rdfs.member ->- r ).graph.toIterable
+          _ <- updateLDPR(ldpc.uri,add=git)
+        } yield r
+      )
+    } yield uri
+  }
 
+
+
+
+  /**
+   * HTTP POST of a graph
+   * @param path
+   * @param content
+   * @param slug a suggested name for the resource
+   * @return
+   */
   def postGraph(path: String, content: GraphRwwContent[Rdf],  slug: Option[String] ): Future[Rdf#URI] = {
     // just on RWWPlay we can adopt the convention that if the object ends in a "/"
     // then it is a collection, anything else is not a collection
     val (collection, file) = split(path)
     out.println(s"($collection, $file)")
     if ("" == file) {
-      for {
-        ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
-        name = slug.orElse(Some(file))
-        uri <- ldpc.execute(
-            for {
-              r <- createLDPR(name, content.graph)
-              git =  ( ldpc.uri -- rdfs.member ->- r ).graph.toIterable
-              _ <- updateLDPR(ldpc.uri,add=git)
-          } yield r
-        )
-      } yield uri
+      makeLDPR(collection,content,slug)
     } else {
       for {
-        ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
+        ldpc <- ldps.getLDPC(URI(collection))
         gr <- ldpc.execute {
           for {
             gr <- updateLDPR(URI(file),remove=Iterable.empty,add=content.graph.toIterable)
@@ -129,10 +142,41 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
     }
   }
 
+  def makeCollection(path: String, content: Option[Rdf#Graph]): Future[Rdf#URI] = {
+    val (collection, file) = split(path)
+    ldps.createLDPC(URI(collection)).map { ldpc =>
+       if (content != None) ldpc.execute(updateLDPR(URI(file),remove=Iterable.empty,add=content.get.toIterable))
+       ldpc.uri
+    }
+  }
+
+  def postBinary(path: String, slug: Option[String], tmpFile: TemporaryFile, mime: MimeType): Future[Rdf#URI] = {
+    val (collection, file) = split(path)
+    out.println(s"postBinary($path, $slug, $tmpFile, $mime)")
+    if (""!=file) Future.failed(new Exception("Cannot only POST binary on a Collection"))
+    else for {
+      ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
+      bin <- ldpc.execute {
+        for {
+          b <- createBinary(slug,mime)
+          _ <- updateLDPR(ldpc.uri, add = (ldpc.uri -- rdfs.member ->- b.uri).graph.toIterable)
+        } yield b
+      }
+      x <- Enumerator.fromFile(tmpFile.file)(bin.write)
+
+    } yield {
+      //todo: very BAD. This will block the agent, and so on long files break the collection.
+      //this needs to be sent to another agent, or it needs to be rethought
+      bin.uri
+    }
+  }
+
   def delete(path: String): Future[Unit] = {
     val (collection, file) = split(path)
     out.println(s"($collection, $file)")
-    for{
+    if (""==file) {
+      ldps.deleteLDPC(URI(collection))
+    } else for {
       ldpc <- ldps.getLDPC(URI(collection))
       _ <- ldpc.execute{
         for {
