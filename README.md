@@ -17,12 +17,17 @@ Getting going
 -------------
 
 * You need Java 7 at least - the official Oracle JVM or another one based on [the GPLed code](http://openjdk.java.net/): removing the dependency on Oracle's JVM will require [publishing of the GPLed java security libs](http://stackoverflow.com/questions/12982595/openjdk-sun-security-libs-on-maven)
-* get the patched version of play either by 
-** downloading the latest version from the [Play20 repository](http://bblfish.net/work/repo/builds/Play2/)
-** clone [this project](https://github.com/read-write-web/rww-play) and compile the [bblfish's TLS branch of Play 2.0](https://github.com/bblfish/Play20) [submodule](http://git-scm.com/book/en/Git-Tools-Submodules) as follows:
-  
+* clone [this project](https://github.com/read-write-web/rww-play) 
+
 ```bash
  $ git clone git://github.com/read-write-web/rww-play.git 
+```
+
+* You can then get the version of play that corresponds with the release of play above by either
+ * downloading a pre-compiled version from the [Play20 repository](http://bblfish.net/work/repo/builds/Play2/). The version of play should match the version linked to from the submodule `Play2.0` inside the repository.
+ * compile the [bblfish's TLS branch of Play 2.0](https://github.com/bblfish/Play20) that is available as a [submodule](http://git-scm.com/book/en/Git-Tools-Submodules) in the cloned repository as follows:
+
+```
  $ git submodule init
  $ git submodule update
  $ cd Play20/framework
@@ -169,7 +174,7 @@ A GET on that resource with from then on return an error.
 To make a collection we use the MKCOL method as defined by [RFC4918: HTTP Extensions for WebDAV](http://tools.ietf.org/html/rfc4918#section-9.3)
 
 ```bash
-$ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2012/pix/duck
+$ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2012/pix/
 HTTP/1.1 201 Created
 ```
 ### Todo
