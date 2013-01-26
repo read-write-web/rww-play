@@ -17,8 +17,9 @@ Getting going
 -------------
 
 * You need Java 7 at least - the official Oracle JVM or another one based on [the GPLed code](http://openjdk.java.net/): removing the dependency on Oracle's JVM will require [publishing of the GPLed java security libs](http://stackoverflow.com/questions/12982595/openjdk-sun-security-libs-on-maven)
-* clone [this project](https://github.com/read-write-web/rww-play) and compile 
-  the [bblfish's 2.0.3-with-TLS branch of Play 2.0](https://github.com/bblfish/Play20) [submodule](http://git-scm.com/book/en/Git-Tools-Submodules)
+* get the patched version of play either by 
+** downloading the latest version from the [Play20 repository](http://bblfish.net/work/repo/builds/Play2/)
+** clone [this project](https://github.com/read-write-web/rww-play) and compile the [bblfish's TLS branch of Play 2.0](https://github.com/bblfish/Play20) [submodule](http://git-scm.com/book/en/Git-Tools-Submodules) as follows:
   
 ```bash
  $ git clone git://github.com/read-write-web/rww-play.git 
