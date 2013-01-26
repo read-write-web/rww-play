@@ -1,0 +1,31 @@
+# Compiled #
+*.class
+
+# Play 2 #
+logs
+project/project
+project/target
+target
+tmp
+dist
+/bin
+/out
+/RUNNING_PID
+/.target
+/.cache
+.history
+
+# Play2 - TLS #
+conf/generated.keystore
+
+# Backup files / users specific #
+*~
+.DS_Store
+
+# IDE specific #
+/.idea
+/.classpath
+/.project
+/.settings
+/*.iml
+/.idea_modules
