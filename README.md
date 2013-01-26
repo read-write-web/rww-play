@@ -24,7 +24,7 @@ Getting going
 ```
 
 * You can then get the version of play that corresponds with the release of play above by either
- * downloading a pre-compiled version from the [Play20 repository](http://bblfish.net/work/repo/builds/Play2/). The version of play should match the version linked to from the submodule `Play2.0` inside the repository.
+ * downloading a pre-compiled version from [bblfish's Play20-TLS repository](http://bblfish.net/work/repo/builds/Play2/). The version of play should match the version linked to from the submodule `Play2.0` inside the repository.
  * compile the [bblfish's TLS branch of Play 2.0](https://github.com/bblfish/Play20) that is available as a [submodule](http://git-scm.com/book/en/Git-Tools-Submodules) in the cloned repository as follows:
 
 ```
