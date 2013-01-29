@@ -4,7 +4,7 @@ import sbt.Keys._
 object ApplicationBuild extends Build {
 
     val appName         = "RWWeb"
-    val appVersion      = "0.5-SNAPSHOT"
+    val appVersion      = "0.6-SNAPSHOT"
 
 
     val appDependencies = Seq(
@@ -23,8 +23,8 @@ object ApplicationBuild extends Build {
 
     val main = play.Project(appName, appVersion, appDependencies).settings(
       resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
-      resolvers += "sesame-repo-releases" at "http://repo.aduna-software.org/maven2/releases/",
-      resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots/",
+      resolvers += "sesame-repo-releases" at "http://repo.aduna-software.org/maven2/releases",
+      resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
       scalaVersion := "2.10.0",
       javacOptions ++= Seq("-source","1.7", "-target","1.7")
   )
