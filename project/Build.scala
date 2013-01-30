@@ -17,7 +17,8 @@ object ApplicationBuild extends Build {
           "nu.validator.htmlparser"           %  "htmlparser"                 % "1.2.1",
           "org.scalaz"                        %  "scalaz-core_2.10"           % "7.0-SNAPSHOT", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"
           "org.bouncycastle"                  %  "bcprov-jdk15on"             % "1.47",
-          "org.scala-lang"                    %  "scala-actors"               % "2.10.0"        //for tests because of sbt for some reason
+          "org.scala-lang"                    %  "scala-actors"               % "2.10.0",        //for tests because of sbt for some reason
+          "net.sf.uadetector"                 %  "uadetector-resources"       % "2012.12"
 //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
       )
 

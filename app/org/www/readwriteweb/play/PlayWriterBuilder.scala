@@ -48,7 +48,7 @@ object PlayWriterBuilder {
    */
   def result[Obj](code: Int, writer: Writer[Obj,_], headers: Map[String,String]=Map.empty)(obj: Obj) = {
     SimpleResult(
-      header = ResponseHeader(200, Map("Content-Type" -> writer.syntax.mime)),  //todo
+      header = ResponseHeader(200, headers + ("Content-Type" -> writer.syntax.mime)),  //todo
       body   = toEnum(writer)(obj)
     )
   }

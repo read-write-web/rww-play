@@ -5,6 +5,7 @@ import concurrent.Future
 import org.w3.banana.RDF
 import java.security.cert.{X509Certificate, Certificate}
 import java.security.Principal
+import net.sf.uadetector.service.UADetectorServiceFactory
 
 
 /**
@@ -42,6 +43,8 @@ class WebIDAuthN[Rdf <: RDF](implicit verifier: WebIDVerifier[Rdf]) extends Auth
     }
   }
 
+   lazy val agentParser =  UADetectorServiceFactory.getResourceModuleParser
+
   /**
    *  Some agents do not send client certificates unless required by a NEED.
    *
@@ -55,14 +58,19 @@ class WebIDAuthN[Rdf <: RDF](implicit verifier: WebIDVerifier[Rdf]) extends Auth
    *  It would be useful if this could be updated by server from time to  time from a file on the internet,
    *  so that changes to browsers could update server behavior.
    *
+   *  Note the library we use is based on information from http://user-agent-string.info/parse
+   *
    * bertails: could be an implicit class + value class
    * */
   def must(req: RequestHeader): Boolean =  {
-    req.headers.get("User-Agent") match {
-      case Some(agent) => (agent contains "Java")  | (agent contains "AppleWebKit")  |
-        (agent contains "Opera") | (agent contains "libcurl")
-      case None => true
-    }
+    req.headers.get("User-Agent").map{ ua =>
+      val agent = agentParser.parse(ua)
+      import net.sf.uadetector.UserAgentFamily._
+      val family = agent.getFamily()
+      val res = (family == CURL || family == JAVA || family == SAFARI || family == OPERA )
+      System.out.println(s"force= $res for User-Agent: $ua - family = $family agent=$agent" );
+      res
+    }.getOrElse(false)
   }
 }
 

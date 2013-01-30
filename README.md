@@ -44,7 +44,7 @@ Getting going
 ```
 
 * You can also start the server so that it only accepts WebID certificates - which we will currently
- assume are those signed by an agent named "CN=WebID,O=∅"
+ assume are those signed by an agent named "CN=WebID,O=∅". This is experimental! The previous solution is recommended.
 
 ```bash
  $ Play20/play

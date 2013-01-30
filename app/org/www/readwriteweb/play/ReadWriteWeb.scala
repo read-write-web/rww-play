@@ -8,16 +8,11 @@ import plantain.ResourceExists
 import play.api.mvc.Results._
 import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
-import play.api.mvc.SimpleResult
-import play.api.mvc.ResponseHeader
 import java.net.URLDecoder
 import play.api.libs.Files.TemporaryFile
-import org.www.readwriteweb.play.QueryRwwContent
-import org.www.readwriteweb.play.GraphRwwContent
 import scala.Some
 import play.api.mvc.SimpleResult
 import play.api.mvc.ResponseHeader
-import org.www.readwriteweb.play.BinaryRwwContent
 
 /**
  * ReadWriteWeb Controller for Play
@@ -58,17 +53,19 @@ trait ReadWriteWeb[Rdf <: RDF]{
       val res = for {
         namedRes <- rwwActor.get(path)
       } yield {
+        val link = namedRes.acl map (acl=> ("Link" -> s"<${acl}>; rel=acl"))
+        System.out.println(link)
         namedRes match {
           case ldpr: LDPR[Rdf] =>
             writerFor[Rdf#Graph](request).map {
-              wr => result(200, wr)(ldpr.graph)
-            } getOrElse {
+              wr => result(200, wr, Map.empty ++ link )(ldpr.graph)
+            }  getOrElse {
               UnsupportedMediaType("could not find serialiser for Accept types " +
                 request.headers.get(play.api.http.HeaderNames.ACCEPT))
             }
           case bin: BinaryResource[Rdf] => {
             SimpleResult(
-              header = ResponseHeader(200, Map("Content-Type" -> "todo")),
+              header = ResponseHeader(200, Map("Content-Type" -> "todo") ++ link),
               body = bin.reader(1024 * 8)
             )
           }

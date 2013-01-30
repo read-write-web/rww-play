@@ -109,7 +109,7 @@ extends IdGuard[Rdf] {
           auth.appliesToResource(URI(request.url.toString))
         }
         if (!auths.exists(a=> a.modes.contains(request.mode)))
-          Future.failed(NotAuthorized("None of Subject's principals are mentioned in ACL at "+request.meta))
+          Future.failed(NotAuthorized(s"No authorizations found for requested Mode ${request.mode}"))
         else if (auths.exists(a=> a.public))
           Future.successful(Anonymous) //the resource is public
         else {
