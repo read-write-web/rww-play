@@ -104,26 +104,26 @@ extends IdGuard[Rdf] {
    * @return The Group of Agents that can access the resource
    */
   def allow[A](request: WebRequest[A]): Future[Subject] =  {
-      cache.get(URI(request.meta.toString)).flatMap {acl =>
-        val auths: Seq[Authorization] = authorizations(acl).filter{ auth=>
-          auth.appliesToResource(URI(request.url.toString))
-        }
-        if (!auths.exists(a=> a.modes.contains(request.mode)))
-          Future.failed(NotAuthorized(s"No authorizations found for requested Mode ${request.mode}"))
-        else if (auths.exists(a=> a.public))
-          Future.successful(Anonymous) //the resource is public
-        else {
-          request.subject.flatMap { subj =>
-            val listOfFutures: Seq[Future[WebIDPrincipal]] = auths.map(_.allows(subj,request.mode))
-            val res: Future[Option[WebIDPrincipal]] =  Future.find(listOfFutures)(_=>true)
-            res.flatMap[Subject]{ opt =>
-              opt.fold[Future[Subject]](Future.failed[Subject](NoMatch)){p : WebIDPrincipal =>
-                Future.successful(Subject(subj.principals,List(p)))
-              }
+    cache.get(URI(request.meta.toString)).flatMap {acl =>
+      val auths: Seq[Authorization] = authorizations(acl).filter{ auth=>
+        auth.appliesToResource(URI(request.url.toString))
+      }
+      if (!auths.exists(a=> a.modes.contains(request.mode)))
+        Future.failed(NotAuthorized(s"No authorizations found for requested Mode ${request.mode}"))
+      else if (auths.exists(a=> a.public))
+        Future.successful(Anonymous) //the resource is public
+      else {
+        request.subject.flatMap { subj =>
+          val listOfFutures: Seq[Future[WebIDPrincipal]] = auths.map(_.allows(subj,request.mode))
+          val res: Future[Option[WebIDPrincipal]] =  Future.find(listOfFutures)(_=>true)
+          res.flatMap[Subject]{ opt =>
+            opt.fold[Future[Subject]](Future.failed[Subject](NoMatch)){p : WebIDPrincipal =>
+              Future.successful(Subject(subj.principals,List(p)))
             }
           }
         }
       }
+    }
   }
 
   /**

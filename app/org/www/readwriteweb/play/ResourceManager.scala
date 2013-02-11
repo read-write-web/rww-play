@@ -26,12 +26,17 @@ import scalaz.Either3._
 import scala.Tuple3
 import scala.Some
 import play.api.libs.Files.TemporaryFile
+import java.net.URL
+import play.api.mvc.RequestHeader
 
-class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
+class ResourceMgr[Rdf <: RDF](ldps: RWW[Rdf])
+                             (implicit dsl: Diesel[Rdf],
                               sparqlOps: SparqlOps[Rdf],
+                              authz: AuthZ[Rdf],
                               ec: ExecutionContext) {
   import dsl._
   import dsl.ops._
+  import authz._
   import System.out
 
   val ldp = LDPPrefix[Rdf]
@@ -55,21 +60,16 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
       content match {
         //todo: arbitrarily for the moment we only allow a PUT of same type things graphs on graphs, and other on other
         case GraphRwwContent(graph: Rdf#Graph) => {
-          for {
-            ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
-            uri  <- ldpc.execute(for {
+          ldps.execute(for {
                resrc <- getResource(URI(file))
                x <- resrc match {
-                   case ldpr: LDPR[Rdf] =>  deleteResource(ldpr.uri).flatMap(_ => createLDPR[Rdf](Some(file),graph))
+                   case ldpr: LDPR[Rdf] =>  deleteResource(ldpr.uri).flatMap(_ => createLDPR[Rdf](ldpr.uri,Some(file),graph))
                    case _ =>                throw new Error("yoyo")
                  }
             } yield resrc.uri)
-         } yield uri
         }
         case BinaryRwwContent(tmpFile, mime)  => {
-          for {
-            ldpc <-  ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
-            uri <- ldpc.execute(
+         ldps.execute(
               for {
                 resrc <- getResource(URI(file))
 //                if (resrc.isInstanceOf[BinaryResource[Rdf]])
@@ -80,7 +80,6 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
                 Enumerator.fromFile(tmpFile.file)(b.write)
                 resrc.uri
               })
-          } yield uri
         }
         case _ => Future.failed(new Exception("cannot apply method - improve bug report"))
       }
@@ -91,25 +90,21 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
 //    res
 //  }
 
-  def get(path: String): Future[NamedResource[Rdf]] = {
-    val (collection, file) = split(path)
+  def get( path: String): Future[NamedResource[Rdf]] = {
     for {
-        ldpc <- ldps.getLDPC(URI(collection))
-        x   <- ldpc.execute{ getResource(URI(file)) }
+        x <- ldps.execute{ getResource(URI(path)) }
     } yield x
   }
 
-  def makeLDPR(collectionPath: String, content: GraphRwwContent[Rdf],  slug: Option[String]) = {
-    for {
-      ldpc <- ldps.getLDPC(URI(collectionPath)) recoverWith { case _ => ldps.createLDPC(URI(collectionPath)) }
-      uri <- ldpc.execute(
+  def makeLDPR(collectionPath: String, content: GraphRwwContent[Rdf],  slug: Option[String]): Future[Rdf#URI] = {
+    val uric: Rdf#URI = URI(collectionPath)
+    ldps.execute(
         for {
-          r <- createLDPR(slug, content.graph)
-          git =  ( ldpc.uri -- rdfs.member ->- r ).graph.toIterable
-          _ <- updateLDPR(ldpc.uri,add=git)
+          r <- createLDPR(uric,slug, content.graph)
+          git =  ( uric -- rdfs.member ->- r ).graph.toIterable
+          _ <- updateLDPR(r,add=git)
         } yield r
       )
-    } yield uri
   }
 
 
@@ -130,70 +125,62 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
     if ("" == file) {
       makeLDPR(collection,content,slug)
     } else {
-      for {
-        ldpc <- ldps.getLDPC(URI(collection))
-        gr <- ldpc.execute {
+      ldps.execute {
           for {
-            gr <- updateLDPR(URI(file),remove=Iterable.empty,add=content.graph.toIterable)
-            newGr <- getLDPR(URI(file))
-          } yield newGr
-        }
-      } yield URI(path)
+            _ <- updateLDPR(URI(path),add=content.graph.toIterable)
+          } yield URI(path)
+       }
     }
   }
 
-  def makeCollection(path: String, content: Option[Rdf#Graph]): Future[Rdf#URI] = {
-    val (collection, file) = split(path)
-    ldps.createLDPC(URI(collection)).map { ldpc =>
-       if (content != None) ldpc.execute(updateLDPR(URI(file),remove=Iterable.empty,add=content.get.toIterable))
-       ldpc.uri
-    }
+  def makeCollection(coll: String, path: String, content: Option[Rdf#Graph]): Future[Rdf#URI] = {
+    out.println(s"makeCollection($coll,$path,...)")
+    val file = path.substring(coll.length)
+    ldps.execute(createContainer(URI(coll),Some(file),content.getOrElse(Graph.empty)))
+//      .map { ldpc =>
+//       if (content != None) ldpc.execute(updateLDPR(URI(file),remove=Iterable.empty,add=content.get.toIterable))
+//       ldpc.uri
+//    }
   }
 
   def postBinary(path: String, slug: Option[String], tmpFile: TemporaryFile, mime: MimeType): Future[Rdf#URI] = {
     val (collection, file) = split(path)
     out.println(s"postBinary($path, $slug, $tmpFile, $mime)")
+    val ldpc = URI(collection)
     if (""!=file) Future.failed(new Exception("Cannot only POST binary on a Collection"))
-    else for {
-      ldpc <- ldps.getLDPC(URI(collection)) recoverWith { case _ => ldps.createLDPC(URI(collection)) }
-      bin <- ldpc.execute {
+    else {
+      val r = ldps.execute {
         for {
-          b <- createBinary(slug,mime)
-          _ <- updateLDPR(ldpc.uri, add = (ldpc.uri -- rdfs.member ->- b.uri).graph.toIterable)
-        } yield b
+          b <- createBinary(URI(path),slug,mime)
+          _ <- updateLDPR(ldpc, add = (ldpc -- rdfs.member ->- b.uri).graph.toIterable)
+        } yield {
+          Enumerator.fromFile(tmpFile.file)(b.write)
+          b.uri
+        }
       }
-      x <- Enumerator.fromFile(tmpFile.file)(bin.write)
-
-    } yield {
-      //todo: very BAD. This will block the agent, and so on long files break the collection.
-      //this needs to be sent to another agent, or it needs to be rethought
-      bin.uri
+      r
     }
   }
 
   def delete(path: String): Future[Unit] = {
     val (collection, file) = split(path)
     out.println(s"($collection, $file)")
-    if (""==file) {
-      ldps.deleteLDPC(URI(collection))
-    } else for {
-      ldpc <- ldps.getLDPC(URI(collection))
-      _ <- ldpc.execute{
-        for {
-          x <- deleteResource(URI(file))
-          y <- updateLDPR(URI(""),remove=List(
-              Tuple3[Rdf#NodeMatch,Rdf#NodeMatch,Rdf#NodeMatch](ldpc.uri,dsl.ops.ANY,URI(file))).toIterable)
-        } yield y
-      }
-    } yield { Unit }
+    ldps.execute(deleteResource(URI(path)))
+//    ldps.execute{
+//        for {
+//          x <- deleteResource(URI(file))
+//          y <- updateLDPR(URI(""),remove=List(
+//              Tuple3[Rdf#NodeMatch,Rdf#NodeMatch,Rdf#NodeMatch](ldpc.uri,dsl.ops.ANY,URI(file))).toIterable)
+//        } yield y
+//      }
+//    } yield { Unit }
   }
 
   def postQuery(path: String, query: QueryRwwContent[Rdf]): Future[Either3[Rdf#Graph,Rdf#Solutions,Boolean]] = {
     val (collection, file) = split(path)
     import sparqlOps._
-    for {
-      ldpc <- ldps.getLDPC(URI(collection))
-      e3 <- ldpc.execute {
+    //clearly the queries could be simplified here.
+    ldps.execute {
         if ("" != file)
           fold(query.query)(
             select => selectLDPR(URI(file), select, Map.empty).map(middle3[Rdf#Graph, Rdf#Solutions, Boolean] _),
@@ -202,13 +189,13 @@ class ResourceMgr[Rdf <: RDF](ldps: LDPS[Rdf])(implicit dsl: Diesel[Rdf],
           )
         else
           fold(query.query)(
-            select => selectLDPC(select, Map.empty).map(middle3[Rdf#Graph, Rdf#Solutions, Boolean] _),
-            construct => constructLDPC( construct, Map.empty).map(left3[Rdf#Graph, Rdf#Solutions, Boolean] _),
-            ask => askLDPC(ask, Map.empty).map(right3[Rdf#Graph, Rdf#Solutions, Boolean] _)
+            select => selectLDPC(URI(path),select, Map.empty).map(middle3[Rdf#Graph, Rdf#Solutions, Boolean] _),
+            construct => constructLDPC(URI(path), construct, Map.empty).map(left3[Rdf#Graph, Rdf#Solutions, Boolean] _),
+            ask => askLDPC(URI(path),ask, Map.empty).map(right3[Rdf#Graph, Rdf#Solutions, Boolean] _)
           )
       }
-    } yield e3
-  }
+   }
+
 
 }
 

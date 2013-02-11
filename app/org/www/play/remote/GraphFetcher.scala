@@ -20,11 +20,17 @@ import java.net.URL
 import org.w3.banana._
 import play.api.libs.iteratee.{Iteratee, Input, Done}
 import play.api.libs.ws.WS
-import scala.Some
-import play.api.libs.ws.ResponseHeaders
 import concurrent.{ExecutionContext, Future}
 import org.www.play.rdf.IterateeSelector
-import util.{Failure, Success, Try}
+import util.Try
+import com.ning.http.client.FluentCaseInsensitiveStringsMap
+import collection.JavaConverters._
+import util.Failure
+import scala.Some
+import util.Success
+import play.api.libs.ws.ResponseHeaders
+import play.core.utils.CaseInsensitiveOrdered
+import collection.immutable.TreeMap
 
 /**
  * Fetches graphs remotely on the web
@@ -128,6 +134,13 @@ case class GraphNHeaders[Rdf<:RDF](graph: Rdf#Graph, remote: ResponseHeaders)
 
 trait FetchException extends BananaException
 case class RemoteException(msg: String, remote: ResponseHeaders) extends FetchException
+object RemoteException {
+  def netty(msg: String, code: Int, headers: FluentCaseInsensitiveStringsMap) = {
+    //todo: move this somewhere else
+    val res = mapAsScalaMapConverter(headers).asScala.map(e => e._1 -> e._2.asScala.toSeq).toMap
+    RemoteException(msg,ResponseHeaders(code, TreeMap(res.toSeq: _*)(CaseInsensitiveOrdered)))
+  }
+}
 case class LocalException(msg: String) extends FetchException
 case class WrappedException(msg: String, e: Throwable) extends FetchException
 

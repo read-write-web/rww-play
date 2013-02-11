@@ -3,6 +3,7 @@ package org.www.readwriteweb.play
 import play.api.mvc.Action
 import org.w3.banana._
 import plantain._
+import plantain.AccessDenied
 import plantain.ParentDoesNotExist
 import plantain.ResourceExists
 import play.api.mvc.Results._
@@ -46,12 +47,16 @@ trait ReadWriteWeb[Rdf <: RDF]{
   //      case m @ SparqlAnswerJson.mime => (writeable(JenaSparqlJSONWriter), ContentTypeOf[JenaSPARQL#Solutions](Some(m)))
   //    }.get
 
-  def get(path: String) = Action { request =>
-    System.out.println("in GET on resource <" + path + ">")
+//  meta <- getMeta(ldprUriFull)
+//  athzd <- getAuth(meta.acl.get,wac.Read)
+//  if athzd.contains()
 
+
+  def get(path: String) = Action { request =>
+    System.out.println("in GET on resource <" + request.path + ">")
     Async {
       val res = for {
-        namedRes <- rwwActor.get(path)
+        namedRes <- rwwActor.get(request.path)
       } yield {
         val link = namedRes.acl map (acl=> ("Link" -> s"<${acl}>; rel=acl"))
         System.out.println(link)
@@ -84,14 +89,16 @@ trait ReadWriteWeb[Rdf <: RDF]{
    * @return
    */
   def mkcol(path: String) = Action(rwwBodyParser) { request =>
-    val correctedPath = if (!path.endsWith("/")) path else path+"/"
+    val correctedPath = if (!request.path.endsWith("/")) request.path else request.path.substring(0,request.path.length-1)
+    val pathUri = new java.net.URI(correctedPath)
+    val coll = pathUri.resolve(".")
     Async {
       def mk(graph: Option[Rdf#Graph]): Future[SimpleResult[String]] = {
         for {
-          answer <- rwwActor.makeCollection(correctedPath, graph)
+          answer <- rwwActor.makeCollection(coll.toString,correctedPath, graph)
         } yield {
           val res = Created("Created Collection at " + answer)
-          if (path == correctedPath) res
+          if (request.path == correctedPath) res
           else res.withHeaders(("Location" -> answer.toString))
         }
       }
@@ -113,7 +120,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
   def put(path: String) = Action(rwwBodyParser) { request =>
     Async {
       val future = for {
-        answer <- rwwActor.put(path, request.body)
+        answer <- rwwActor.put(request.path, request.body)
       } yield {
         Ok("Succeeded")
       }
@@ -127,11 +134,11 @@ trait ReadWriteWeb[Rdf <: RDF]{
 
   def post(path: String) = Action(rwwBodyParser) { request =>
     Async {
-      System.out.println(s"post($path)")
+      System.out.println(s"post(${request.path})")
       val future = request.body match {
         case rwwGraph: GraphRwwContent[Rdf] => {
            for {
-            location <- rwwActor.postGraph(path, rwwGraph,
+            location <- rwwActor.postGraph(request.path, rwwGraph,
               request.headers.get("Slug").map( t => URLDecoder.decode(t,"UTF-8"))
             )
           } yield {
@@ -140,7 +147,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
         }
         case rwwQuery: QueryRwwContent[Rdf] => {
           for {
-            answer <- rwwActor.postQuery(path,rwwQuery)
+            answer <- rwwActor.postQuery(request.path,rwwQuery)
           } yield {
              answer.fold(
                graph => writerFor[Rdf#Graph](request).map {
@@ -158,7 +165,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
         }
         case BinaryRwwContent(file: TemporaryFile, mime: String) => {
           for {
-            location <- rwwActor.postBinary(path,
+            location <- rwwActor.postBinary(request.path,
                 request.headers.get("Slug").map( t => URLDecoder.decode(t,"UTF-8")),
                 file,
                 MimeType(mime))
@@ -177,9 +184,9 @@ trait ReadWriteWeb[Rdf <: RDF]{
 
   def delete(path: String) = Action { request =>
     Async {
-      System.out.println(s"post($path)")
+      System.out.println(s"post(${request.path})")
       val future = for {
-        _ <- rwwActor.delete(path)
+        _ <- rwwActor.delete(request.path)
       } yield {
         Ok
       }

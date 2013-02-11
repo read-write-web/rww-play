@@ -23,6 +23,8 @@ import org.w3.banana._
 import org.www.play.rdf.IterateeSelector
 import concurrent.ExecutionContext
 import java.io.File
+import akka.util.Timeout
+import java.util.concurrent.TimeUnit
 
 
 class ReadWriteWebApp(base: URI, path: Path)(implicit ops: RDFOps[Plantain],
@@ -38,8 +40,9 @@ class ReadWriteWebApp(base: URI, path: Path)(implicit ops: RDFOps[Plantain],
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain]()(ops,sparqlOps,iterateeSelector,sparqlIterateeSelector)
 
   val LDPS = PlantainLDPS(base, path)
+  lazy val rww = new PlantainRWW(LDPS)(Timeout(30,TimeUnit.SECONDS))
 
-  val rwwActor =  new ResourceMgr(LDPS)
+  val rwwActor =  new ResourceMgr(rww)
 
 }
 

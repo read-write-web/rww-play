@@ -68,7 +68,6 @@ class WebIDAuthN[Rdf <: RDF](implicit verifier: WebIDVerifier[Rdf]) extends Auth
       import net.sf.uadetector.UserAgentFamily._
       val family = agent.getFamily()
       val res = (family == CURL || family == JAVA || family == SAFARI || family == OPERA )
-      System.out.println(s"force= $res for User-Agent: $ua - family = $family agent=$agent" );
       res
     }.getOrElse(false)
   }
