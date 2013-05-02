@@ -3,9 +3,10 @@ package org.www.play.rdf.plantain
 import org.w3.banana.sesame.SesameSyntax
 import java.io.{ Writer => jWriter }
 import org.w3.banana._
-import plantain.{Graph, Plantain}
+import plantain.{Plantain}
 import scalax.io.WriteCharsResource
 import util.Try
+import org.w3.banana.plantain.model.Graph
 
 object PlantainRDFWriter {
 

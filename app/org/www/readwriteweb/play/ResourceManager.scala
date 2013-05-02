@@ -17,30 +17,30 @@
 package org.www.readwriteweb.play
 
 import org.w3.banana._
-import org.w3.banana.plantain.LDPCommand._
+import org.w3.banana.ldp.LDPCommand._
 import concurrent.{Future, ExecutionContext}
-import org.w3.banana.plantain._
 import play.api.libs.iteratee.Enumerator
 import scalaz.Either3
 import scalaz.Either3._
-import scala.Tuple3
-import scala.Some
 import play.api.libs.Files.TemporaryFile
-import java.net.URL
 import play.api.mvc.RequestHeader
+import org.www.play.auth.AuthN
+import org.w3.banana.ldp._
+import scala.Some
+import org.w3.banana.ldp.auth.WACAuthZ
 
-class ResourceMgr[Rdf <: RDF](ldps: RWW[Rdf])
-                             (implicit dsl: Diesel[Rdf],
-                              sparqlOps: SparqlOps[Rdf],
-                              authz: AuthZ[Rdf],
+class ResourceMgr[Rdf <: RDF](rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
+                             (implicit ops: RDFOps[Rdf], sparqlOps: SparqlOps[Rdf],
                               ec: ExecutionContext) {
-  import dsl._
-  import dsl.ops._
+  import ops._
+  import diesel._
+  import syntax.graphW
+
   import authz._
-  import System.out
 
   val ldp = LDPPrefix[Rdf]
-  val rdfs = RDFsPrefix[Rdf]
+  val rdfs = RDFSPrefix[Rdf]
+  val wac = WebACLPrefix[Rdf]
   /**
    * @param path of the resource
    * @return the pair consisting of the collection and the name of the resource to make a request on
@@ -59,17 +59,17 @@ class ResourceMgr[Rdf <: RDF](ldps: RWW[Rdf])
     else {
       content match {
         //todo: arbitrarily for the moment we only allow a PUT of same type things graphs on graphs, and other on other
-        case GraphRwwContent(graph: Rdf#Graph) => {
-          ldps.execute(for {
+        case grc: GraphRwwContent[Rdf] => {
+          rww.execute(for {
                resrc <- getResource(URI(file))
                x <- resrc match {
-                   case ldpr: LDPR[Rdf] =>  deleteResource(ldpr.uri).flatMap(_ => createLDPR[Rdf](ldpr.uri,Some(file),graph))
+                   case ldpr: LDPR[Rdf] =>  deleteResource(ldpr.location).flatMap(_ => createLDPR[Rdf](ldpr.location,Some(file),grc.graph))
                    case _ =>                throw new Error("yoyo")
                  }
-            } yield resrc.uri)
+            } yield resrc.location)
         }
         case BinaryRwwContent(tmpFile, mime)  => {
-         ldps.execute(
+         rww.execute(
               for {
                 resrc <- getResource(URI(file))
 //                if (resrc.isInstanceOf[BinaryResource[Rdf]])
@@ -78,7 +78,7 @@ class ResourceMgr[Rdf <: RDF](ldps: RWW[Rdf])
                 //todo: very BAD. This will block the agent, and so on long files break the collection.
                 //this needs to be sent to another agent, or it needs to be rethought
                 Enumerator.fromFile(tmpFile.file)(b.write)
-                resrc.uri
+                resrc.location
               })
         }
         case _ => Future.failed(new Exception("cannot apply method - improve bug report"))
@@ -90,17 +90,54 @@ class ResourceMgr[Rdf <: RDF](ldps: RWW[Rdf])
 //    res
 //  }
 
-  def get( path: String): Future[NamedResource[Rdf]] = {
+  def wacIt(mode:Method.Value) = mode match {
+    case Method.read => wac.Read
+    case Method.write => wac.Write
+  }
+
+
+  /**
+   * todo: This could be made part of the Play Action.
+   *
+   * @param request
+   * @param path
+   * @param mode
+   * @return
+   */
+  def auth(request: RequestHeader, path: String, mode: Method.Value): Future[Unit] =
+    getAuthFor(URI(path), wacIt(mode)).flatMap { agents =>
+      if (agents.contains(foaf.Agent)) Future.successful(())
+      else {
+        authn(request).flatMap { subject =>
+          System.out.println(s"User authenticated as $subject")
+          val a = subject.webIds.exists{ wid =>
+            System.out.println(s"testing auth for #wid")
+            agents.contains(URI(wid.toString))
+          }
+          if (a) {
+            System.out.println(s"Will give access to $path for $mode")
+            Future.successful(())
+          }
+          else {
+            System.out.println(s"Will not give access to $path for $mode")
+            Future.failed(AccessDenied(s"no access for $mode on ${request.path}"))
+          }
+        }
+      }
+    }
+
+
+  def get(request: RequestHeader, path: String): Future[NamedResource[Rdf]] = {
     for {
-        x <- ldps.execute{ getResource(URI(path)) }
+        x <- rww.execute{ getResource(URI(path),None) }
     } yield x
   }
 
-  def makeLDPR(collectionPath: String, content: GraphRwwContent[Rdf],  slug: Option[String]): Future[Rdf#URI] = {
+  def makeLDPR(collectionPath: String, content: Rdf#Graph,  slug: Option[String]): Future[Rdf#URI] = {
     val uric: Rdf#URI = URI(collectionPath)
-    ldps.execute(
+    rww.execute(
         for {
-          r <- createLDPR(uric,slug, content.graph)
+          r <- createLDPR(uric,slug, content)
           git =  ( uric -- rdfs.member ->- r ).graph.toIterable
           _ <- updateLDPR(r,add=git)
         } yield r
@@ -117,45 +154,48 @@ class ResourceMgr[Rdf <: RDF](ldps: RWW[Rdf])
    * @param slug a suggested name for the resource
    * @return
    */
-  def postGraph(path: String, content: GraphRwwContent[Rdf],  slug: Option[String] ): Future[Rdf#URI] = {
+  def postGraph(path: String, slug: Option[String], content: Option[Rdf#Graph] ): Future[Rdf#URI] = {
     // just on RWWPlay we can adopt the convention that if the object ends in a "/"
     // then it is a collection, anything else is not a collection
     val (collection, file) = split(path)
-    out.println(s"($collection, $file)")
+    println(s"($collection, $file)")
+    val g = content.getOrElse(emptyGraph)
     if ("" == file) {
-      makeLDPR(collection,content,slug)
+      //todo: do we still need both createLDPR and createContainer if the type of action is determined by the content?
+      if (find(g,URI(""),rdf.typ,ldp.Container).hasNext)
+           makeCollection(collection,slug,content)
+      else makeLDPR(collection,g,slug)
     } else {
-      ldps.execute {
+      rww.execute {
           for {
-            _ <- updateLDPR(URI(path),add=content.graph.toIterable)
+            _ <- updateLDPR(URI(path),add=g.toIterable)
           } yield URI(path)
        }
     }
   }
 
-  def makeCollection(coll: String, path: String, content: Option[Rdf#Graph]): Future[Rdf#URI] = {
-    out.println(s"makeCollection($coll,$path,...)")
-    val file = path.substring(coll.length)
-    ldps.execute(createContainer(URI(coll),Some(file),content.getOrElse(Graph.empty)))
-//      .map { ldpc =>
-//       if (content != None) ldpc.execute(updateLDPR(URI(file),remove=Iterable.empty,add=content.get.toIterable))
-//       ldpc.uri
-//    }
+  def makeCollection(coll: String, slug: Option[String], content: Option[Rdf#Graph]): Future[Rdf#URI] = {
+    println(s"makeCollection($coll,$slug,...)")
+    rww.execute(createContainer(URI(coll),slug,
+      content.getOrElse(Graph.empty) union Graph(
+        Triple(URI(""), rdf.typ, ldp.Container)
+      )
+    ))
   }
 
   def postBinary(path: String, slug: Option[String], tmpFile: TemporaryFile, mime: MimeType): Future[Rdf#URI] = {
     val (collection, file) = split(path)
-    out.println(s"postBinary($path, $slug, $tmpFile, $mime)")
+    println(s"postBinary($path, $slug, $tmpFile, $mime)")
     val ldpc = URI(collection)
     if (""!=file) Future.failed(new Exception("Cannot only POST binary on a Collection"))
     else {
-      val r = ldps.execute {
+      val r = rww.execute {
         for {
           b <- createBinary(URI(path),slug,mime)
-          _ <- updateLDPR(ldpc, add = (ldpc -- rdfs.member ->- b.uri).graph.toIterable)
+          _ <- updateLDPR(ldpc, add = (ldpc -- rdfs.member ->- b.location).graph.toIterable)
         } yield {
           Enumerator.fromFile(tmpFile.file)(b.write)
-          b.uri
+          b.location
         }
       }
       r
@@ -164,9 +204,9 @@ class ResourceMgr[Rdf <: RDF](ldps: RWW[Rdf])
 
   def delete(path: String): Future[Unit] = {
     val (collection, file) = split(path)
-    out.println(s"($collection, $file)")
-    ldps.execute(deleteResource(URI(path)))
-//    ldps.execute{
+    println(s"($collection, $file)")
+    rww.execute(deleteResource(URI(path)))
+//    rww.execute{
 //        for {
 //          x <- deleteResource(URI(file))
 //          y <- updateLDPR(URI(""),remove=List(
@@ -180,7 +220,7 @@ class ResourceMgr[Rdf <: RDF](ldps: RWW[Rdf])
     val (collection, file) = split(path)
     import sparqlOps._
     //clearly the queries could be simplified here.
-    ldps.execute {
+    rww.execute {
         if ("" != file)
           fold(query.query)(
             select => selectLDPR(URI(file), select, Map.empty).map(middle3[Rdf#Graph, Rdf#Solutions, Boolean] _),
@@ -209,23 +249,3 @@ case class Request(method: String, path: String)
 case class Put[Rdf <: RDF](path: String, content: RwwContent)
 
 case class Query[Rdf <: RDF](query: QueryRwwContent[Rdf], path: String)
-
-object LDPPrefix {
-  def apply[Rdf <: RDF](implicit ops: RDFOps[Rdf]) = new FOAFPrefix(ops)
-}
-
-class LDPPrefix[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("ldp", "http://www.w3.org/ns/ldp#")(ops) {
-  val Container = apply("container")
-  val membershipSubject = apply("membershipSubject")
-  val membershipPredicate = apply("membershipPredicate")
-  val nextPage = apply("nextPage")
-  val pageOf = apply("pageOf")
-}
-
-object RDFsPrefix {
-  def apply[Rdf <: RDF](implicit ops: RDFOps[Rdf]) = new RDFsPrefix(ops)
-}
-
-class RDFsPrefix[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("ldp", "http://www.w3.org/2000/01/rdf-schema#")(ops) {
-  val member = apply("member")
-}

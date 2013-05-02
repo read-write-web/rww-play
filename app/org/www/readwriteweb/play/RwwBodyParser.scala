@@ -39,6 +39,7 @@ import play.api.libs.Files.TemporaryFile
  * @param sparqlSelector
  * @tparam Rdf
  */
+//todo: pass the base URL
 class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
                                 sparqlOps: SparqlOps[Rdf],
                                 graphSelector: IterateeSelector[Rdf#Graph],

@@ -19,8 +19,8 @@ package org.www.play.rdf.plantain
 import org.w3.banana.{Syntax, Turtle, RDFXML, RDFReader}
 import org.www.play.rdf.{IterateeSelector, RDFIteratee, BlockingRDFIteratee}
 import concurrent.ExecutionContext
-import org.w3.banana.sesame.{SesameOperations, Sesame}
-import org.w3.banana.plantain.{Plantain, Graph}
+import org.w3.banana.sesame.SesameOperations
+import org.w3.banana.plantain.Plantain
 
 /**
  * As Plantain does not have its own serializers we go through Sesame for the moment.

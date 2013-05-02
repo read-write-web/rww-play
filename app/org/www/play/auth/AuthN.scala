@@ -6,6 +6,7 @@ import org.w3.banana.RDF
 import java.security.cert.{X509Certificate, Certificate}
 import java.security.Principal
 import net.sf.uadetector.service.UADetectorServiceFactory
+import org.w3.banana.ldp.auth.{Claim, WebIDVerifier}
 
 
 /**
@@ -18,7 +19,7 @@ trait AuthN extends (RequestHeader => Future[Subject])
  * @param verifier verifier for an x509 claim
  * @tparam Rdf Type of RDF library
  */
-class WebIDAuthN[Rdf <: RDF](implicit verifier: WebIDVerifier[Rdf]) extends AuthN {
+class WebIDAuthN[Rdf <: RDF](verifier: WebIDVerifier[Rdf]) extends AuthN {
   import verifier.ec
 
 

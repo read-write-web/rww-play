@@ -1,19 +1,19 @@
 package org.www.readwriteweb.play
 
-import play.api.mvc.Action
+import play.api.mvc.{Results, Action, SimpleResult, ResponseHeader}
 import org.w3.banana._
-import plantain._
-import plantain.AccessDenied
-import plantain.ParentDoesNotExist
-import plantain.ResourceExists
+import org.w3.banana.ldp._
 import play.api.mvc.Results._
 import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
 import java.net.URLDecoder
 import play.api.libs.Files.TemporaryFile
 import scala.Some
-import play.api.mvc.SimpleResult
-import play.api.mvc.ResponseHeader
+
+object Method extends Enumeration {
+  val read = Value
+  val write = Value
+}
 
 /**
  * ReadWriteWeb Controller for Play
@@ -21,12 +21,14 @@ import play.api.mvc.ResponseHeader
 trait ReadWriteWeb[Rdf <: RDF]{
 
   def rwwActor: ResourceMgr[Rdf]
+
   implicit def rwwBodyParser: RwwBodyParser[Rdf]
   implicit def ec: ExecutionContext
 
   implicit def graphWriterSelector: WriterSelector[Rdf#Graph]
   implicit def solutionsWriterSelector: WriterSelector[Rdf#Solutions]
   implicit val boolWriterSelector: WriterSelector[Boolean] = BooleanWriter.selector
+
 
   import org.www.readwriteweb.play.PlayWriterBuilder._
 
@@ -56,7 +58,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
     System.out.println("in GET on resource <" + request.path + ">")
     Async {
       val res = for {
-        namedRes <- rwwActor.get(request.path)
+        namedRes <- rwwActor.get(request,request.path)
       } yield {
         val link = namedRes.acl map (acl=> ("Link" -> s"<${acl}>; rel=acl"))
         System.out.println(link)
@@ -78,6 +80,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
       }
       res recover {
         case nse: NoSuchElementException => NotFound(nse.getMessage+stackTrace(nse))
+        case auth: AccessDenied => Unauthorized(auth.message)
         case e => ExpectationFailed(e.getMessage+"\n"+stackTrace(e))
       }
     }
@@ -94,9 +97,9 @@ trait ReadWriteWeb[Rdf <: RDF]{
     val coll = pathUri.resolve(".")
     Async {
       def mk(graph: Option[Rdf#Graph]): Future[SimpleResult[String]] = {
-        for {
-          answer <- rwwActor.makeCollection(coll.toString,correctedPath, graph)
-        } yield {
+        val path = correctedPath.toString.substring(coll.toString.length)
+        for (answer <- rwwActor.makeCollection(coll.toString,Some(path), graph))
+        yield {
           val res = Created("Created Collection at " + answer)
           if (request.path == correctedPath) res
           else res.withHeaders(("Location" -> answer.toString))
@@ -104,10 +107,9 @@ trait ReadWriteWeb[Rdf <: RDF]{
       }
       val res = request.body match {
         case rww: GraphRwwContent[Rdf]  => mk(Some(rww.graph))
-        case emptyContent => mk(None)
+        case org.www.readwriteweb.play.emptyContent => mk(None)
         case _ => Future.successful(UnsupportedMediaType("We only support RDF media types, for appending to collection."))
       }
-
       res recover {
         case ResourceExists(e) => MethodNotAllowed(e)
         case ParentDoesNotExist(e) => Conflict(e)
@@ -132,18 +134,23 @@ trait ReadWriteWeb[Rdf <: RDF]{
   }
 
 
-  def post(path: String) = Action(rwwBodyParser) { request =>
+  def post(path: String) = Action(rwwBodyParser) {
+    def postGraph(request: play.api.mvc.Request[RwwContent], rwwGraph: Option[Rdf#Graph]): Future[SimpleResult[Results.EmptyContent]] = {
+      for {
+        location <- rwwActor.postGraph( request.path,
+          request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
+          rwwGraph
+        )
+      } yield {
+        Created.withHeaders("Location" -> location.toString)
+      }
+    }
+    request =>
     Async {
       System.out.println(s"post(${request.path})")
       val future = request.body match {
         case rwwGraph: GraphRwwContent[Rdf] => {
-           for {
-            location <- rwwActor.postGraph(request.path, rwwGraph,
-              request.headers.get("Slug").map( t => URLDecoder.decode(t,"UTF-8"))
-            )
-          } yield {
-            Created.withHeaders("Location" -> location.toString)
-          }
+           postGraph(request, Some(rwwGraph.graph))
         }
         case rwwQuery: QueryRwwContent[Rdf] => {
           for {
@@ -159,7 +166,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
                 bool => writerFor[Boolean](request).map {
                   wr => result(200, wr)(bool)
                 }
-              ).getOrElse(UnsupportedMediaType(s"Cannot publish anser of type ${answer.getClass} as"+
+              ).getOrElse(UnsupportedMediaType(s"Cannot publish answer of type ${answer.getClass} as"+
                 s"one of the mime types given ${request.headers.get("Accept")}"))
           }
         }
@@ -172,6 +179,9 @@ trait ReadWriteWeb[Rdf <: RDF]{
           } yield {
             Created.withHeaders("Location" -> location.toString)
           }
+        }
+        case emptyContent => {
+          postGraph(request, None)
         }
 //        case _ => Ok("received content")
       }

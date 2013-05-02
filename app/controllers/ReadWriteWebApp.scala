@@ -25,12 +25,17 @@ import concurrent.ExecutionContext
 import java.io.File
 import akka.util.Timeout
 import java.util.concurrent.TimeUnit
+import org.www.play.auth.WebIDAuthN
+import akka.actor.Props
+import org.w3.banana.ldp._
+import org.w3.banana.ldp.auth.{WACAuthZ, WebIDVerifier}
 
 
-class ReadWriteWebApp(base: URI, path: Path)(implicit ops: RDFOps[Plantain],
+class ReadWriteWebApp(base: Plantain#URI, path: Path)(implicit ops: RDFOps[Plantain],
             sparqlOps: SparqlOps[Plantain],
             iterateeSelector: IterateeSelector[Plantain#Graph],
             sparqlIterateeSelector: IterateeSelector[Plantain#Query],
+            val wsClient: WebClient[Plantain],
             val graphWriterSelector: WriterSelector[org.w3.banana.plantain.Plantain#Graph],
             val solutionsWriterSelector: WriterSelector[Plantain#Solutions],
             val ec: ExecutionContext) extends ReadWriteWeb[Plantain] {
@@ -39,12 +44,21 @@ class ReadWriteWebApp(base: URI, path: Path)(implicit ops: RDFOps[Plantain],
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain]()(ops,sparqlOps,iterateeSelector,sparqlIterateeSelector)
 
-  val LDPS = PlantainLDPS(base, path)
-  lazy val rww = new PlantainRWW(LDPS)(Timeout(30,TimeUnit.SECONDS))
+  val rww: RWWeb[Plantain] = {
+    val w = new RWWeb[Plantain](base)(ops,Timeout(30,TimeUnit.SECONDS))
+    //, path,Some(Props(new PlantainWebProxy(base,Plantain.readerSelector))))
+    val localActor = w.system.actorOf(Props(new PlantainLDPCActor(w.baseUri, path)),"rootContainer")
+    w.setLDPSActor(localActor)
+    val webActor = w.system.actorOf(Props(new LDPWebActor[Plantain](base,wsClient)),"webActor")
+    w.setWebActor(webActor)
+    w
+  }
 
-  val rwwActor =  new ResourceMgr(rww)
+  lazy val rwwActor =  new ResourceMgr[Plantain](rww, new WebIDAuthN(new WebIDVerifier(rww)),
+    new WACAuthZ[Plantain](new WebResource[Plantain](rww))(ops))
 
 }
 
 import plantain._
+
 object ReadWriteWebApp extends ReadWriteWebApp(plantain.ops.URI("http://localhost:9000/2012/"),new File("test_www").toPath)

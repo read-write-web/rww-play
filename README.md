@@ -133,40 +133,50 @@ A very initial implementation of the (LDP)[http://www.w3.org/2012/ldp/hg/ldp.htm
 
 First you can create a new resource with POST
 ```bash
-$ curl -X POST -i -T card.ttl -H "Content-Type: text/turtle; utf-8"  http://localhost:9000/2012/
+$ curl -X POST -i  -H "Content-Type: text/turtle; utf-8"  -H "Slug: card" http://localhost:9000/2012/ -d @eg/card.ttl
 ...
 HTTP/1.1 200 OK
 Location: /2012/newresource
 ```
 
 This will then create a remote resource at the given location, in the above example
-`http://localhost:9000/2012/newresource`
+`http://localhost:9000/2012/card`
+
+```bash
+$ curl  -i  -H "Accept: text/turtle"  http://localhost:9000/2012/card
+HTTP/1.1 200 OK
+Link: <http://localhost:9000/2012/card;acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 236
+
+<#i> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
+    <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
+
+<> <http://www.w3.org/2000/01/rdf-schema#member> <card> .
+```
 
 Then you can POST some more triples on that resource to APPEND to it,
 and you can GET it and DELETE it. 
 
-For example to append the triples in some file 'other.ttl' you can use
+For example to append the triples in some file 'other.ttl' you can use. ( Note this has
+not been adopted by the LDP WG, though there is an issue open for it )
 
 ```bash
-$ curl -i -X POST -H "Content-Type: text/turtle" http://localhost:9000/2012/newresource -d @other.ttl
+$ curl -i -X POST -H "Content-Type: text/turtle" http://localhost:9000/2012/card -d @eg/more.ttl
 ```
 
-you can then see that they have been correctly added with
+if you `GET` the `card` with curl as shown above, the server should now show your
+content with a few more relations. You can even fetch it in a different representation
+such as the older rdf/xml
 
 ```bash
-$ curl -i -X GET -H "Accept: text/turtle" http://localhost:9000/2012/newresource
-```
-
-or if you prefer RDF/XML use:
-
-```bash
-$ curl -i -X GET -H "Accept: application/rdf+xml" http://localhost:9000/2012/newresource
+$ curl -i -X GET -H "Accept: application/rdf+xml" http://localhost:9000/2012/card
 ```
 
 finally if you wish to delete it you can run
 
 ```bash
-$ curl -i -X DELETE http://localhost:9000/2012/newresource
+$ curl -i -X DELETE http://localhost:9000/2012/card
 ```
 
 A GET on that resource with from then on return an error.
@@ -176,6 +186,31 @@ To make a collection we use the MKCOL method as defined by [RFC4918: HTTP Extens
 ```bash
 $ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2012/pix/
 HTTP/1.1 201 Created
+```
+
+But this is not the preferred method with LDP. Rather it would be better to POST a new container..
+
+```bash
+$ curl -i -X POST -H "Content-Type: text/turtle" -H "Slug: type" -H "Expect:" http://localhost:9000/2012/ -d @eg/newContainer.ttl 
+HTTP/1.1 201 Created
+Location: http://localhost:9000/2012/type
+Content-Length: 0
+```
+
+You can then GET the content of the container
+
+```bash
+HTTP/1.1 200 OK
+Link: <http://localhost:9000/2012/type;acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 378
+
+
+<http://localhost:9000//2012/> a <http://www.w3.org/ns/ldp#Container> ;
+    <http://xmlns.com/foaf/0.1/topic> "A container for some type X of resources"^^<http://www.w3.org/2001/XMLSchema#string> ;
+    <http://xmlns.com/foaf/0.1/maker> <http://localhost:9000/card#me> .
+
+<http://localhost:9000/2012/> <http://www.w3.org/2000/01/rdf-schema#member> <http://localhost:9000/2012/type> .
 ```
 ### Todo
 
