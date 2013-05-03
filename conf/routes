@@ -14,12 +14,12 @@
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
 
-GET     /2012                       controllers.ReadWriteWebApp.about
-GET     /2012/$file<.*>             controllers.ReadWriteWebApp.get(file)
-PUT     /2012/$file<.*>             controllers.ReadWriteWebApp.put(file)
-POST    /2012/$file<.*>             controllers.ReadWriteWebApp.post(file)
-DELETE  /2012/$file<.*>             controllers.ReadWriteWebApp.delete(file)
-MKCOL   /2012/$file<.*>             controllers.ReadWriteWebApp.mkcol(file)
+GET     /2013                       controllers.ReadWriteWebApp.about
+GET     /2013/$file<.*>             controllers.ReadWriteWebApp.get(file)
+PUT     /2013/$file<.*>             controllers.ReadWriteWebApp.put(file)
+POST    /2013/$file<.*>             controllers.ReadWriteWebApp.post(file)
+DELETE  /2013/$file<.*>             controllers.ReadWriteWebApp.delete(file)
+MKCOL   /2013/$file<.*>             controllers.ReadWriteWebApp.mkcol(file)
 
 #GET     /srv/cors/about             controllers.CORSProxy.about()
 #GET     /srv/cors/                  controllers.CORSProxy.get(url: String)

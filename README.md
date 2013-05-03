@@ -5,7 +5,7 @@ This is an implementation in Play of a number of tools to build a Read-Write-Web
 It is very early stages at present and it implements sketches of the following
 
 * A [CORS](http://www.w3.org/TR/cors/) proxy
-* An initial implementation of [Linked Data Basic Profile](http://www.w3.org/2012/ldp/wiki/Main_Page)
+* An initial implementation of [Linked Data Basic Profile](http://www.w3.org/2013/ldp/wiki/Main_Page)
 
 This currently works in the [TLS branch of the bblfish fork of Play 2.x](https://github.com/bblfish/Play20), which comes with TLS support and a few more patches.
 
@@ -36,7 +36,15 @@ Getting going
   ... [exit scala shell]
  $ cd ../..
 ```
-* from the home directory of this project, start the previously compiled Play2.0 server in secure mode with lightweight client certificate verification (for WebID)
+
+* From the home directory of this project, start the previously compiled Play2.0 server you can run play on `http` port 9000 
+
+```bash
+$ Play20/play
+> run
+```
+
+* to start Play in secure mode with lightweight client certificate verification (for WebID)
 
 ```bash
  $ Play20/play
@@ -50,8 +58,6 @@ Getting going
  $ Play20/play
  > run  -Dhttps.port=8443 -Dhttps.trustStore=webid.WebIDTrustManager
 ```
-
-
 
 
 Usage 
@@ -97,7 +103,99 @@ The code to run this is a few lines in [Application](https://github.com/read-wri
 
 The [Auth](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L33) class can be tuned for any type of authentication, by passing the relevant `authentication` and `acl` function to it.  The WebId Authentication code [WebIDAuthN](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/play/auth/WebIDAuthN.scala) is quite short and makes use of the `Claim`s monad to help isolate what is verified and what is not.
 
+## Linked Data Platform
+
+A very initial implementation of the (LDP)[http://www.w3.org/2013/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2012/
+
+First you can create a new resource with POST
+```bash
+$ curl -X POST -i  -H "Content-Type: text/turtle; utf-8"  -H "Slug: card" http://localhost:9000/2013/ -d @eg/card.ttl
+...
+HTTP/1.1 200 OK
+Location: /2013/newresource
+```
+
+This will then create a remote resource at the given location, in the above example
+`http://localhost:9000/2013/card`
+
+```bash
+$ curl  -i  -H "Accept: text/turtle"  http://localhost:9000/2013/card
+HTTP/1.1 200 OK
+Link: <http://localhost:9000/2013/card;acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 236
+
+<#i> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
+    <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
+
+<> <http://www.w3.org/2000/01/rdf-schema#member> <card> .
+```
+
+Then you can POST some more triples on that resource to APPEND to it,
+and you can GET it and DELETE it. 
+
+For example to append the triples in some file 'other.ttl' you can use. ( Note this has
+not been adopted by the LDP WG, though there is an issue open for it )
+
+```bash
+$ curl -i -X POST -H "Content-Type: text/turtle" http://localhost:9000/2013/card -d @eg/more.ttl
+```
+
+if you `GET` the `card` with curl as shown above, the server should now show your
+content with a few more relations. You can even fetch it in a different representation
+such as the older rdf/xml
+
+```bash
+$ curl -i -X GET -H "Accept: application/rdf+xml" http://localhost:9000/2013/card
+```
+
+finally if you wish to delete it you can run
+
+```bash
+$ curl -i -X DELETE http://localhost:9000/2013/card
+```
+
+A GET on that resource with from then on return an error.
+
+To make a collection we use the MKCOL method as defined by [RFC4918: HTTP Extensions for WebDAV](http://tools.ietf.org/html/rfc4918#section-9.3)
+
+```bash
+$ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2013/pix/
+HTTP/1.1 201 Created
+```
+
+But this is not the preferred method with LDP. Rather it would be better to POST a new container..
+
+```bash
+$ curl -i -X POST -H "Content-Type: text/turtle" -H "Slug: type" -H "Expect:" http://localhost:9000/2013/ -d @eg/newContainer.ttl 
+HTTP/1.1 201 Created
+Location: http://localhost:9000/2013/type
+Content-Length: 0
+```
+
+You can then GET the content of the container
+
+```bash
+HTTP/1.1 200 OK
+Link: <http://localhost:9000/2013/type;acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 378
+
+
+<http://localhost:9000//2013/> a <http://www.w3.org/ns/ldp#Container> ;
+    <http://xmlns.com/foaf/0.1/topic> "A container for some type X of resources"^^<http://www.w3.org/2001/XMLSchema#string> ;
+    <http://xmlns.com/foaf/0.1/maker> <http://localhost:9000/card#me> .
+
+<http://localhost:9000/2013/> <http://www.w3.org/2000/01/rdf-schema#member> <http://localhost:9000/2012/type> .
+```
+
+## Web Access Control with Linked Data
+
+For Web Access Control with [WebID](http://webid.info/)  you need to start play in secure mode ( see above ), and you need to create a WebID.
+
 ## CORS 
+
+(no longer working right now)
 
 To fetch a remote rdf resource in a CORS proxy friendly manner send an HTTP GET request to  
 `http://localhost:9000/srv/cors?url={remote-url}` replacing `{remoate-url}` with a URL-encoded
@@ -117,7 +215,7 @@ Keep-Alive: timeout=5, max=100
 Connection: Keep-Alive
 Content-Length: 12006
 Content-Type: application/rdf+xml
-Date: Tue, 10 Jul 2012 08:56:24 GMT
+Date: Tue, 10 Jul 2013 08:56:24 GMT
 ETag: "125d8606-2ee6-45fd305ed0440"
 
 @prefix dc:      <http://purl.org/dc/elements/1.1/> .
@@ -127,97 +225,12 @@ ETag: "125d8606-2ee6-45fd305ed0440"
 The usual use case for fetching such a resource is to make the query in JavaScript, using a library
 such as [rdflib](https://github.com/linkeddata/rdflib.js)
 
-## Linked Data Platform
-
-A very initial implementation of the (LDP)[http://www.w3.org/2012/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2012/
-
-First you can create a new resource with POST
-```bash
-$ curl -X POST -i  -H "Content-Type: text/turtle; utf-8"  -H "Slug: card" http://localhost:9000/2012/ -d @eg/card.ttl
-...
-HTTP/1.1 200 OK
-Location: /2012/newresource
-```
-
-This will then create a remote resource at the given location, in the above example
-`http://localhost:9000/2012/card`
-
-```bash
-$ curl  -i  -H "Accept: text/turtle"  http://localhost:9000/2012/card
-HTTP/1.1 200 OK
-Link: <http://localhost:9000/2012/card;acl>; rel=acl
-Content-Type: text/turtle
-Content-Length: 236
-
-<#i> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
-    <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
-
-<> <http://www.w3.org/2000/01/rdf-schema#member> <card> .
-```
-
-Then you can POST some more triples on that resource to APPEND to it,
-and you can GET it and DELETE it. 
-
-For example to append the triples in some file 'other.ttl' you can use. ( Note this has
-not been adopted by the LDP WG, though there is an issue open for it )
-
-```bash
-$ curl -i -X POST -H "Content-Type: text/turtle" http://localhost:9000/2012/card -d @eg/more.ttl
-```
-
-if you `GET` the `card` with curl as shown above, the server should now show your
-content with a few more relations. You can even fetch it in a different representation
-such as the older rdf/xml
-
-```bash
-$ curl -i -X GET -H "Accept: application/rdf+xml" http://localhost:9000/2012/card
-```
-
-finally if you wish to delete it you can run
-
-```bash
-$ curl -i -X DELETE http://localhost:9000/2012/card
-```
-
-A GET on that resource with from then on return an error.
-
-To make a collection we use the MKCOL method as defined by [RFC4918: HTTP Extensions for WebDAV](http://tools.ietf.org/html/rfc4918#section-9.3)
-
-```bash
-$ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2012/pix/
-HTTP/1.1 201 Created
-```
-
-But this is not the preferred method with LDP. Rather it would be better to POST a new container..
-
-```bash
-$ curl -i -X POST -H "Content-Type: text/turtle" -H "Slug: type" -H "Expect:" http://localhost:9000/2012/ -d @eg/newContainer.ttl 
-HTTP/1.1 201 Created
-Location: http://localhost:9000/2012/type
-Content-Length: 0
-```
-
-You can then GET the content of the container
-
-```bash
-HTTP/1.1 200 OK
-Link: <http://localhost:9000/2012/type;acl>; rel=acl
-Content-Type: text/turtle
-Content-Length: 378
-
-
-<http://localhost:9000//2012/> a <http://www.w3.org/ns/ldp#Container> ;
-    <http://xmlns.com/foaf/0.1/topic> "A container for some type X of resources"^^<http://www.w3.org/2001/XMLSchema#string> ;
-    <http://xmlns.com/foaf/0.1/maker> <http://localhost:9000/card#me> .
-
-<http://localhost:9000/2012/> <http://www.w3.org/2000/01/rdf-schema#member> <http://localhost:9000/2012/type> .
-```
 ### Todo
 
 Query support as shown below no longer works right now.
 
 ```
-$ curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> ?p . } " -i http://localhost:9000/2012/card.ttl
+$ curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> ?p . } " -i http://localhost:9000/2013/card.ttl
 HTTP/1.1 200 OK
 Content-Type: application/sparql-results+xml
 Content-Length: 8799
@@ -237,7 +250,7 @@ Content-Length: 8799
 or if you would rather it return json 
 
 ```
-curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" -H "Accept: application/sparql-results+json" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> [ <http://xmlns.com/foaf/0.1/name> ?p ] . } " -i http://localhost:9000/2012/card.ttl
+curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" -H "Accept: application/sparql-results+json" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> [ <http://xmlns.com/foaf/0.1/name> ?p ] . } " -i http://localhost:9000/2013/card.ttl
 ```
 
 ## Proxy a Web Site
@@ -287,7 +300,7 @@ $ ./sbt
 Licence
 -------
 
-   Copyright 2012 Henry Story
+   Copyright 2013 Henry Story
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
