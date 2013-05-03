@@ -224,7 +224,7 @@ object ClientCertificateApp extends Controller {
 
   //start ten minuted ago, in order to avoid problems with watch synchronisations. Should be longer
   def tenMinutesAgo = new Date(System.currentTimeMillis() - (10*1000*60).toLong)
-  def aYearFromNow =  new Date(System.currentTimeMillis() + (365*24*60*60*1000).toLong)
+  def aYearFromNow =  new Date(System.currentTimeMillis() + (365L*24L*60L*60L*1000L).toLong)
 
 
   val certForm = Form(
