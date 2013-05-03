@@ -29,9 +29,10 @@ import org.www.play.auth.WebIDAuthN
 import akka.actor.Props
 import org.w3.banana.ldp._
 import org.w3.banana.ldp.auth.{WACAuthZ, WebIDVerifier}
+import java.net.URL
 
 
-class ReadWriteWebApp(base: Plantain#URI, path: Path)(implicit ops: RDFOps[Plantain],
+class ReadWriteWebApp(base: URL, path: Path)(implicit ops: RDFOps[Plantain],
             sparqlOps: SparqlOps[Plantain],
             iterateeSelector: IterateeSelector[Plantain#Graph],
             sparqlIterateeSelector: IterateeSelector[Plantain#Query],
@@ -43,13 +44,14 @@ class ReadWriteWebApp(base: Plantain#URI, path: Path)(implicit ops: RDFOps[Plant
 
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain]()(ops,sparqlOps,iterateeSelector,sparqlIterateeSelector)
+  val baseUri = ops.URI(base.toString)
 
   val rww: RWWeb[Plantain] = {
-    val w = new RWWeb[Plantain](base)(ops,Timeout(30,TimeUnit.SECONDS))
+    val w = new RWWeb[Plantain](baseUri)(ops,Timeout(30,TimeUnit.SECONDS))
     //, path,Some(Props(new PlantainWebProxy(base,Plantain.readerSelector))))
     val localActor = w.system.actorOf(Props(new PlantainLDPCActor(w.baseUri, path)),"rootContainer")
     w.setLDPSActor(localActor)
-    val webActor = w.system.actorOf(Props(new LDPWebActor[Plantain](base,wsClient)),"webActor")
+    val webActor = w.system.actorOf(Props(new LDPWebActor[Plantain](baseUri,wsClient)),"webActor")
     w.setWebActor(webActor)
     w
   }
@@ -61,4 +63,4 @@ class ReadWriteWebApp(base: Plantain#URI, path: Path)(implicit ops: RDFOps[Plant
 
 import plantain._
 
-object ReadWriteWebApp extends ReadWriteWebApp(plantain.ops.URI("http://localhost:9000/2012/"),new File("test_www").toPath)
+object ReadWriteWebApp extends ReadWriteWebApp(plantain.rwwRoot,new File("test_www").toPath)

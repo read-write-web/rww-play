@@ -24,16 +24,23 @@ trait Setup {
   implicit val executionContext: ExecutionContext = system.dispatcher
 
   //Play setup: needed for WebID info
-  //todo: need to refactor this so that it uses Play's setup so that there is no possibility code shift
-  lazy val securePort: Int = Option(System.getProperty("https.port")).orElse(Some("8443")).map { port =>
-    Integer.parseInt(port)
-  }.get
+  //todo: the code below should be adapted to finding the real default of Play.
+  lazy val securePort: Option[Int] = Option(System.getProperty("https.port")).map(
+    Integer.parseInt(_)
+  )
 
-  lazy val secureHost: URL = {
-    Option(System.getProperty("http.hostname")).orElse(Some("localhost")).map { host =>
-      new URL("https",host,securePort,"/")
-    }.get
+  lazy val port: Int = Option(System.getProperty("http.port")).map(p=> Integer.parseInt(p)).orElse(securePort).get
+
+  lazy val host: String = {
+    Option(System.getProperty("http.hostname")).getOrElse("localhost")
   }
+
+  lazy val rwwRoot: URL =  {
+    val path = Option(System.getProperty("rww.root")).orElse(Some("/2013/")).get
+    val protocol = if (securePort==None) "http" else "https"
+    new URL(protocol,host,port,path)
+  }
+
 
   val logger = Logger("rww")
 
