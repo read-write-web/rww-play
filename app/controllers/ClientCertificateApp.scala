@@ -251,8 +251,9 @@ object ClientCertificateApp extends Controller {
       )
   }
 
-  def get = Action {
-    Ok(views.html.webid.cert.genericCertCreator(certForm.fill(CertReq("",List(),null,null,null))))
+  def get = Action { req =>
+    val webids =  req.queryString.get("webid").toList.flatten.map(new URL(_))
+    Ok(views.html.webid.cert.genericCertCreator(certForm.fill(CertReq("",webids,null,null,null))))
   }
 
 

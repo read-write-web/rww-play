@@ -2,14 +2,16 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
+
+
 # set this if you want to proxy a web site ( say w3c.org to check out WebID )
 #GET     /*rg                       controllers.AuthProxyApp.proxy(rg)
 
-#Home page with doc
-#GET     /                           controllers.Application.index
-
 # Home page
 #GET     /test/webid/:rg             controllers.BasicApp.webId(rg)
+
+#Home page with doc
+GET     /                           controllers.Application.index
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)

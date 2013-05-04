@@ -63,14 +63,6 @@ $ Play20/play
 Usage 
 -----
 
-## Creating a WebID Certificate
-
-After starting your server you can go to http://localhost:9000/srv/certgen or to [the https equivalent](https://localhost:8443/srv/certgen) and create yourself a certificate for a WebID profile you may already have. The WebID will be signed by the agent with Distinguished Name "CN=WebID,O=∅" so that we can try out if making requests only for those certificates does the right thing.
-
-( Todo: later we will add functionality to add create a local webid that also published the RDF )
-To make the WebID valid you will need to publish the relavant rdf at that document location as explained in [the WebID spec](http://www.w3.org/2005/Incubator/webid/spec/#publishing-the-webid-profile-document)
-
-
 ## WebID test
 
 1. get yourself a WebID certificate ( e.g. [My-Profile](https://my-profile.eu/profile.php) will give you a nice one ), or use
@@ -105,14 +97,14 @@ The [Auth](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/rea
 
 ## Linked Data Platform
 
-A very initial implementation of the (LDP)[http://www.w3.org/2013/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2012/
+A very initial implementation of the (LDP)[http://www.w3.org/2013/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2013/
 
 First you can create a new resource with POST
 ```bash
 $ curl -X POST -i  -H "Content-Type: text/turtle; utf-8"  -H "Slug: card" http://localhost:9000/2013/ -d @eg/card.ttl
 ...
 HTTP/1.1 200 OK
-Location: /2013/newresource
+Location: /2013/card
 ```
 
 This will then create a remote resource at the given location, in the above example
@@ -155,16 +147,16 @@ finally if you wish to delete it you can run
 $ curl -i -X DELETE http://localhost:9000/2013/card
 ```
 
-A GET on that resource with from then on return an error.
+A GET on that resource will from then on return an error.
 
-To make a collection we use the MKCOL method as defined by [RFC4918: HTTP Extensions for WebDAV](http://tools.ietf.org/html/rfc4918#section-9.3)
+To make a collection you can use the MKCOL method as defined by [RFC4918: HTTP Extensions for WebDAV](http://tools.ietf.org/html/rfc4918#section-9.3)
 
 ```bash
 $ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2013/pix/
 HTTP/1.1 201 Created
 ```
 
-But this is not the preferred method with LDP. Rather it would be better to POST a new container..
+But the LDP way to do this is to POST a new container.
 
 ```bash
 $ curl -i -X POST -H "Content-Type: text/turtle" -H "Slug: type" -H "Expect:" http://localhost:9000/2013/ -d @eg/newContainer.ttl 
@@ -191,9 +183,18 @@ Content-Length: 378
 
 ## Web Access Control with Linked Data
 
-For Web Access Control with [WebID](http://webid.info/)  you need to start play in secure mode ( see above ), and you need to create a WebID.
 
-## CORS 
+### Creating a WebID Certificate
+
+After starting your server you can point your browser to [http://localhost:9000/srv/certgen](http://localhost:9000/srv/certgen?webid=http%3A%2F%2Flocalhost%3A8443%2F2013%2Fcert%23me) or to [the service over https ](https://localhost:8443/srv/certgen?webid=http%3A%2F%2Flocalhost%3A8443%2F2013%2Fcert%23me) and create yourself a certificate. For testing purposes and in order to be able to work without the need for network connectivity use `http://localhost:8443/2013/cert#me'. The WebID Certificate will be signed by the agent with Distinguished Name "CN=WebID,O=∅" and added by your browser to its keychain.
+
+( Todo: later we will add functionality to add create a local webid that also published the RDF )
+To make the WebID valid you will need to publish the relavant rdf at that document location as explained in [the WebID spec](http://www.w3.org/2005/Incubator/webid/spec/#publishing-the-webid-profile-document)
+
+
+For Web Access Control with [WebID](http://webid.info/) you have to start play in secure mode ( see above ) and  create a WebID.
+
+## CORS
 
 (no longer working right now)
 
