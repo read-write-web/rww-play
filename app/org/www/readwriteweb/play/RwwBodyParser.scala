@@ -59,7 +59,7 @@ class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
           case Failure(e) => Left(BadRequest("could not parse query "+e))
           case Success(sparql) => Right(QueryRwwContent(sparql))
         }
-        case graphSelector(iteratee) => iteratee(Some(new URL("http://localhost:9000/" + rh.uri))).mapDone {
+        case graphSelector(iteratee) => iteratee().mapDone {
           case Failure(e) => Left(BadRequest("cought " + e))
           case Success(graph) => Right(GraphRwwContent(graph))
         }

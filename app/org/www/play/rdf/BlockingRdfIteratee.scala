@@ -43,6 +43,8 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, Syntax
   extends RDFIteratee[Rdf#Graph, SyntaxType] {
 
   import webid.Logger.log
+  import syntax.GraphSyntax._
+  import ops._
 
 
   //import shellac's rdfa parser:
@@ -53,8 +55,12 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, Syntax
 
     val in = new PipedInputStream()
     val out = new PipedOutputStream(in)
+    val hack = URI("http://urn.bighack/")  //todo: remove
+
     val blockingIO: Future[Try[Rdf#Graph]] = Future {
-      reader.read(Resource.fromInputStream(in), loc.map(_.toString).orNull)
+      val absGraph = reader.read(Resource.fromInputStream(in), loc.map(_.toString).getOrElse(hack.toString))
+      if (loc==None) absGraph.map(_.relativize(hack))
+      else absGraph
     }
 
     Iteratee.foldM[Array[Byte], PipedOutputStream](out) {

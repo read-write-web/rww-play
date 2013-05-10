@@ -1,0 +1,10 @@
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix wac: <http://www.w3.org/ns/auth/acl#> .
+
+<> wac:include <acl> .
+
+[] wac:accessTo <card>;
+   wac:agentClass foaf:Agent;
+   wac:mode wac:Read .
+
+

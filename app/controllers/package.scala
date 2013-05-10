@@ -35,10 +35,14 @@ trait Setup {
     Option(System.getProperty("http.hostname")).getOrElse("localhost")
   }
 
+  lazy val hostRoot: URL = {
+    val protocol = if (securePort==None) "http" else "https"
+    new URL(protocol,host,port,"")
+  }
+
   lazy val rwwRoot: URL =  {
     val path = Option(System.getProperty("rww.root")).orElse(Some("/2013/")).get
-    val protocol = if (securePort==None) "http" else "https"
-    new URL(protocol,host,port,path)
+    new URL(hostRoot,path)
   }
 
 

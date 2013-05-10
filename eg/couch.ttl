@@ -1,0 +1,16 @@
+@prefix couch: <http://bblfish.net/2013/05/10/couch#> .
+@prefix gr: <http://purl.org/goodrelations/v1#> .
+@prefix ct: <http://www.w3.org/2000/10/swap/pim/contact#> .
+
+<#mycouch> a couch:Surf;
+     gr:name "Stable Couch";
+     gr:color "Red";
+     gr:description "Comfortable couch in Artist Stables";
+     gr:location [  
+          ct:address [
+                ct:street "21 rue Saint Honoré";
+                ct:city "Fontainebleau";
+                ct:postalCode "77300";
+                ct:country "France"
+        ]
+    ] .

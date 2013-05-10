@@ -182,7 +182,42 @@ Content-Length: 378
 ```
 
 ## Web Access Control with Linked Data
-
+create card
+```bash
+$ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8" -H "Slug: card.acl"  --cert eg/test-localhost.pem:test  -d @eg/card-acl.ttl https://localhost:8443/2013/
+```
+le GET ne marche pas
+```bash
+$ curl -k -i --cert eg/test-localhost.pem:test -X GET -H "Accept: text/turtle" https://localhost:8443/2013/card
+```
+append the triples using the deprecated POST onto the acl
+```bash
+$ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8" -H "Slug: card.acl"  --cert eg/test-localhost.pem:test  -d @eg/card-acl.ttl https://localhost:8443/2013/
+```
+it works:
+```bash
+$ curl -k -i --cert eg/test-localhost.pem:test -X GET -H "Accept: text/turtle" https://localhost:8443/2013/card
+```
+Next we can publish a couch surfing opportunity
+```bash
+$ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8"  --cert eg/test-localhost.pem:test  -H "Slug: couch" -d @eg/couch.ttl https://localhost:8443/2013/
+```
+Initially this is unreachable by any one ( should the acls perhaps always point with a wac:include to the directory acl by default? )
+```bash
+$ curl -k -i -X GET -H "Accept: application/rdf+xml" --cert eg/test-localhost.pem:test https://localhost:8443/2013/couch
+```
+So we add the couch acl
+```bash
+$ curl -v -X POST -k -i -H "Content-Type: text/turtle; utf-8"  -H "Slug: card" --cert eg/test-localhost.pem:test  -d @eg/couch-acl.ttl https://localhost:8443/2013/couch.acl
+```
+This makes it available to the test user and the members of the WebID and OuiShare groups.
+```bash
+$ curl -k -i -X GET -H "Accept: application/rdf+xml" --cert eg/test-localhost.pem:test https://localhost:8443/2013/couch
+```
+or in Turtle
+```bash
+$  curl -k -i -X GET -H "Accept: text/turtle" --cert eg/test-localhost.pem:test https://localhost:8443/2013/couch
+```
 
 ### Creating a WebID Certificate
 
@@ -191,10 +226,11 @@ After starting your server you can point your browser to [http://localhost:9000/
 ( Todo: later we will add functionality to add create a local webid that also published the RDF )
 To make the WebID valid you will need to publish the relavant rdf at that document location as explained in [the WebID spec](http://www.w3.org/2005/Incubator/webid/spec/#publishing-the-webid-profile-document)
 
+### Secure LDP examples
+
 
 For Web Access Control with [WebID](http://webid.info/) you have to start play in secure mode ( see above ) and  create a WebID.
-
-## CORS
+## CORS 
 
 (no longer working right now)
 

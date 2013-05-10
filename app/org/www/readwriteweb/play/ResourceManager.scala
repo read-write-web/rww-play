@@ -28,8 +28,9 @@ import org.www.play.auth.AuthN
 import org.w3.banana.ldp._
 import scala.Some
 import org.w3.banana.ldp.auth.WACAuthZ
+import java.net.URL
 
-class ResourceMgr[Rdf <: RDF](rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
+class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
                              (implicit ops: RDFOps[Rdf], sparqlOps: SparqlOps[Rdf],
                               ec: ExecutionContext) {
   import ops._
@@ -109,17 +110,13 @@ class ResourceMgr[Rdf <: RDF](rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
       if (agents.contains(foaf.Agent)) Future.successful(())
       else {
         authn(request).flatMap { subject =>
-          System.out.println(s"User authenticated as $subject")
           val a = subject.webIds.exists{ wid =>
-            System.out.println(s"testing auth for #wid")
-            agents.contains(URI(wid.toString))
+             agents.contains(URI(wid.toString))
           }
           if (a) {
-            System.out.println(s"Will give access to $path for $mode")
             Future.successful(())
           }
           else {
-            System.out.println(s"Will not give access to $path for $mode")
             Future.failed(AccessDenied(s"no access for $mode on ${request.path}"))
           }
         }
@@ -129,6 +126,7 @@ class ResourceMgr[Rdf <: RDF](rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
 
   def get(request: RequestHeader, path: String): Future[NamedResource[Rdf]] = {
     for {
+        _ <- auth(request,new URL(base,path).toString,Method.read)
         x <- rww.execute{ getResource(URI(path),None) }
     } yield x
   }
