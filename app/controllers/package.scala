@@ -13,7 +13,7 @@ import org.w3.banana.ldp.{WSClient, WebClient}
 import play.api.Logger
 import java.net.URL
 import org.w3.banana.plantain.{Plantain}
-import org.www.play.rdf.plantain.{PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
+import org.www.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
 import org.www.play.rdf.sesame.SesameSparqlQueryIteratee
 
 /**
@@ -23,11 +23,13 @@ trait Setup {
   implicit val system = ActorSystem("MySystem")
   implicit val executionContext: ExecutionContext = system.dispatcher
 
+  val logger = Logger("rww")
+
   //Play setup: needed for WebID info
   //todo: the code below should be adapted to finding the real default of Play.
   lazy val securePort: Option[Int] = Option(System.getProperty("https.port")).map(
     Integer.parseInt(_)
-  )
+  ).orElse(Some(8443))
 
   lazy val port: Int = Option(System.getProperty("http.port")).map(p=> Integer.parseInt(p)).orElse(securePort).get
 
@@ -46,8 +48,12 @@ trait Setup {
   }
 
 
-  val logger = Logger("rww")
-
+  logger.info(s"""" +
+    secure port=$securePort
+    port = $port
+    host = $host
+    hostRoot = $hostRoot
+    rwwRoot = $rwwRoot """)
 }
 
 /**
@@ -95,6 +101,7 @@ object plantain extends Setup {
   //we don't have an iteratee selector for Plantain
   implicit val iterateeSelector: IterateeSelector[Plantain#Graph] = blockingIteratee.BlockingIterateeSelector
   implicit val sparqlSelector:  IterateeSelector[Plantain#Query] =  PlantainSparqlQueryIteratee.sparqlSelector
+  implicit val sparqlupdateSelector:  IterateeSelector[Plantain#UpdateQuery] =  PlantainSparqlUpdateIteratee.sparqlSelector
   implicit val webClient: WebClient[Plantain] = new WSClient(Plantain.readerSelector,Plantain.turtleWriter)
 
 

@@ -182,11 +182,167 @@ Content-Length: 378
 ```
 
 ## Web Access Control with Linked Data
+
+The test_www directory starts with a few files to get you going
+
+```bash
+$ cd test_www/
+$ ls -al
+total 48
+drwxr-xr-x   4 hjs  admin   340 30 Jun 14:28 .
+drwxr-xr-x  15 hjs  admin  1292  1 Jul 07:45 ..
+-rw-r--r--   1 hjs  staff   218 30 Jun 14:22 .acl.ttl
+-rw-r--r--   1 hjs  admin   118 30 Jun 14:27 .ttl
+lrwxr-xr-x   1 hjs  admin     8 27 Jun 20:29 card -> card.ttl
+-rw-r--r--   1 hjs  admin   246 30 Jun 14:26 card.acl.ttl
+-rw-r--r--   1 hjs  admin   896 27 Jun 21:41 card.ttl
+-rw-r--r--   1 hjs  admin   102 27 Jun 22:32 index.ttl
+drwxr-xr-x   2 hjs  admin   102 27 Jun 22:56 raw
+drwxr-xr-x   3 hjs  admin   204 28 Jun 12:51 test
+```
+
+The symbolic links such as `card` distinguish the default resources that can be found by an http `GET`.
+They point to their default representation, in this case `card.ttl`, an rdf resource. Each resource
+also comes with a Access Control List, in this example `card.acl.ttl`. Directories also have their access
+control list which is published in a file named `.acl.ttl`.  These two conventions are provisional implementation
+decisions, and improvements are to be expected here .
+
+The acl for `card` just includes the acl for the directory/collection .
+
+```bash
+$ cat card.acl.ttl 
+@prefix wac: <http://www.w3.org/ns/auth/acl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+<> wac:include <.acl> .
+```
+
+The acl for the directoy allows access to all resources in the subdirectories of
+`test_www` when accessed from the web as `https://localhost:8443/2013/` only to
+the user `<https://localhost:8443/2013/card#me>`
+
+```bash
+$ cat .acl.ttl 
+@prefix acl: <http://www.w3.org/ns/auth/acl#> . 
+@prefix foaf: <http://xmlns.com/foaf/0.1/> . 
+
+[] acl:accessToClass [ acl:regex "https://localhost:8443/2013/.*" ];  
+   acl:mode acl:Read, acl:Write; 
+   acl:agent <card#me> .  
+```
+
+Since card's acl includes the above directory acl only `<card#me> can read that file.
+
+```bash
+curl -i -k  -H "Accept: text/turtle"  https://localhost:8443/2013/card
+curl: (56) SSL read: error:14094412:SSL routines:SSL3_READ_BYTES:sslv3 alert bad certificate, errno 0
+```
+
+As curl does not allow `WANT` TLS connections, but only NEED, a failure to authenticate closes 
+the connection. Most browsers have the more friendly behavior allowing the server to return
+an HTTP error code and an explanatory body.
+
+Requesting the same resource with a `curl` that knows which client certificate to use, the request
+goes through.
+
+```bash
+$ curl -i -k --cert ../eg/test-localhost.pem:test  -H "Accept: text/turtle"  https://localhost:8443/2013/card
+HTTP/1.1 200 OK
+Link: <https://localhost:8443/2013/card.acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 1037
+
+
+<https://localhost:8443/2013/card#me> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
+    <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> ;
+    <http://www.w3.org/ns/auth/cert#key> _:node17ucdq7scx1 .
+
+_:node17ucdq7scx1 a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
+    <http://www.w3.org/ns/auth/cert#exponent> "65537"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+    <http://www.w3.org/ns/auth/cert#modulus> "C13AB88098CF47FCE6B3463FC7E8762036154FE616B956544D50EE63133CC8748D692A00DAFF5331D2564BB1DD5AEF94636ED09EFFA9E776CA6B4A92022BB060BF18FC709936EF43D345289A7FD91C81801A921376D7BCC1C63BD3335FB385A01EC0B71877FCBD1E4525393CCD5F2922D68840945943A675CCAE245222E3EB99B87B180807002063CB78174C1605EA1ECFECF57264F7F60CD8C270175A1D8DD58DFC7D3C56DB273B0494B034EC185B09977CBB530E7E407206107A73CD4B49E17610559F2A81EA8E3F613C3D3C161C06FE5CB114A8522D20DED77CAAA8C761090022F9CD4AF2C8F21DF7CF05287E379225AEA6A3A6610D02C4A44AA7CEED2CC3"^^<http://www.w3.org/2001/XMLSchema#hexBinary> .
+```
+
+The client certificate in `../eg/test-localhost.pem` contains exactly the private key given in the above 
+cert as you can see by comparing the modulus and exponents in both representations. This
+is what allows the authentication to go through, using the (WebID over TLS protocol)[http://webid.info/spec/].
+
+```bash
+$ openssl x509 -in ../eg/test-localhost.pem -inform pem -text
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 13633800264985240815 (0xbd34fd1b251264ef)
+    Signature Algorithm: sha1WithRSAEncryption
+        Issuer: O=\xE2\x88\x85, CN=WebID
+        Validity
+            Not Before: May  3 19:36:33 2013 GMT
+            Not After : May  3 19:46:33 2014 GMT
+        Subject: O=ReadWriteWeb, CN=test@localhost
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:c1:3a:b8:80:98:cf:47:fc:e6:b3:46:3f:c7:e8:
+                    76:20:36:15:4f:e6:16:b9:56:54:4d:50:ee:63:13:
+                    3c:c8:74:8d:69:2a:00:da:ff:53:31:d2:56:4b:b1:
+                    dd:5a:ef:94:63:6e:d0:9e:ff:a9:e7:76:ca:6b:4a:
+                    92:02:2b:b0:60:bf:18:fc:70:99:36:ef:43:d3:45:
+                    28:9a:7f:d9:1c:81:80:1a:92:13:76:d7:bc:c1:c6:
+                    3b:d3:33:5f:b3:85:a0:1e:c0:b7:18:77:fc:bd:1e:
+                    45:25:39:3c:cd:5f:29:22:d6:88:40:94:59:43:a6:
+                    75:cc:ae:24:52:22:e3:eb:99:b8:7b:18:08:07:00:
+                    20:63:cb:78:17:4c:16:05:ea:1e:cf:ec:f5:72:64:
+                    f7:f6:0c:d8:c2:70:17:5a:1d:8d:d5:8d:fc:7d:3c:
+                    56:db:27:3b:04:94:b0:34:ec:18:5b:09:97:7c:bb:
+                    53:0e:7e:40:72:06:10:7a:73:cd:4b:49:e1:76:10:
+                    55:9f:2a:81:ea:8e:3f:61:3c:3d:3c:16:1c:06:fe:
+                    5c:b1:14:a8:52:2d:20:de:d7:7c:aa:a8:c7:61:09:
+                    00:22:f9:cd:4a:f2:c8:f2:1d:f7:cf:05:28:7e:37:
+                    92:25:ae:a6:a3:a6:61:0d:02:c4:a4:4a:a7:ce:ed:
+                    2c:c3
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            X509v3 Key Usage: critical
+                Digital Signature, Non Repudiation, Key Encipherment, Key Agreement
+            Netscape Cert Type: 
+                SSL Client, S/MIME
+            X509v3 Subject Alternative Name: critical
+                URI:https://localhost:8443/2013/card#me
+            X509v3 Subject Key Identifier: 
+                3C:1B:CF:F2:E5:59:9A:E8:76:BE:83:1D:64:FB:07:4E:08:C6:FC:14
+    Signature Algorithm: sha1WithRSAEncryption
+         07:97:78:f5:11:58:00:50:17:91:14:e8:e3:0d:34:22:74:07:
+         ae:61:39:87:23:7a:6c:5c:14:af:13:a6:c8:54:ac:55:d4:41:
+         25:45:eb:52:90:ff:56:b0:f9:71:be:ec:c8:2c:a1:19:1c:86:
+         42:04:3c:55:7c:96:5c:60:70:0a:d7:ed:5b:53:11:56:7e:14:
+         32:92:b9:22:a7:c6:ce:ff:77:17:4a:ac:da:02:ac:24:0e:0e:
+         35:18:bd:e3:73:00:3b:8a:aa:ec:86:76:66:dd:4b:1b:da:0c:
+         c8:a1:d3:27:26:df:bf:6f:55:11:50:3b:8e:04:12:5a:b9:d4:
+         7d:7e
+```
+
+We would of course like to make the card world readable so that the certificate
+can be used to login to other servers too. To do this the user `<card#me>` can
+append to the `<card.acl.ttl>` file a world readable auth
+
+```bash
+$ cat ../eg/card.acl.update 
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+INSERT DATA {
+[] acl:accessTo <https://localhost:8443/2013/card#me> ;
+   acl:mode acl:Read;
+   acl:agentClass foaf:Agent .
+}
+$ curl -X PATCH -k -i -H "Content-Type: application/sparql-update; utf-8"  --cert ../eg/test-localhost.pem:test --data-binary @../eg/card.acl.update https://localhost:8443/2013/card.acl
+```
+
 create card
 ```bash
 $ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8" -H "Slug: card.acl"  --cert eg/test-localhost.pem:test  -d @eg/card-acl.ttl https://localhost:8443/2013/
 ```
-le GET ne marche pas
+ GET ne marche pas
 ```bash
 $ curl -k -i --cert eg/test-localhost.pem:test -X GET -H "Accept: text/turtle" https://localhost:8443/2013/card
 ```

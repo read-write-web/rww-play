@@ -23,7 +23,7 @@ import play.api.libs.iteratee.Enumerator
 import scalaz.Either3
 import scalaz.Either3._
 import play.api.libs.Files.TemporaryFile
-import play.api.mvc.RequestHeader
+import play.api.mvc.{Request, RequestHeader}
 import org.www.play.auth.AuthN
 import org.w3.banana.ldp._
 import scala.Some
@@ -52,39 +52,49 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
     else (path.substring(0,i+1),path.substring(i+1,path.length))
   }
 
+  def patch(request: RequestHeader, content: RwwContent): Future[Boolean] = {
+    val path = request.path
+    val (collection, file) = split(path)
+    content match {
+      case updatedQuery: PatchRwwContent[Rdf] =>  rww.execute(patchLDPR(URI(path),updatedQuery.query,Map()))
+      case _ => Future.failed(new Exception("PATCH requires application/sparql-update message content"))
+    }
+  }
 
 
-  def put(path: String, content: RwwContent): Future[Rdf#URI] = {
+  def put(request: RequestHeader, content: RwwContent): Future[Rdf#URI] = {
+    val path = request.path
     val (collection, file) = split(path)
     if ("" == file) Future.failed(new Exception("Cannot do a PUT on a collection"))
-    else {
-      content match {
+    else for {
+      _ <- auth(request, new URL(base, path).toString, Method.write)
+      f <- content match {
         //todo: arbitrarily for the moment we only allow a PUT of same type things graphs on graphs, and other on other
         case grc: GraphRwwContent[Rdf] => {
           rww.execute(for {
-               resrc <- getResource(URI(file))
-               x <- resrc match {
-                   case ldpr: LDPR[Rdf] =>  deleteResource(ldpr.location).flatMap(_ => createLDPR[Rdf](ldpr.location,Some(file),grc.graph))
-                   case _ =>                throw new Error("yoyo")
-                 }
-            } yield resrc.location)
+            resrc <- getResource(URI(file))
+            x <- resrc match {
+              case ldpr: LDPR[Rdf] => deleteResource(ldpr.location).flatMap(_ => createLDPR[Rdf](ldpr.location, Some(file), grc.graph))
+              case _ => throw new Error("yoyo")
+            }
+          } yield resrc.location)
         }
-        case BinaryRwwContent(tmpFile, mime)  => {
-         rww.execute(
-              for {
-                resrc <- getResource(URI(file))
-//                if (resrc.isInstanceOf[BinaryResource[Rdf]])
-              } yield {
-                val b = resrc.asInstanceOf[BinaryResource[Rdf]]
-                //todo: very BAD. This will block the agent, and so on long files break the collection.
-                //this needs to be sent to another agent, or it needs to be rethought
-                Enumerator.fromFile(tmpFile.file)(b.write)
-                resrc.location
-              })
+        case BinaryRwwContent(tmpFile, mime) => {
+          rww.execute(
+            for {
+              resrc <- getResource(URI(file))
+            //                if (resrc.isInstanceOf[BinaryResource[Rdf]])
+            } yield {
+              val b = resrc.asInstanceOf[BinaryResource[Rdf]]
+              //todo: very BAD. This will block the agent, and so on long files break the collection.
+              //this needs to be sent to another agent, or it needs to be rethought
+              Enumerator.fromFile(tmpFile.file)(b.write)
+              resrc.location
+            })
         }
         case _ => Future.failed(new Exception("cannot apply method - improve bug report"))
       }
-    }
+    } yield f
   }
 
 //    val res = store.execute(Command.PUT(LinkedDataResource(resourceURI, PointedGraph(resourceURI, model))))
@@ -105,11 +115,17 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
    * @param mode
    * @return
    */
-  def auth(request: RequestHeader, path: String, mode: Method.Value): Future[Unit] =
+  def auth(request: RequestHeader, path: String, mode: Method.Value): Future[Unit] = {
+    println(s"~~~~~> auth(_,$path,$mode")
     getAuthFor(URI(path), wacIt(mode)).flatMap { agents =>
+      println(s"~~~~> getAuthFor($path,$mode)=$agents")
       if (agents.contains(foaf.Agent)) Future.successful(())
+      else if ( List() == agents) {
+        Future.failed(AccessDenied(s"no agents allowed access with $mode on ${request.path}"))
+      }
       else {
         authn(request).flatMap { subject =>
+          println(s"~~~~~>authn($request) contains $subject")
           val a = subject.webIds.exists{ wid =>
              agents.contains(URI(wid.toString))
           }
@@ -122,6 +138,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
         }
       }
     }
+  }
 
 
   def get(request: RequestHeader, path: String): Future[NamedResource[Rdf]] = {
@@ -200,10 +217,14 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
     }
   }
 
-  def delete(path: String): Future[Unit] = {
+  def delete(request: RequestHeader): Future[Unit] = {
+    val path= request.path
     val (collection, file) = split(path)
     println(s"($collection, $file)")
-    rww.execute(deleteResource(URI(path)))
+    for {
+      _ <- auth(request,new URL(base,path).toString,Method.read)
+      e <- rww.execute(deleteResource(URI(path)))
+    } yield e
 //    rww.execute{
 //        for {
 //          x <- deleteResource(URI(file))

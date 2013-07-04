@@ -9,11 +9,11 @@ object ApplicationBuild extends Build {
 
     val appDependencies = Seq(
       "org.scalatest" % "scalatest_2.10" % "2.0.M6-SNAP8",
-      "org.w3" %% "banana-jena" % "2013_04_29-SNAPSHOT",
-      "org.w3" %% "banana-sesame" % "2013_04_29-SNAPSHOT",
-      "org.w3" %% "banana-rdf" % "2013_04_29-SNAPSHOT",
-      "org.w3" %% "plantain" % "2013_04_29-SNAPSHOT",
-      "org.w3" %% "ldp" % "2013_04_29-SNAPSHOT",
+      "org.w3" %% "banana-jena" % "2013_06_14-SNAPSHOT",
+      "org.w3" %% "banana-sesame" % "2013_06_14-SNAPSHOT",
+      "org.w3" %% "banana-rdf" % "2013_06_14-SNAPSHOT",
+      "org.w3" %% "plantain" % "2013_06_14-SNAPSHOT",
+      "org.w3" %% "ldp" % "2013_06_14-SNAPSHOT",
       "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
       "nu.validator.htmlparser" % "htmlparser" % "1.2.1",
       "org.scalaz" % "scalaz-core_2.10" % "7.0.0-RC1", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"

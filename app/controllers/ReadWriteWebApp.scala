@@ -34,8 +34,9 @@ import java.net.URL
 
 class ReadWriteWebApp(base: URL, path: Path)(implicit ops: RDFOps[Plantain],
             sparqlOps: SparqlOps[Plantain],
-            iterateeSelector: IterateeSelector[Plantain#Graph],
+            graphIterateeSelector: IterateeSelector[Plantain#Graph],
             sparqlIterateeSelector: IterateeSelector[Plantain#Query],
+            val sparqlUpdateSelector: IterateeSelector[Plantain#UpdateQuery],
             val wsClient: WebClient[Plantain],
             val graphWriterSelector: WriterSelector[org.w3.banana.plantain.Plantain#Graph],
             val solutionsWriterSelector: WriterSelector[Plantain#Solutions],
@@ -43,7 +44,8 @@ class ReadWriteWebApp(base: URL, path: Path)(implicit ops: RDFOps[Plantain],
 
 
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
-  implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain]()(ops,sparqlOps,iterateeSelector,sparqlIterateeSelector)
+  implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain]()(ops,sparqlOps,graphIterateeSelector,
+    sparqlIterateeSelector,sparqlUpdateSelector)
   val baseUri = ops.URI(base.toString)
 
   class LDPCActor(base: Plantain#URI, pathStr: Path) extends PlantainLDPCActor(base,pathStr) {
@@ -73,4 +75,4 @@ class ReadWriteWebApp(base: URL, path: Path)(implicit ops: RDFOps[Plantain],
 
 import plantain._
 
-object ReadWriteWebApp extends ReadWriteWebApp(plantain.rwwRoot,new File("test_www").toPath)
+object ReadWriteWebApp extends ReadWriteWebApp(plantain.rwwRoot,new File("test_www/").toPath.toAbsolutePath)

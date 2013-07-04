@@ -43,14 +43,15 @@ import play.api.libs.Files.TemporaryFile
 class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
                                 sparqlOps: SparqlOps[Rdf],
                                 graphSelector: IterateeSelector[Rdf#Graph],
-                                sparqlSelector: IterateeSelector[Rdf#Query])
+                                sparqlSelector: IterateeSelector[Rdf#Query],
+                                sparqlUpdateSelector: IterateeSelector[Rdf#UpdateQuery])
   extends BodyParser[RwwContent] {
 
   import play.api.mvc.Results._
   import play.api.mvc.BodyParsers.parse
 
   def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[Result,RwwContent]] =  {
-    if (rh.method == "GET" || rh.method == "HEAD") Done(Right(emptyContent), Empty)
+    if (rh.method == "GET" || rh.method == "HEAD" || rh.method == "OPTIONS") Done(Right(emptyContent), Empty)
     else if ( ! rh.headers.get("Content-Length").exists( Integer.parseInt(_) > 0 )) {
       Done(Right(emptyContent), Empty)
     } else rh.contentType.map { str =>
@@ -62,6 +63,10 @@ class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
         case graphSelector(iteratee) => iteratee().mapDone {
           case Failure(e) => Left(BadRequest("cought " + e))
           case Success(graph) => Right(GraphRwwContent(graph))
+        }
+        case sparqlUpdateSelector(iteratee) => iteratee().mapDone {
+          case Failure(e) => Left(BadRequest("cought " + e))
+          case Success(update) => Right(PatchRwwContent(update))
         }
         //todo: it would nice not to have to go through temporary files, but be able to pass on the iteratee
         //todo: on systems where the result may be on a remote file system this would be very important.
@@ -91,6 +96,8 @@ case object emptyContent extends RwwContent
 case class GraphRwwContent[Rdf<:RDF](graph: Rdf#Graph) extends RwwContent
 
 case class QueryRwwContent[Rdf<:RDF](query: Rdf#Query) extends RwwContent
+
+case class PatchRwwContent[Rdf<:RDF](query: Rdf#UpdateQuery) extends RwwContent
 
 case class BinaryRwwContent(file: TemporaryFile, mime: String) extends RwwContent
 
