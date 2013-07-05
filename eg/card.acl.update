@@ -1,7 +1,7 @@
 PREFIX foaf: <http://xmlns.com/foaf/0.1/> 
 PREFIX acl: <http://www.w3.org/ns/auth/acl#> 
 INSERT DATA {
-[] acl:accessTo <https://localhost:8443/2013/card#me> ;
+[] acl:accessTo <https://localhost:8443/2013/card> ;
    acl:mode acl:Read;
    acl:agentClass foaf:Agent .
 }

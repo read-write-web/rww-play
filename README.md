@@ -338,6 +338,14 @@ INSERT DATA {
 $ curl -X PATCH -k -i -H "Content-Type: application/sparql-update; utf-8"  --cert ../eg/test-localhost.pem:test --data-binary @../eg/card.acl.update https://localhost:8443/2013/card.acl
 ```
 
+It is now possible to read the card without authentication
+
+```bash
+curl -i -k  -H "Accept: text/turtle"  https://localhost:8443/2013/card
+curl: (56) SSL read: error:14094412:SSL routines:SSL3_READ_BYTES:sslv3 alert bad certificate, errno 0
+```
+
+
 create card
 ```bash
 $ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8" -H "Slug: card.acl"  --cert eg/test-localhost.pem:test  -d @eg/card-acl.ttl https://localhost:8443/2013/
