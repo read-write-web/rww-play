@@ -1,0 +1,4 @@
+@prefix wac: <http://www.w3.org/ns/auth/acl#> .
+
+<> wac:include <../.acl> .
+
