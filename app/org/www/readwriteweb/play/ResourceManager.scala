@@ -155,7 +155,16 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
           r <- createLDPR(uric,slug, content)
           git =  ( uric -- rdfs.member ->- r ).graph.toIterable
           _ <- updateLDPR(r,add=git)
-        } yield r
+          meta <- getMeta(r)
+          //locally we know we always have an ACL rel
+          //todo: but this should really be settable in turtle files. For example it may be much better
+          //todo: if every file in a directory just use the acl of the directory. So that would require the
+          //todo: collection to specify how to build up the acls.
+          aclg = ( meta.acl.get -- wac.include ->- URI(".acl") ).graph
+          _ <- updateLDPR(meta.acl.get,add=aclg.toIterable)
+        } yield {
+          r
+        }
       )
   }
 

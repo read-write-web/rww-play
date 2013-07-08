@@ -1,6 +1,6 @@
 package org.www.readwriteweb.play
 
-import play.api.mvc.{Results, Action, SimpleResult, ResponseHeader}
+import play.api.mvc._
 import org.w3.banana._
 import org.w3.banana.ldp._
 import play.api.mvc.Results._
@@ -8,17 +8,16 @@ import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
 import java.net.URLDecoder
 import play.api.libs.Files.TemporaryFile
-import scala.Some
 import org.www.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import play.api.http.Status._
+import play.api.libs.iteratee.Enumerator
 import org.w3.banana.ldp.AccessDenied
 import org.w3.banana.ldp.WrongTypeException
 import scala.Some
 import play.api.mvc.SimpleResult
 import org.w3.banana.ldp.ParentDoesNotExist
 import play.api.mvc.ResponseHeader
-import play.api.libs.iteratee.Enumerator
 
 object Method extends Enumeration {
   val read = Value
@@ -66,16 +65,21 @@ trait ReadWriteWeb[Rdf <: RDF]{
 
   def get(path: String) = Action { request =>
     System.out.println("in GET on resource <" + request.path + ">")
+    getAsync(request)
+  }
+
+
+  def getAsync(request: play.api.mvc.Request[AnyContent]): AsyncResult = {
     Async {
       val res = for {
-        namedRes <- rwwActor.get(request,request.path)
+        namedRes <- rwwActor.get(request, request.path)
       } yield {
-        val link = namedRes.acl map (acl=> ("Link" -> s"<${acl}>; rel=acl"))
+        val link = namedRes.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
         namedRes match {
           case ldpr: LDPR[Rdf] =>
             writerFor[Rdf#Graph](request).map {
-              wr => result(200, wr, Map.empty ++ link )(ldpr.graph)
-            }  getOrElse {
+              wr => result(200, wr, Map.empty ++ link)(ldpr.graph)
+            } getOrElse {
               play.api.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
                 request.headers.get(play.api.http.HeaderNames.ACCEPT))
             }
@@ -88,10 +92,18 @@ trait ReadWriteWeb[Rdf <: RDF]{
         }
       }
       res recover {
-        case nse: NoSuchElementException => NotFound(nse.getMessage+stackTrace(nse))
+        case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
         case auth: AccessDenied => Unauthorized(auth.message)
-        case e => ExpectationFailed(e.getMessage+"\n"+stackTrace(e))
+        case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
       }
+    }
+  }
+
+  def head(path: String) = Action { request =>
+    getAsync(request).transform { res =>
+    //Todo: this returns a Content-Length of 0, when it should either return none or the exact same as the original
+    //see: http://stackoverflow.com/questions/3854842/content-length-header-with-head-requests
+        SimpleResult[String](res.header, Enumerator(""))
     }
   }
 

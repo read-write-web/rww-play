@@ -186,17 +186,21 @@ Content-Length: 378
 The test_www directory starts with a few files to get you going
 
 ```bash
-$ cd test_www/
-$ ls -al
-total 48
-drwxr-xr-x   4 hjs  admin   340 30 Jun 14:28 .
-drwxr-xr-x  15 hjs  admin  1292  1 Jul 07:45 ..
--rw-r--r--   1 hjs  staff   218 30 Jun 14:22 .acl.ttl
--rw-r--r--   1 hjs  admin   118 30 Jun 14:27 .ttl
+$ cd test_www
+$  ls -al 
+total 80
+drwxr-xr-x   4 hjs  admin   476  8 Jul 11:36 .
+drwxr-xr-x  15 hjs  admin  1224  5 Jul 20:19 ..
+-rw-r--r--   1 hjs  staff   229  1 Jul 08:10 .acl.ttl
+-rw-r--r--   1 hjs  admin   118  8 Jul 11:36 .ttl
 lrwxr-xr-x   1 hjs  admin     8 27 Jun 20:29 card -> card.ttl
--rw-r--r--   1 hjs  admin   246 30 Jun 14:26 card.acl.ttl
+-rw-r--r--   1 hjs  admin   167  7 Jul 22:42 card.acl.ttl
 -rw-r--r--   1 hjs  admin   896 27 Jun 21:41 card.ttl
+lrwxr-xr-x   1 hjs  admin     9  8 Jul 11:36 couch -> couch.ttl
+-rw-r--r--   1 hjs  admin   118  8 Jul 11:36 couch.acl.ttl
+-rw-r--r--   1 hjs  admin  1159  8 Jul 11:36 couch.ttl
 -rw-r--r--   1 hjs  admin   102 27 Jun 22:32 index.ttl
+-rw-r--r--   1 hjs  admin   146  8 Jul 09:59 out.html
 drwxr-xr-x   2 hjs  admin   102 27 Jun 22:56 raw
 drwxr-xr-x   3 hjs  admin   204 28 Jun 12:51 test
 ```
@@ -356,23 +360,38 @@ Content-Length: 1037
 
 Next we can publish a couch surfing opportunity
 ```bash
-$ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8"  --cert eg/test-localhost.pem:test  -H "Slug: couch" -d @eg/couch.ttl https://localhost:8443/2013/
+$ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8"  --cert ../eg/test-localhost.pem:test  -H "Slug: couch" -d @../eg/couch.ttl https://localhost:8443/2013/
+HTTP/1.1 201 Created
+Location: https://localhost:8443/2013/couch
+Content-Length: 0
 ```
-Initially this is unreachable by any one ( should the acls perhaps always point with a wac:include to the directory acl by default? )
+We can find out about the ACL for this resource using HEAD ( OPTIONS would be better, but is not implemented yet )
+
 ```bash
-$ curl -k -i -X GET -H "Accept: application/rdf+xml" --cert eg/test-localhost.pem:test https://localhost:8443/2013/couch
+$ curl -X HEAD -k -i  -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
+HTTP/1.1 200 OK
+Link: <https://localhost:8443/2013/couch.acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 0
 ```
-So we add the couch acl
+So we add the couch acl which gives access to that information in addition to the default owner of the collection, 
+to two groups of people
+
 ```bash
-$ curl -v -X POST -k -i -H "Content-Type: text/turtle; utf-8"  -H "Slug: card" --cert eg/test-localhost.pem:test  -d @eg/couch-acl.ttl https://localhost:8443/2013/couch.acl
+$  curl -X PATCH -k -i -H "Content-Type: application/sparql-update; utf-8"  --cert ../eg/test-localhost.pem:test --data-binary @../eg/couch.acl.patch https://localhost:8443/2013/couch.acl
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=utf-8
+Content-Length: 9
+
+Succeeded
 ```
 This makes it available to the test user and the members of the WebID and OuiShare groups.
 ```bash
-$ curl -k -i -X GET -H "Accept: application/rdf+xml" --cert eg/test-localhost.pem:test https://localhost:8443/2013/couch
+$ curl -k -i -X GET -H "Accept: application/rdf+xml" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
 ```
 or in Turtle
 ```bash
-$  curl -k -i -X GET -H "Accept: text/turtle" --cert eg/test-localhost.pem:test https://localhost:8443/2013/couch
+$  curl -k -i -X GET -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
 ```
 
 ### Creating a WebID Certificate

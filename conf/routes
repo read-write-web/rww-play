@@ -23,6 +23,7 @@ POST    /2013/$file<.*>             controllers.ReadWriteWebApp.post(file)
 DELETE  /2013/$file<.*>             controllers.ReadWriteWebApp.delete(file)
 MKCOL   /2013/$file<.*>             controllers.ReadWriteWebApp.mkcol(file)
 PATCH   /2013/$file<.*>             controllers.ReadWriteWebApp.patch(file)
+HEAD    /2013/$file<.*>             controllers.ReadWriteWebApp.head(file)
 
 #GET     /srv/cors/about             controllers.CORSProxy.about()
 #GET     /srv/cors/                  controllers.CORSProxy.get(url: String)
