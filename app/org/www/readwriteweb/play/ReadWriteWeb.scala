@@ -11,6 +11,14 @@ import play.api.libs.Files.TemporaryFile
 import scala.Some
 import org.www.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
+import play.api.http.Status._
+import org.w3.banana.ldp.AccessDenied
+import org.w3.banana.ldp.WrongTypeException
+import scala.Some
+import play.api.mvc.SimpleResult
+import org.w3.banana.ldp.ParentDoesNotExist
+import play.api.mvc.ResponseHeader
+import play.api.libs.iteratee.Enumerator
 
 object Method extends Enumeration {
   val read = Value
@@ -203,6 +211,12 @@ trait ReadWriteWeb[Rdf <: RDF]{
       }
       future recover {
         case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
+        case e : WrongTypeException =>
+          //todo: the Allow methods should not be hardcoded.
+          SimpleResult(
+          ResponseHeader(METHOD_NOT_ALLOWED,Map("Allow"->"GET, OPTIONS, HEAD, PUT, PATCH")),
+          Enumerator(e.msg)
+        )
         case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
       }
     }

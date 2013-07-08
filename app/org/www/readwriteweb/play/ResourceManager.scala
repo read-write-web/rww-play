@@ -181,11 +181,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
            makeCollection(collection,slug,content)
       else makeLDPR(collection,g,slug)
     } else {
-      rww.execute {
-          for {
-            _ <- updateLDPR(URI(path),add=g.toIterable)
-          } yield URI(path)
-       }
+      Future.failed(WrongTypeException("POSTing on a LDPR that is not an LDPC is not defined")) //
     }
   }
 
@@ -202,7 +198,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
     val (collection, file) = split(path)
     println(s"postBinary($path, $slug, $tmpFile, $mime)")
     val ldpc = URI(collection)
-    if (""!=file) Future.failed(new Exception("Cannot only POST binary on a Collection"))
+    if (""!=file) Future.failed(WrongTypeException("Can only POST binary on a Collection"))
     else {
       val r = rww.execute {
         for {

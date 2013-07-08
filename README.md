@@ -262,6 +262,8 @@ _:node17ucdq7scx1 a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
     <http://www.w3.org/ns/auth/cert#modulus> "C13AB88098CF47FCE6B3463FC7E8762036154FE616B956544D50EE63133CC8748D692A00DAFF5331D2564BB1DD5AEF94636ED09EFFA9E776CA6B4A92022BB060BF18FC709936EF43D345289A7FD91C81801A921376D7BCC1C63BD3335FB385A01EC0B71877FCBD1E4525393CCD5F2922D68840945943A675CCAE245222E3EB99B87B180807002063CB78174C1605EA1ECFECF57264F7F60CD8C270175A1D8DD58DFC7D3C56DB273B0494B034EC185B09977CBB530E7E407206107A73CD4B49E17610559F2A81EA8E3F613C3D3C161C06FE5CB114A8522D20DED77CAAA8C761090022F9CD4AF2C8F21DF7CF05287E379225AEA6A3A6610D02C4A44AA7CEED2CC3"^^<http://www.w3.org/2001/XMLSchema#hexBinary> .
 ```
 
+Notice the `Link` header above. Every resource points to its ACL file in such a header.
+
 The client certificate in `../eg/test-localhost.pem` contains exactly the private key given in the above 
 cert as you can see by comparing the modulus and exponents in both representations. This
 is what allows the authentication to go through, using the (WebID over TLS protocol)[http://webid.info/spec/].
@@ -342,26 +344,16 @@ It is now possible to read the card without authentication
 
 ```bash
 curl -i -k  -H "Accept: text/turtle"  https://localhost:8443/2013/card
-curl: (56) SSL read: error:14094412:SSL routines:SSL3_READ_BYTES:sslv3 alert bad certificate, errno 0
-```
+HTTP/1.1 200 OK
+Link: <https://localhost:8443/2013/card.acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 1037
 
 
-create card
-```bash
-$ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8" -H "Slug: card.acl"  --cert eg/test-localhost.pem:test  -d @eg/card-acl.ttl https://localhost:8443/2013/
+<https://localhost:8443/2013/card#me> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
+    <http://xmlns.com/foaf/0.1/knows> <htt........
 ```
- GET ne marche pas
-```bash
-$ curl -k -i --cert eg/test-localhost.pem:test -X GET -H "Accept: text/turtle" https://localhost:8443/2013/card
-```
-append the triples using the deprecated POST onto the acl
-```bash
-$ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8" -H "Slug: card.acl"  --cert eg/test-localhost.pem:test  -d @eg/card-acl.ttl https://localhost:8443/2013/
-```
-it works:
-```bash
-$ curl -k -i --cert eg/test-localhost.pem:test -X GET -H "Accept: text/turtle" https://localhost:8443/2013/card
-```
+
 Next we can publish a couch surfing opportunity
 ```bash
 $ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8"  --cert eg/test-localhost.pem:test  -H "Slug: couch" -d @eg/couch.ttl https://localhost:8443/2013/
