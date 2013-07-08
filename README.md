@@ -394,6 +394,39 @@ or in Turtle
 $  curl -k -i -X GET -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
 ```
 
+It is then also possible to also use SPARQL queries on particular resources.
+(todo: find a better example)
+
+```bash
+$ cat ../eg/couch.sparql 
+PREFIX gr: <http://purl.org/goodrelations/v1#> 
+SELECT ?D
+WHERE {
+  [] a <http://bblfish.net/2013/05/10/couch#Surf>;
+     gr:description ?D .
+}
+
+$ curl -X POST -k -i -H "Content-Type: application/sparql-query; charset=UTF-8" --cert ../eg/test-localhost.pem:test --data-binary @../eg/couch.sparql https://localhost:8443/2013/couch
+HTTP/1.1 200 OK
+Content-Type: application/sparql-results+xml
+Content-Length: 337
+
+<?xml version='1.0' encoding='UTF-8'?>
+<sparql xmlns='http://www.w3.org/2005/sparql-results#'>
+    <head>
+        <variable name='D'/>
+    </head>
+    <results>
+        <result>
+            <binding name='D'>
+                <literal datatype='http://www.w3.org/2001/XMLSchema#string'>Comfortable couch in Artist Stables</literal>
+            </binding>
+        </result>
+    </results>
+</sparql>
+
+```
+
 ### Creating a WebID Certificate
 
 After starting your server you can point your browser to [http://localhost:9000/srv/certgen](http://localhost:9000/srv/certgen?webid=http%3A%2F%2Flocalhost%3A8443%2F2013%2Fcert%23me) or to [the service over https ](https://localhost:8443/srv/certgen?webid=http%3A%2F%2Flocalhost%3A8443%2F2013%2Fcert%23me) and create yourself a certificate. For testing purposes and in order to be able to work without the need for network connectivity use `http://localhost:8443/2013/cert#me'. The WebID Certificate will be signed by the agent with Distinguished Name "CN=WebID,O=∅" and added by your browser to its keychain.
@@ -439,27 +472,8 @@ such as [rdflib](https://github.com/linkeddata/rdflib.js)
 
 ### Todo
 
-Query support as shown below no longer works right now.
 
-```
-$ curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> ?p . } " -i http://localhost:9000/2013/card.ttl
-HTTP/1.1 200 OK
-Content-Type: application/sparql-results+xml
-Content-Length: 8799
-
-<?xml version="1.0"?>
-<sparql xmlns="http://www.w3.org/2005/sparql-results#">
-  <head>
-    <variable name="p"/>
-  </head>
-  <results>
-    <result>
-      <binding name="p">
-        <uri>http://richard.cyganiak.de/foaf.rdf#cygri</uri>
- ...
-```
-
-or if you would rather it return json 
+Query support returning json  does not seem to work
 
 ```
 curl -X POST -H "Content-Type: application/sparql-query; charset=UTF-8" -H "Accept: application/sparql-results+json" --data-binary "SELECT ?p WHERE { <http://bblfish.net/people/henry/card#me> <http://xmlns.com/foaf/0.1/knows> [ <http://xmlns.com/foaf/0.1/name> ?p ] . } " -i http://localhost:9000/2013/card.ttl

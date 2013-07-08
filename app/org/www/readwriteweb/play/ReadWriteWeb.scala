@@ -119,7 +119,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
     Async {
       def mk(graph: Option[Rdf#Graph]): Future[SimpleResult[String]] = {
         val path = correctedPath.toString.substring(coll.toString.length)
-        for (answer <- rwwActor.makeCollection(coll.toString,Some(path), graph))
+        for (answer <- rwwActor.makeCollection(request, coll.toString,Some(path), graph))
         yield {
           val res = Created("Created Collection at " + answer)
           if (request.path == correctedPath) res
@@ -173,7 +173,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
 
     def postGraph(request: play.api.mvc.Request[RwwContent], rwwGraph: Option[Rdf#Graph]): Future[SimpleResult[Results.EmptyContent]] = {
       for {
-        location <- rwwActor.postGraph(request.path,
+        location <- rwwActor.postGraph(request,
           request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
           rwwGraph
         )
@@ -190,7 +190,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
         }
         case rwwQuery: QueryRwwContent[Rdf] => {
           for {
-            answer <- rwwActor.postQuery(request.path, rwwQuery)
+            answer <- rwwActor.postQuery(request, request.path, rwwQuery)
           } yield {
             answer.fold(
               graph => writerFor[Rdf#Graph](request).map {
@@ -208,7 +208,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
         }
         case BinaryRwwContent(file: TemporaryFile, mime: String) => {
           for {
-            location <- rwwActor.postBinary(request.path,
+            location <- rwwActor.postBinary(request, request.path,
               request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
               file,
               MimeType(mime))
