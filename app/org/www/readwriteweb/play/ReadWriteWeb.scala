@@ -33,7 +33,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
 
   implicit def rwwBodyParser: RwwBodyParser[Rdf]
   implicit def ec: ExecutionContext
-
+  implicit def ops: RDFOps[Rdf]
   implicit def graphWriterSelector: WriterSelector[Rdf#Graph]
   implicit def solutionsWriterSelector: WriterSelector[Rdf#Solutions]
   implicit val boolWriterSelector: WriterSelector[Boolean] = BooleanWriter.selector
@@ -78,7 +78,10 @@ trait ReadWriteWeb[Rdf <: RDF]{
         namedRes match {
           case ldpr: LDPR[Rdf] =>
             writerFor[Rdf#Graph](request).map {
-              wr => result(200, wr, Map.empty ++ link)(ldpr.graph)
+              wr => {
+                import syntax._
+                result(200, wr, Map.empty ++ link)(ldpr.relativeGraph)
+              }
             } getOrElse {
               play.api.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
                 request.headers.get(play.api.http.HeaderNames.ACCEPT))

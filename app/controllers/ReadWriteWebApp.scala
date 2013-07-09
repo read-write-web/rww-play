@@ -32,7 +32,7 @@ import org.w3.banana.ldp.auth.{WACAuthZ, WebIDVerifier}
 import java.net.URL
 
 
-class ReadWriteWebApp(base: URL, path: Path)(implicit ops: RDFOps[Plantain],
+class ReadWriteWebApp(base: URL, path: Path)(implicit val ops: RDFOps[Plantain],
             sparqlOps: SparqlOps[Plantain],
             graphIterateeSelector: IterateeSelector[Plantain#Graph],
             sparqlIterateeSelector: IterateeSelector[Plantain#Query],
