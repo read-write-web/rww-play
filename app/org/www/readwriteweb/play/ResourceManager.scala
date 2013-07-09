@@ -170,8 +170,6 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
       x <- rww.execute(
         for {
           r <- createLDPR(uric, slug, content)
-          git = (uric -- rdfs.member ->- r).graph.toIterable
-          _ <- updateLDPR(r, add = git)
           meta <- getMeta(r)
           //locally we know we always have an ACL rel
           //todo: but this should really be settable in turtle files. For example it may be much better
@@ -233,7 +231,6 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
         x <- rww.execute {
           for {
             b <- createBinary(URI(path), slug, mime)
-            _ <- updateLDPR(ldpc, add = (ldpc -- rdfs.member ->- b.location).graph.toIterable)
           } yield {
             Enumerator.fromFile(tmpFile.file)(b.write)
             b.location

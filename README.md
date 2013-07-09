@@ -97,6 +97,8 @@ The [Auth](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/rea
 
 ## Linked Data Platform
 
+NOTE: Please skip this part for the moment... It has not been tested recently
+
 A very initial implementation of the (LDP)[http://www.w3.org/2013/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2013/
 
 First you can create a new resource with POST
@@ -188,22 +190,18 @@ The test_www directory starts with a few files to get you going
 ```bash
 $ cd test_www
 $  ls -al 
-total 80
-drwxr-xr-x   4 hjs  admin   476  8 Jul 11:36 .
-drwxr-xr-x  15 hjs  admin  1224  5 Jul 20:19 ..
+total 48
+drwxr-xr-x   4 hjs  admin   340  9 Jul 19:04 .
+drwxr-xr-x  15 hjs  admin  1224  9 Jul 19:04 ..
 -rw-r--r--   1 hjs  staff   229  1 Jul 08:10 .acl.ttl
--rw-r--r--   1 hjs  admin   118  8 Jul 11:36 .ttl
+-rw-r--r--   1 hjs  admin   109  9 Jul 19:04 .ttl
 lrwxr-xr-x   1 hjs  admin     8 27 Jun 20:29 card -> card.ttl
 -rw-r--r--   1 hjs  admin   167  7 Jul 22:42 card.acl.ttl
 -rw-r--r--   1 hjs  admin   896 27 Jun 21:41 card.ttl
-lrwxr-xr-x   1 hjs  admin     9  8 Jul 11:36 couch -> couch.ttl
--rw-r--r--   1 hjs  admin   118  8 Jul 11:36 couch.acl.ttl
--rw-r--r--   1 hjs  admin  1159  8 Jul 11:36 couch.ttl
 -rw-r--r--   1 hjs  admin   102 27 Jun 22:32 index.ttl
--rw-r--r--   1 hjs  admin   146  8 Jul 09:59 out.html
 drwxr-xr-x   2 hjs  admin   102 27 Jun 22:56 raw
 drwxr-xr-x   3 hjs  admin   204 28 Jun 12:51 test
-```
+``
 
 The symbolic links such as `card` distinguish the default resources that can be found by an http `GET`.
 They point to their default representation, in this case `card.ttl`, an rdf resource. Each resource
@@ -365,6 +363,21 @@ HTTP/1.1 201 Created
 Location: https://localhost:8443/2013/couch
 Content-Length: 0
 ```
+
+Now we can see that the LDP Container refers to the new resource.
+
+```bash
+$ curl -k -i -X GET -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/
+HTTP/1.1 200 OK
+Link: <https://localhost:8443/2013/.acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 119
+
+
+<> <http://www.w3.org/ns/ldp#created> <raw/> , <card> , <test/> , <couch> ;
+    a <http://www.w3.org/ns/ldp#Container> .
+```
+
 We can find out about the ACL for this resource using HEAD ( OPTIONS would be better, but is not implemented yet )
 
 ```bash
@@ -374,6 +387,8 @@ Link: <https://localhost:8443/2013/couch.acl>; rel=acl
 Content-Type: text/turtle
 Content-Length: 0
 ```
+( TODO: The Content-Length should not be 0 for HEAD. Bug in Play2.0 probably )
+
 So we add the couch acl which gives access to that information in addition to the default owner of the collection, 
 to two groups of people
 
@@ -425,6 +440,30 @@ Content-Length: 337
     </results>
 </sparql>
 
+```
+
+Finally if you no longer want the couch surfing opportunity to be published you can DELETE it.
+( It would be better to express that it was sold: DELETing resources on the Web is usually 
+bad practice: it breaks the links that other people set up to your services )
+
+```bash
+curl -k -i -X DELETE -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
+HTTP/1.1 200 OK
+Content-Length: 0
+```
+
+And so the resource no longer is listed in the LDPC
+
+```bash
+$ curl -k -i -X GET -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/
+HTTP/1.1 200 OK
+Link: <https://localhost:8443/2013/.acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 109
+
+
+<> a <http://www.w3.org/ns/ldp#Container> ;
+    <http://www.w3.org/ns/ldp#created> <card> , <raw/> , <test/> .
 ```
 
 ### Creating a WebID Certificate
