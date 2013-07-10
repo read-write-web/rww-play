@@ -126,10 +126,8 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
    * @return
    */
   def auth(request: PlayRequestHeader, path: String, mode: Method.Value): Future[Unit] = {
-    println(s"~~~~~> auth(_,$path,$mode")
     getAuthFor(URI(path), wacIt(mode)).flatMap {
       agents =>
-        println(s"~~~~> getAuthFor($path,$mode)=$agents")
         if (agents.contains(foaf.Agent)) Future.successful(())
         else if (List() == agents) {
           Future.failed(AccessDenied(s"no agents allowed access with $mode on ${request.path}"))
@@ -137,7 +135,6 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
         else {
           authn(request).flatMap {
             subject =>
-              println(s"~~~~~>authn($request) contains $subject")
               val a = subject.webIds.exists {
                 wid =>
                   agents.contains(URI(wid.toString))
@@ -196,7 +193,6 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
     // just on RWWPlay we can adopt the convention that if the object ends in a "/"
     // then it is a collection, anything else is not a collection
     val (collection, file) = split(request.path)
-    println(s"($collection, $file)")
     val g = content.getOrElse(emptyGraph)
     if ("" == file) {
       //todo: do we still need both createLDPR and createContainer if the type of action is determined by the content?
@@ -209,7 +205,6 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
   }
 
   def makeCollection(request: PlayRequestHeader, coll: String, slug: Option[String], content: Option[Rdf#Graph]): Future[Rdf#URI] = {
-    println(s"makeCollection($coll,$slug,...)")
     for {
       _ <- auth(request, new URL(base, request.path).toString, Method.write)
       x <- rww.execute {
@@ -231,7 +226,6 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
 
   def postBinary(request: PlayRequestHeader, path: String, slug: Option[String], tmpFile: TemporaryFile, mime: MimeType): Future[Rdf#URI] = {
     val (collection, file) = split(path)
-    println(s"postBinary($path, $slug, $tmpFile, $mime)")
     val ldpc = URI(collection)
     if ("" != file) Future.failed(WrongTypeException("Can only POST binary on a Collection"))
     else
@@ -253,7 +247,6 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
   def delete(request: PlayRequestHeader): Future[Unit] = {
     val path = request.path
     val (collection, file) = split(path)
-    println(s"($collection, $file)")
     for {
       _ <- auth(request, new URL(base, path).toString, Method.write)
       e <- rww.execute(deleteResource(URI(path)))

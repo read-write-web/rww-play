@@ -64,7 +64,6 @@ trait ReadWriteWeb[Rdf <: RDF]{
 
 
   def get(path: String) = Action { request =>
-    System.out.println("in GET on resource <" + request.path + ">")
     getAsync(request)
   }
 
@@ -186,7 +185,6 @@ trait ReadWriteWeb[Rdf <: RDF]{
     }
 
     Async {
-      System.out.println(s"post(${request.path})")
       val future = request.body match {
         case rwwGraph: GraphRwwContent[Rdf] => {
           postGraph(request, Some(rwwGraph.graph))
@@ -239,7 +237,6 @@ trait ReadWriteWeb[Rdf <: RDF]{
 
   def delete(path: String) = Action { request =>
     Async {
-      System.out.println(s"post(${request.path})")
       val future = for {
         _ <- rwwActor.delete(request)
       } yield {

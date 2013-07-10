@@ -39,9 +39,6 @@ object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
           //all this could be placed into a promise to be run by another actor if parsing takes too long
           if (feeder.feeder.needMoreInput()) {
             feeder.feeder.feedInput(bytes, 0, bytes.length)
-            System.out.print("received:");
-            System.out.write(bytes);
-            System.out.println("-----")
           } else {
             throw new Exception("ERROR: The feeder could not take any  more input for " + loc)
           }
