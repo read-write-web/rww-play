@@ -201,7 +201,7 @@ lrwxr-xr-x   1 hjs  admin     8 27 Jun 20:29 card -> card.ttl
 -rw-r--r--   1 hjs  admin   102 27 Jun 22:32 index.ttl
 drwxr-xr-x   2 hjs  admin   102 27 Jun 22:56 raw
 drwxr-xr-x   3 hjs  admin   204 28 Jun 12:51 test
-``
+```
 
 The symbolic links such as `card` distinguish the default resources that can be found by an http `GET`.
 They point to their default representation, in this case `card.ttl`, an rdf resource. Each resource
@@ -465,6 +465,25 @@ Content-Length: 109
 <> a <http://www.w3.org/ns/ldp#Container> ;
     <http://www.w3.org/ns/ldp#created> <card> , <raw/> , <test/> .
 ```
+
+To create a new container one just creates an LDP Resource that contains the triple `<> a ldp:Container`.
+
+```bash
+$ cat ../eg/newContainer.ttl 
+@prefix ldp: <http://www.w3.org/ns/ldp#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+<> a ldp:Container;
+   foaf:topic "A container for some type X of resources";
+   foaf:maker <../card#me> .
+
+$ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8"  --cert ../eg/test-localhost.pem:test -H "Slug: XDir" -d @../eg/newContainer.ttl https://localhost:8443/2013/
+HTTP/1.1 201 Created
+Location: https://localhost:8443/2013/XDir/
+Content-Length: 0
+```
+
+Note that directories can only be deleted if all `ldp:created` resources were previously deleted.
 
 ### Creating a WebID Certificate
 

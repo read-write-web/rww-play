@@ -41,7 +41,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
 
   import ops._
   import diesel._
-  import syntax.graphW
+  import syntax._
 
   import authz._
 
@@ -212,11 +212,20 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
     println(s"makeCollection($coll,$slug,...)")
     for {
       _ <- auth(request, new URL(base, request.path).toString, Method.write)
-      x <- rww.execute(createContainer(URI(coll), slug,
-        content.getOrElse(Graph.empty) union Graph(
-          Triple(URI(""), rdf.typ, ldp.Container)
-        )
-      ))
+      x <- rww.execute {
+        for {
+          c <- createContainer(URI(coll), slug,
+            content.getOrElse(Graph.empty) union Graph(Triple(URI(""), rdf.typ, ldp.Container))
+          )
+          meta <- getMeta(c)
+          //locally we know we always have an ACL rel
+          //todo: but this should really be settable in turtle files. For example it may be much better
+          //todo: if every file in a directory just use the acl of the directory. So that would require the
+          //todo: collection to specify how to build up the acls.
+          aclg = (meta.acl.get -- wac.include ->- URI("../.acl")).graph
+          _ <- updateLDPR(meta.acl.get, add = aclg.toIterable)
+        } yield c
+      }
     } yield x
   }
 
