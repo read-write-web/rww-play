@@ -60,130 +60,10 @@ $ Play20/play
 ```
 
 
-Usage 
------
+## Web Access Controled Linked Data
 
-## WebID test
-
-1. get yourself a WebID certificate ( e.g. [My-Profile](https://my-profile.eu/profile.php) will give you a nice one ), or use
-  the certgen service described above.
-2. Use the browser you got a certificate above to connect to [https://localhost:8443/test/webid/hello+world](https://localhost:8443/test/webid/eg). Your browser will request a certificate from you and return a (way to simple message) - more advanced versions of this server will show a lot more info... 
-
-The code to run this is a few lines in [Application](https://github.com/read-write-web/rww-play/blob/master/app/controllers/Application.scala#L17):
-
-```scala
-  import JenaConfig._
-  implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
-
-
-  val JenaWebIDAuthN = new WebIDAuthN[Jena]()
-
-  implicit val idGuard: IdGuard[Jena] = WebAccessControl[Jena](linkedDataCache)
-  def webReq(req: RequestHeader) : WebRequest[Jena] =
-    new PlayWebRequest[Jena](new WebIDAuthN[Jena],new URL("https://localhost:8443/"),meta _)(req)
-
-  // Authorizes anyone with a valid WebID
-  object WebIDAuth extends Auth[Jena](idGuard,webReq _)
-
- def webId(path: String) = WebIDAuth() { authFailure =>
-    Unauthorized("You are not authorized "+ authFailure)
-  }
-  { authReq =>
-      Ok("You are authorized for " + path + ". Your ids are: " + authReq.user)
-  }
-  ```
-
-The [Auth](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L33) class can be tuned for any type of authentication, by passing the relevant `authentication` and `acl` function to it.  The WebId Authentication code [WebIDAuthN](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/play/auth/WebIDAuthN.scala) is quite short and makes use of the `Claim`s monad to help isolate what is verified and what is not.
-
-## Linked Data Platform
-
-NOTE: Please skip this part for the moment... It has not been tested recently
-
-A very initial implementation of the (LDP)[http://www.w3.org/2013/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2013/
-
-First you can create a new resource with POST
-```bash
-$ curl -X POST -i  -H "Content-Type: text/turtle; utf-8"  -H "Slug: card" http://localhost:9000/2013/ -d @eg/card.ttl
-...
-HTTP/1.1 200 OK
-Location: /2013/card
-```
-
-This will then create a remote resource at the given location, in the above example
-`http://localhost:9000/2013/card`
-
-```bash
-$ curl  -i  -H "Accept: text/turtle"  http://localhost:9000/2013/card
-HTTP/1.1 200 OK
-Link: <http://localhost:9000/2013/card;acl>; rel=acl
-Content-Type: text/turtle
-Content-Length: 236
-
-<#i> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
-    <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
-
-<> <http://www.w3.org/2000/01/rdf-schema#member> <card> .
-```
-
-Then you can POST some more triples on that resource to APPEND to it,
-and you can GET it and DELETE it. 
-
-For example to append the triples in some file 'other.ttl' you can use. ( Note this has
-not been adopted by the LDP WG, though there is an issue open for it )
-
-```bash
-$ curl -i -X POST -H "Content-Type: text/turtle" http://localhost:9000/2013/card -d @eg/more.ttl
-```
-
-if you `GET` the `card` with curl as shown above, the server should now show your
-content with a few more relations. You can even fetch it in a different representation
-such as the older rdf/xml
-
-```bash
-$ curl -i -X GET -H "Accept: application/rdf+xml" http://localhost:9000/2013/card
-```
-
-finally if you wish to delete it you can run
-
-```bash
-$ curl -i -X DELETE http://localhost:9000/2013/card
-```
-
-A GET on that resource will from then on return an error.
-
-To make a collection you can use the MKCOL method as defined by [RFC4918: HTTP Extensions for WebDAV](http://tools.ietf.org/html/rfc4918#section-9.3)
-
-```bash
-$ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2013/pix/
-HTTP/1.1 201 Created
-```
-
-But the LDP way to do this is to POST a new container.
-
-```bash
-$ curl -i -X POST -H "Content-Type: text/turtle" -H "Slug: type" -H "Expect:" http://localhost:9000/2013/ -d @eg/newContainer.ttl 
-HTTP/1.1 201 Created
-Location: http://localhost:9000/2013/type
-Content-Length: 0
-```
-
-You can then GET the content of the container
-
-```bash
-HTTP/1.1 200 OK
-Link: <http://localhost:9000/2013/type;acl>; rel=acl
-Content-Type: text/turtle
-Content-Length: 378
-
-
-<http://localhost:9000//2013/> a <http://www.w3.org/ns/ldp#Container> ;
-    <http://xmlns.com/foaf/0.1/topic> "A container for some type X of resources"^^<http://www.w3.org/2001/XMLSchema#string> ;
-    <http://xmlns.com/foaf/0.1/maker> <http://localhost:9000/card#me> .
-
-<http://localhost:9000/2013/> <http://www.w3.org/2000/01/rdf-schema#member> <http://localhost:9000/2012/type> .
-```
-
-## Web Access Control with Linked Data
+An initial implementation of the [Linked Data Platform](http://www.w3.org/2013/ldp/hg/ldp.html) spec is implemented here. 
+It saves data to the `test_www` directory as files.
 
 The test_www directory starts with a few files to get you going
 
@@ -492,7 +372,132 @@ After starting your server you can point your browser to [http://localhost:9000/
 ( Todo: later we will add functionality to add create a local webid that also published the RDF )
 To make the WebID valid you will need to publish the relavant rdf at that document location as explained in [the WebID spec](http://www.w3.org/2005/Incubator/webid/spec/#publishing-the-webid-profile-document)
 
-### Secure LDP examples
+Under Construction 
+==================
+
+The sections below were working at one point but have not been tested recently.
+
+
+## WebID test
+
+1. get yourself a WebID certificate ( e.g. [My-Profile](https://my-profile.eu/profile.php) will give you a nice one ), or use
+  the certgen service described above.
+2. Use the browser you got a certificate above to connect to [https://localhost:8443/test/webid/hello+world](https://localhost:8443/test/webid/eg). Your browser will request a certificate from you and return a (way to simple message) - more advanced versions of this server will show a lot more info... 
+
+The code to run this is a few lines in [Application](https://github.com/read-write-web/rww-play/blob/master/app/controllers/Application.scala#L17):
+
+```scala
+  import JenaConfig._
+  implicit val JenaWebIDVerifier = new WebIDVerifier[Jena]()
+
+
+  val JenaWebIDAuthN = new WebIDAuthN[Jena]()
+
+  implicit val idGuard: IdGuard[Jena] = WebAccessControl[Jena](linkedDataCache)
+  def webReq(req: RequestHeader) : WebRequest[Jena] =
+    new PlayWebRequest[Jena](new WebIDAuthN[Jena],new URL("https://localhost:8443/"),meta _)(req)
+
+  // Authorizes anyone with a valid WebID
+  object WebIDAuth extends Auth[Jena](idGuard,webReq _)
+
+ def webId(path: String) = WebIDAuth() { authFailure =>
+    Unauthorized("You are not authorized "+ authFailure)
+  }
+  { authReq =>
+      Ok("You are authorized for " + path + ". Your ids are: " + authReq.user)
+  }
+  ```
+
+The [Auth](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L33) class can be tuned for any type of authentication, by passing the relevant `authentication` and `acl` function to it.  The WebId Authentication code [WebIDAuthN](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/play/auth/WebIDAuthN.scala) is quite short and makes use of the `Claim`s monad to help isolate what is verified and what is not.
+
+## Linked Data Platform
+
+NOTE: Please skip this part for the moment... It has not been tested recently
+
+A very initial implementation of the (LDP)[http://www.w3.org/2013/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2013/
+
+First you can create a new resource with POST
+```bash
+$ curl -X POST -i  -H "Content-Type: text/turtle; utf-8"  -H "Slug: card" http://localhost:9000/2013/ -d @eg/card.ttl
+...
+HTTP/1.1 200 OK
+Location: /2013/card
+```
+
+This will then create a remote resource at the given location, in the above example
+`http://localhost:9000/2013/card`
+
+```bash
+$ curl  -i  -H "Accept: text/turtle"  http://localhost:9000/2013/card
+HTTP/1.1 200 OK
+Link: <http://localhost:9000/2013/card;acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 236
+
+<#i> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
+    <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
+
+<> <http://www.w3.org/2000/01/rdf-schema#member> <card> .
+```
+
+Then you can POST some more triples on that resource to APPEND to it,
+and you can GET it and DELETE it. 
+
+For example to append the triples in some file 'other.ttl' you can use. ( Note this has
+not been adopted by the LDP WG, though there is an issue open for it )
+
+```bash
+$ curl -i -X POST -H "Content-Type: text/turtle" http://localhost:9000/2013/card -d @eg/more.ttl
+```
+
+if you `GET` the `card` with curl as shown above, the server should now show your
+content with a few more relations. You can even fetch it in a different representation
+such as the older rdf/xml
+
+```bash
+$ curl -i -X GET -H "Accept: application/rdf+xml" http://localhost:9000/2013/card
+```
+
+finally if you wish to delete it you can run
+
+```bash
+$ curl -i -X DELETE http://localhost:9000/2013/card
+```
+
+A GET on that resource will from then on return an error.
+
+To make a collection you can use the MKCOL method as defined by [RFC4918: HTTP Extensions for WebDAV](http://tools.ietf.org/html/rfc4918#section-9.3)
+
+```bash
+$ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2013/pix/
+HTTP/1.1 201 Created
+```
+
+But the LDP way to do this is to POST a new container.
+
+```bash
+$ curl -i -X POST -H "Content-Type: text/turtle" -H "Slug: type" -H "Expect:" http://localhost:9000/2013/ -d @eg/newContainer.ttl 
+HTTP/1.1 201 Created
+Location: http://localhost:9000/2013/type
+Content-Length: 0
+```
+
+You can then GET the content of the container
+
+```bash
+HTTP/1.1 200 OK
+Link: <http://localhost:9000/2013/type;acl>; rel=acl
+Content-Type: text/turtle
+Content-Length: 378
+
+
+<http://localhost:9000//2013/> a <http://www.w3.org/ns/ldp#Container> ;
+    <http://xmlns.com/foaf/0.1/topic> "A container for some type X of resources"^^<http://www.w3.org/2001/XMLSchema#string> ;
+    <http://xmlns.com/foaf/0.1/maker> <http://localhost:9000/card#me> .
+
+<http://localhost:9000/2013/> <http://www.w3.org/2000/01/rdf-schema#member> <http://localhost:9000/2012/type> .
+```
+
 
 
 For Web Access Control with [WebID](http://webid.info/) you have to start play in secure mode ( see above ) and  create a WebID.
