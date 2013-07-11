@@ -116,7 +116,7 @@ $ cat .acl.ttl
 Since card's acl includes the above directory acl only `<card#me> can read that file.
 
 ```bash
-curl -i -k  -H "Accept: text/turtle"  https://localhost:8443/2013/card
+$ curl -i -k  -H "Accept: text/turtle"  https://localhost:8443/2013/card
 curl: (56) SSL read: error:14094412:SSL routines:SSL3_READ_BYTES:sslv3 alert bad certificate, errno 0
 ```
 
