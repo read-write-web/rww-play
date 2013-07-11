@@ -26,7 +26,7 @@ object ApplicationBuild extends Build {
     val main = play.Project(appName, appVersion, appDependencies).settings(
       resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
       resolvers += "sesame-repo-releases" at "http://repo.aduna-software.org/maven2/releases",
-//      resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
+      resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
       scalaVersion := "2.10.1",
       javacOptions ++= Seq("-source","1.7", "-target","1.7")
   )
