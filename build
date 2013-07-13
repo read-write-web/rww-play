@@ -1,0 +1,8 @@
+#!/bin/sh
+
+git submodule update --init --recursive
+cd Play20
+PLAY_VERSION="2-TLS-`git log -n 1 --pretty=format:%H`"
+cd ..
+wget http://bblfish.net/work/repo/builds/Play2/play-${PLAY_VERSION}.tar.bz2
+tar -xjf play-${PLAY_VERSION}.tar.bz2
