@@ -63,7 +63,9 @@ $ Play20/play
 ## Web Access Controled Linked Data
 
 An initial implementation of the [Linked Data Platform](http://www.w3.org/2013/ldp/hg/ldp.html) spec is implemented here. 
-It saves data to the `test_www` directory as files.
+The same way as the [Apache httpd server](http://httpd.apache.org/) it servers resource from the file system and maps
+them to the web. 
+By default we map the `test_www` directory's content to [http://localhost:8443/2013/](http://localhost:8443/2013/).
 
 The test_www directory starts with a few files to get you going
 
@@ -83,14 +85,30 @@ drwxr-xr-x   2 hjs  admin   102 27 Jun 22:56 raw
 drwxr-xr-x   3 hjs  admin   204 28 Jun 12:51 test
 ```
 
-The symbolic links such as `card` distinguish the default resources that can be found by an http `GET`.
-They point to their default representation, in this case `card.ttl`, an rdf resource. Each resource
-also comes with a Access Control List, in this example `card.acl.ttl`. Directories also have their access
-control list which is published in a file named `.acl.ttl`.  These two conventions are provisional implementation
-decisions, and improvements are to be expected here .
+All files with the same initial name up to the `.` are considered to work together,
+(and in the current implementation are taken care of by the same agent).
+
+Symbolic links are useful in that they:
+ - allow one to write and follow linked data that works on the file system without needing to name files by their extensions. For example
+a statement such as `[] wac:agent <card#me>` can work on the file system just as well as on the web.
+ - they guide the web agent to which the default representation should be
+ - currently they also help the web agent decide which are the resources it should serve.
+
+There are three types of resources in this directory:
+ + The symbolic links such as `card` distinguish the default resources that can be found by an http `GET` on
+[http://localhost:8443/2013/card](http://localhost:8443/2013/card). Above
+the `card -> card.ttl` shows that card has a default [turtle](http://www.w3.org/TR/turtle/) representation.
+ + Each resource also comes with a [Web Access Control List](http://www.w3.org/wiki/WebAccessControl), in this 
+example `card.acl.ttl`, which set access control restrictions on resources on the file system. 
+ + Directories store extra data (in addition to their contents) in the `.ttl` file. (TODO: not quite working)
+ + Directories also have their access control list which are published in a file named `.acl.ttl`.  
+
+These conventions are provisional implementation decisions, and improvements are to be expected here .
+
+Let us look at some of these files in more detail
 
 The acl for `card` just includes the acl for the directory/collection .
-
+TODO: `wac:include` has not yet been defined in the [Web Access Control Ontology](http://www.w3.org/ns/auth/acl#)
 ```bash
 $ cat card.acl.ttl 
 @prefix wac: <http://www.w3.org/ns/auth/acl#> .
