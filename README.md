@@ -108,7 +108,7 @@ These conventions are provisional implementation decisions, and improvements are
 Let us look at some of these files in more detail
 
 The acl for `card` just includes the acl for the directory/collection .
-TODO: `wac:include` has not yet been defined in the [Web Access Control Ontology](http://www.w3.org/ns/auth/acl#)
+(TODO: `wac:include` has not yet been defined in the [Web Access Control Ontology](http://www.w3.org/ns/auth/acl#))
 ```bash
 $ cat card.acl.ttl 
 @prefix wac: <http://www.w3.org/ns/auth/acl#> .
@@ -131,7 +131,9 @@ $ cat .acl.ttl
    acl:agent <card#me> .  
 ```
 
-Since card's acl includes the above directory acl only `<card#me> can read that file.
+Since card's acl includes the above directory acl only `<card#me>` can read that file
+The following `curl` command does not specify the public and private keys to use for
+authentication and so fails:
 
 ```bash
 $ curl -i -k  -H "Accept: text/turtle"  https://localhost:8443/2013/card
