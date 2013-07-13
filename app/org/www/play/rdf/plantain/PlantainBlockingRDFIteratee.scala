@@ -43,6 +43,6 @@ class PlantainBlockingRDFIteratee(implicit ec: ExecutionContext)  {
   val turtleSelector = IterateeSelector[Plantain#Graph, Turtle](Syntax.Turtle,TurtleIteratee)
 
   implicit val BlockingIterateeSelector: IterateeSelector[Plantain#Graph] =
-    rdfxmlSelector combineWith turtleSelector
+    turtleSelector combineWith rdfxmlSelector
 
 }

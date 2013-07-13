@@ -2,19 +2,17 @@ package controllers
 
 import akka.actor.ActorSystem
 import concurrent.ExecutionContext
-import org.w3.banana.jena.Jena
-import org.www.play.auth._
 import org.www.play.rdf.IterateeSelector
-import org.www.play.rdf.jena.JenaAsync
 import org.w3.banana.ldp.{WSClient, WebClient}
+import org.w3.banana._
+import scala.Some
 
 //import org.www.readwriteweb.play.{IterateeLDCache, LinkedDataCache}
 //import org.www.play.auth.WebAccessControl
 import play.api.Logger
 import java.net.URL
-import org.w3.banana.plantain.{Plantain}
+import org.w3.banana.plantain.Plantain
 import org.www.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
-import org.www.play.rdf.sesame.SesameSparqlQueryIteratee
 
 /**
  * gather some common setup values
@@ -92,10 +90,11 @@ object plantain extends Setup {
   type Rdf = Plantain
 
   implicit val ops = Plantain.ops
-  import ops._
   implicit val sparqlOps = Plantain.sparqlOps
   val blockingIteratee = new PlantainBlockingRDFIteratee
-  implicit val writerSelector = Plantain.rdfWriterSelector
+  implicit val writerSelector : RDFWriterSelector[Plantain] =
+     RDFWriterSelector[Plantain, Turtle] combineWith RDFWriterSelector[Plantain, RDFXML]
+
   implicit val solutionsWriterSelector = Plantain.solutionsWriterSelector
 
   //we don't have an iteratee selector for Plantain

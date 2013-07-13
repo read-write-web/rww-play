@@ -37,7 +37,7 @@ Getting going
  $ cd ../..
 ```
 
-* From the home directory of this project, start the previously compiled Play2.0 server you can run play on `http` port 9000 
+* From the home directory of this project, start the previously compiled Play2.0 server you can run play on `http` port 9000 [TODO: Currently RWWPlay won't work correctly with non TLS Ports, as it uses client certificates for auth]
 
 ```bash
 $ Play20/play
@@ -137,7 +137,7 @@ that file. The following [curl](http://curl.haxx.se/docs/) command does not spec
 the public and private keys to use for authentication and so fails:
 
 ```bash
-$ curl -i -k  -H "Accept: text/turtle"  https://localhost:8443/2013/card
+$ curl -i -k https://localhost:8443/2013/card
 curl: (56) SSL read: error:14094412:SSL routines:SSL3_READ_BYTES:sslv3 alert bad certificate, errno 0
 ```
 
@@ -149,7 +149,7 @@ Requesting the same resource with a `curl` that knows which client certificate t
 goes through.
 
 ```bash
-$ curl -i -k --cert ../eg/test-localhost.pem:test  -H "Accept: text/turtle"  https://localhost:8443/2013/card
+$ curl -i -k --cert ../eg/test-localhost.pem:test  https://localhost:8443/2013/card
 HTTP/1.1 200 OK
 Link: <https://localhost:8443/2013/card.acl>; rel=acl
 Content-Type: text/turtle
@@ -247,7 +247,7 @@ $ curl -X PATCH -k -i --data-binary @../eg/card.acl.update -H "Content-Type: app
 It is now possible to read the card without authentication
 
 ```bash
-curl -i -k  -H "Accept: text/turtle"  https://localhost:8443/2013/card
+$ curl -i -k https://localhost:8443/2013/card
 HTTP/1.1 200 OK
 Link: <https://localhost:8443/2013/card.acl>; rel=acl
 Content-Type: text/turtle
@@ -273,7 +273,7 @@ We can now look at the contents of the [https://localhost:8443/2013/](https://lo
 should see - and do - the new `couch` resource listed as having been created by ldp.
 
 ```bash
-$ curl -k -i -X GET -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/
+$ curl -k -i -X GET --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/
 HTTP/1.1 200 OK
 Link: <https://localhost:8443/2013/.acl>; rel=acl
 Content-Type: text/turtle
@@ -287,7 +287,7 @@ Content-Length: 119
 We can find out about the ACL for this resource using HEAD (TODO: OPTIONS would be better, but is not implemented yet )
 
 ```bash
-$ curl -X HEAD -k -i  -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
+$ curl -X HEAD -k -i --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
 HTTP/1.1 200 OK
 Link: <https://localhost:8443/2013/couch.acl>; rel=acl
 Content-Type: text/turtle
@@ -306,17 +306,18 @@ Content-Length: 9
 
 Succeeded
 ```
-This makes it available to the test user and the members of the WebID and OuiShare groups.
+This makes it available to the test user and the members of the WebID and OuiShare groups. If you have a WebID then try
+adding yours and test it. You can also request different formats by changing the `Accept:` header such as with the following request for RDF/XML
 ```bash
 $ curl -k -i -X GET -H "Accept: application/rdf+xml" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
 ```
-or in Turtle
+or if you  prefer rdf/xml over turtle as described by the [Content Negotiation section](http://www.w3.org/Protocols/rfc2616/rfc2616-sec12.html#sec12) of the HTTP1.1 spec:
 ```bash
-$  curl -k -i -X GET -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
+$ curl -k -i -X GET -H "Accept:application/rdf+xml;q=0.9,text/turtle;q=0.7" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
 ```
 
-It is then also possible to also use SPARQL queries on particular resources.
-(todo: find a better example)
+It is then possible to also use [SPARQL queries](http://www.w3.org/TR/sparql11-query/) on particular resources.
+(TODO: find a better example)
 
 ```bash
 $ cat ../eg/couch.sparql 
@@ -348,8 +349,8 @@ Content-Length: 337
 
 ```
 
-Finally if you no longer want the couch surfing opportunity to be published you can DELETE it.
-( It would be better to express that it was sold: DELETing resources on the Web is usually 
+Finally if you no longer want the couch surfing opportunity to be published you can `DELETE` it.
+( It would be better to express that it was sold: `DELETE`ing resources on the Web is usually 
 bad practice: it breaks the links that other people set up to your services )
 
 ```bash
@@ -361,7 +362,7 @@ Content-Length: 0
 And so the resource no longer is listed in the LDPC
 
 ```bash
-$ curl -k -i -X GET -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/
+$ curl -k -i -X GET --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/
 HTTP/1.1 200 OK
 Link: <https://localhost:8443/2013/.acl>; rel=acl
 Content-Type: text/turtle
@@ -454,7 +455,7 @@ This will then create a remote resource at the given location, in the above exam
 `http://localhost:9000/2013/card`
 
 ```bash
-$ curl  -i  -H "Accept: text/turtle"  http://localhost:9000/2013/card
+$ curl  -i http://localhost:9000/2013/card
 HTTP/1.1 200 OK
 Link: <http://localhost:9000/2013/card;acl>; rel=acl
 Content-Type: text/turtle
@@ -539,7 +540,7 @@ Using the command line tool `curl` the following command fetches Dean Allemang's
 and returns it as Turtle with the needed CORS headers.
 
 ```bash
-$ curl -s -i -H "Accept: text/turtle" -H "Origin: http://tricks.js"  "http://localhost:9000/srv/cors?url=http://www.topquadrant.com/people/dallemang/foaf.rdf" 
+$ curl -s -i -H "Accept: text/turtle" -H "Origin: http://tricks.js"  "http://localhost:9000/srv/cors?url=http://www.topquadrant.com/people/dallemang/foaf.rdf"
 HTTP/1.1 200 OK
 Access-Control-Allow-Origin: http://tricks.js
 Last-Modified: Tue, 06 Jan 2009 16:37:29 GMT
