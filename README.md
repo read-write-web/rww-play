@@ -131,9 +131,9 @@ $ cat .acl.ttl
    acl:agent <card#me> .  
 ```
 
-Since card's acl includes the above directory acl only `<card#me>` can read that file
-The following `curl` command does not specify the public and private keys to use for
-authentication and so fails:
+Since `card`'s acl includes only the above directory acl,  `<card#me>` can read 
+that file. The following [curl](http://curl.haxx.se/docs/) command does not specify 
+the public and private keys to use for authentication and so fails:
 
 ```bash
 $ curl -i -k  -H "Accept: text/turtle"  https://localhost:8443/2013/card
@@ -229,17 +229,18 @@ Certificate:
 
 We would of course like to make the card world readable so that the certificate
 can be used to login to other servers too. To do this the user `<card#me>` can
-append to the `<card.acl.ttl>` file a world readable auth
+append to the `<card.acl.ttl>` file an authorization making `card` world readable,
+using an obvious subset of [SPARQL Update](http://www.w3.org/TR/sparql11-update/)
 
 ```bash
 $ cat ../eg/card.acl.update 
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 INSERT DATA {
-[] acl:accessTo <https://localhost:8443/2013/card#me> ;
+[] acl:accessTo <https://localhost:8443/2013/card> ;
    acl:mode acl:Read;
    acl:agentClass foaf:Agent .
 }
-$ curl -X PATCH -k -i -H "Content-Type: application/sparql-update; utf-8"  --cert ../eg/test-localhost.pem:test --data-binary @../eg/card.acl.update https://localhost:8443/2013/card.acl
+$ curl -X PATCH -k -i --data-binary @../eg/card.acl.update -H "Content-Type: application/sparql-update; utf-8"  --cert ../eg/test-localhost.pem:test  https://localhost:8443/2013/card.acl
 ```
 
 It is now possible to read the card without authentication
@@ -256,7 +257,8 @@ Content-Length: 1037
     <http://xmlns.com/foaf/0.1/knows> <htt........
 ```
 
-Next we can publish a couch surfing opportunity
+Next we can publish a couch surfing opportunity using [HTTP's POST](http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.5) method  [as explained by the LDP spec](https://dvcs.w3.org/hg/ldpwg/raw-file/default/ldp.html#ldpc-HTTP_POST)
+
 ```bash
 $ curl -X POST -k -i -H "Content-Type: text/turtle; utf-8"  --cert ../eg/test-localhost.pem:test  -H "Slug: couch" -d @../eg/couch.ttl https://localhost:8443/2013/
 HTTP/1.1 201 Created
@@ -264,7 +266,10 @@ Location: https://localhost:8443/2013/couch
 Content-Length: 0
 ```
 
-Now we can see that the LDP Container refers to the new resource.
+The `Location:` header in the above response tells us that the name of the created resource is [https://localhost:8443/2013/couch](https://localhost:8443/2013/couch). 
+
+We can now look at the contents of the [https://localhost:8443/2013/](https://localhost:8443/2013/) collection, where we
+should see - and do - the new `couch` resource listed as having been created by ldp.
 
 ```bash
 $ curl -k -i -X GET -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/
@@ -278,7 +283,7 @@ Content-Length: 119
     a <http://www.w3.org/ns/ldp#Container> .
 ```
 
-We can find out about the ACL for this resource using HEAD ( OPTIONS would be better, but is not implemented yet )
+We can find out about the ACL for this resource using HEAD (TODO: OPTIONS would be better, but is not implemented yet )
 
 ```bash
 $ curl -X HEAD -k -i  -H "Accept: text/turtle" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
