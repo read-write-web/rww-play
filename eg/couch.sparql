@@ -1,0 +1,6 @@
+PREFIX gr: <http://purl.org/goodrelations/v1#> 
+SELECT ?D
+WHERE {
+  [] a <http://bblfish.net/2013/05/10/couch#Surf>;
+     gr:description ?D .
+}

@@ -117,9 +117,10 @@ $ cat card.acl.ttl
 <> wac:include <.acl> .
 ```
 
-The acl for the directoy allows access to all resources in the subdirectories of
+The acl for the directory allows access to all resources in the subdirectories of
 `test_www` when accessed from the web as `https://localhost:8443/2013/` only to
-the user `<https://localhost:8443/2013/card#me>`
+the user authenticated as `<https://localhost:8443/2013/card#me>`. (TODO: wac:regex
+is not defined in it's namespace - requires standardisation.)
 
 ```bash
 $ cat .acl.ttl 
