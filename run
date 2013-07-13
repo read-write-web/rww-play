@@ -1,3 +1,13 @@
-#/bin/sh
+#/bin/sh -x
 
-play-2-TLS*/play "run  -Dhttps.port=8443 -Dhttps.trustStore=noCA" 
+cd Play20
+PLAY_VERSION="2-TLS-`git log -n 1 --pretty=format:%H`"
+cd ..
+PLAY=play-$PLAY_VERSION/play 
+if [ ! -x $PLAY ]
+then
+ ./build
+fi
+
+$PLAY "run  -Dhttps.port=8443 -Dhttps.trustStore=noCA" 
+

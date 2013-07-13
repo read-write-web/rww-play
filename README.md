@@ -16,16 +16,25 @@ We use [Travis CI](http://travis-ci.org/) to verify the build: [![Build Status](
 Getting going
 -------------
 
+
 * You need Java 7 at least - the official Oracle JVM or another one based on [the GPLed code](http://openjdk.java.net/): removing the dependency on Oracle's JVM will require [publishing of the GPLed java security libs](http://stackoverflow.com/questions/12982595/openjdk-sun-security-libs-on-maven)
 * clone [this project](https://github.com/read-write-web/rww-play) 
 
 ```bash
  $ git clone git://github.com/read-write-web/rww-play.git 
 ```
+=== The short version ===
 
-* You can then get the version of play that corresponds with the release of play above by either
- * downloading a pre-compiled version from [bblfish's Play20-TLS repository](http://bblfish.net/work/repo/builds/Play2/). The version of play should match the version linked to from the submodule `Play2.0` inside the repository.
- * compile the [bblfish's TLS branch of Play 2.0](https://github.com/bblfish/Play20) that is available as a [submodule](http://git-scm.com/book/en/Git-Tools-Submodules) in the cloned repository as follows:
+In the `rww-play` home directory, run the `run` bash script. It will download a precompiled tuned 
+version of play, build the application, and run it
+
+```bash
+$ ./run
+```
+
+=== The longer version ===
+
+Compile the [bblfish's TLS branch of Play 2.0](https://github.com/bblfish/Play20) that is available as a [submodule](http://git-scm.com/book/en/Git-Tools-Submodules) in the cloned repository as follows:
 
 ```
  $ git submodule init
@@ -104,6 +113,10 @@ example `card.acl.ttl`, which set access control restrictions on resources on th
  + Directories also have their access control list which are published in a file named `.acl.ttl`.  
 
 These conventions are provisional implementation decisions, and improvements are to be expected here .
+(TODO:
+ - updates to the file system are not reflected yet in the server
+ - allow symbolic links to point to different default formats
+)
 
 Let us look at some of these files in more detail
 
@@ -149,20 +162,20 @@ Requesting the same resource with a `curl` that knows which client certificate t
 goes through.
 
 ```bash
-$ curl -i -k --cert ../eg/test-localhost.pem:test  https://localhost:8443/2013/card
+$ curl -i -k --cert ../eg/test-localhost.pem:test   https://localhost:8443/2013/card
 HTTP/1.1 200 OK
 Link: <https://localhost:8443/2013/card.acl>; rel=acl
 Content-Type: text/turtle
-Content-Length: 1037
+Content-Length: 1005
 
 
-<https://localhost:8443/2013/card#me> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
-    <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> ;
-    <http://www.w3.org/ns/auth/cert#key> _:node17ucdq7scx1 .
+<#me> <http://www.w3.org/ns/auth/cert#key> _:node17vcshtjbx1 ;
+	<http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
+	<http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
 
-_:node17ucdq7scx1 a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
-    <http://www.w3.org/ns/auth/cert#exponent> "65537"^^<http://www.w3.org/2001/XMLSchema#integer> ;
-    <http://www.w3.org/ns/auth/cert#modulus> "C13AB88098CF47FCE6B3463FC7E8762036154FE616B956544D50EE63133CC8748D692A00DAFF5331D2564BB1DD5AEF94636ED09EFFA9E776CA6B4A92022BB060BF18FC709936EF43D345289A7FD91C81801A921376D7BCC1C63BD3335FB385A01EC0B71877FCBD1E4525393CCD5F2922D68840945943A675CCAE245222E3EB99B87B180807002063CB78174C1605EA1ECFECF57264F7F60CD8C270175A1D8DD58DFC7D3C56DB273B0494B034EC185B09977CBB530E7E407206107A73CD4B49E17610559F2A81EA8E3F613C3D3C161C06FE5CB114A8522D20DED77CAAA8C761090022F9CD4AF2C8F21DF7CF05287E379225AEA6A3A6610D02C4A44AA7CEED2CC3"^^<http://www.w3.org/2001/XMLSchema#hexBinary> .
+_:node17vcshtjbx1 a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
+	<http://www.w3.org/ns/auth/cert#exponent> "65537"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+	<http://www.w3.org/ns/auth/cert#modulus> "C13AB88098CF47FCE6B3463FC7E8762036154FE616B956544D50EE63133CC8748D692A00DAFF5331D2564BB1DD5AEF94636ED09EFFA9E776CA6B4A92022BB060BF18FC709936EF43D345289A7FD91C81801A921376D7BCC1C63BD3335FB385A01EC0B71877FCBD1E4525393CCD5F2922D68840945943A675CCAE245222E3EB99B87B180807002063CB78174C1605EA1ECFECF57264F7F60CD8C270175A1D8DD58DFC7D3C56DB273B0494B034EC185B09977CBB530E7E407206107A73CD4B49E17610559F2A81EA8E3F613C3D3C161C06FE5CB114A8522D20DED77CAAA8C761090022F9CD4AF2C8F21DF7CF05287E379225AEA6A3A6610D02C4A44AA7CEED2CC3"^^<http://www.w3.org/2001/XMLSchema#hexBinary> .
 ```
 
 Notice the `Link` header above. Every resource points to its ACL file in such a header.
@@ -251,11 +264,7 @@ $ curl -i -k https://localhost:8443/2013/card
 HTTP/1.1 200 OK
 Link: <https://localhost:8443/2013/card.acl>; rel=acl
 Content-Type: text/turtle
-Content-Length: 1037
-
-
-<https://localhost:8443/2013/card#me> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
-    <http://xmlns.com/foaf/0.1/knows> <htt........
+[...]
 ```
 
 Next we can publish a couch surfing opportunity using [HTTP's POST](http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.5) method  [as explained by the LDP spec](https://dvcs.w3.org/hg/ldpwg/raw-file/default/ldp.html#ldpc-HTTP_POST)
