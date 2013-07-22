@@ -18,6 +18,7 @@ import scala.Some
 import play.api.mvc.SimpleResult
 import org.w3.banana.ldp.ParentDoesNotExist
 import play.api.mvc.ResponseHeader
+import java.util
 
 object Method extends Enumeration {
   val read = Value
@@ -105,7 +106,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
     getAsync(request).transform { res =>
     //Todo: this returns a Content-Length of 0, when it should either return none or the exact same as the original
     //see: http://stackoverflow.com/questions/3854842/content-length-header-with-head-requests
-        SimpleResult[String](res.header, Enumerator(""))
+        SimpleResult(res.header, Enumerator(Array[Byte]()))
     }
   }
 
@@ -119,7 +120,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
     val pathUri = new java.net.URI(correctedPath)
     val coll = pathUri.resolve(".")
     Async {
-      def mk(graph: Option[Rdf#Graph]): Future[SimpleResult[String]] = {
+      def mk(graph: Option[Rdf#Graph]): Future[SimpleResult] = {
         val path = correctedPath.toString.substring(coll.toString.length)
         for (answer <- rwwActor.makeCollection(request, coll.toString,Some(path), graph))
         yield {
@@ -128,12 +129,12 @@ trait ReadWriteWeb[Rdf <: RDF]{
           else res.withHeaders(("Location" -> answer.toString))
         }
       }
-      val res = request.body match {
+      val resultFuture = request.body match {
         case rww: GraphRwwContent[Rdf]  => mk(Some(rww.graph))
         case org.www.readwriteweb.play.emptyContent => mk(None)
         case _ => Future.successful(play.api.mvc.Results.UnsupportedMediaType("We only support RDF media types, for appending to collection."))
       }
-      res recover {
+      resultFuture recover {
         //case ResourceExists(e) => MethodNotAllowed(e) //no longer happens
         case ParentDoesNotExist(e) => Conflict(e)
         case AccessDenied(e) => Forbidden(e)
@@ -173,7 +174,7 @@ trait ReadWriteWeb[Rdf <: RDF]{
 
   def post(path: String) = Action(rwwBodyParser) { request =>
 
-    def postGraph(request: play.api.mvc.Request[RwwContent], rwwGraph: Option[Rdf#Graph]): Future[SimpleResult[Results.EmptyContent]] = {
+    def postGraph(request: play.api.mvc.Request[RwwContent], rwwGraph: Option[Rdf#Graph]): Future[SimpleResult] = {
       for {
         location <- rwwActor.postGraph(request,
           request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
@@ -227,9 +228,9 @@ trait ReadWriteWeb[Rdf <: RDF]{
         case e : WrongTypeException =>
           //todo: the Allow methods should not be hardcoded.
           SimpleResult(
-          ResponseHeader(METHOD_NOT_ALLOWED,Map("Allow"->"GET, OPTIONS, HEAD, PUT, PATCH")),
-          Enumerator(e.msg)
-        )
+            ResponseHeader(METHOD_NOT_ALLOWED, Map("Allow" -> "GET, OPTIONS, HEAD, PUT, PATCH")),
+            Enumerator(e.msg.getBytes("UTF-8"))
+          )
         case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
       }
     }

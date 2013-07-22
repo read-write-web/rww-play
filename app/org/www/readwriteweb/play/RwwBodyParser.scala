@@ -18,7 +18,7 @@ package org.www.readwriteweb.play
 
 import org.w3.banana._
 import org.www.play.rdf.IterateeSelector
-import play.api.mvc.{Result, RequestHeader, BodyParser}
+import play.api.mvc.{SimpleResult, Result, RequestHeader, BodyParser}
 import play.api.libs.iteratee.{Iteratee, Done}
 import play.api.libs.iteratee.Input.Empty
 import scala.Left
@@ -27,6 +27,7 @@ import scala.Some
 import java.net.URL
 import util.{Success, Failure}
 import play.api.libs.Files.TemporaryFile
+import scala.concurrent.ExecutionContext
 
 /**
  * a RWW bodyParser, like all body parsers, parses content sent from the client
@@ -44,13 +45,15 @@ class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
                                 sparqlOps: SparqlOps[Rdf],
                                 graphSelector: IterateeSelector[Rdf#Graph],
                                 sparqlSelector: IterateeSelector[Rdf#Query],
-                                sparqlUpdateSelector: IterateeSelector[Rdf#UpdateQuery])
+                                sparqlUpdateSelector: IterateeSelector[Rdf#UpdateQuery],
+                                ec: ExecutionContext)
   extends BodyParser[RwwContent] {
 
   import play.api.mvc.Results._
   import play.api.mvc.BodyParsers.parse
 
-  def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[Result,RwwContent]] =  {
+
+  def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[SimpleResult,RwwContent]] =  {
     if (rh.method == "GET" || rh.method == "HEAD" || rh.method == "OPTIONS") Done(Right(emptyContent), Empty)
     else if ( ! rh.headers.get("Content-Length").exists( Integer.parseInt(_) > 0 )) {
       Done(Right(emptyContent), Empty)

@@ -21,20 +21,22 @@ import java.net.URL
 import play.api.libs.iteratee.Iteratee
 import java.io.ByteArrayOutputStream
 import util.Try
+import scala.concurrent.ExecutionContext
 
 /**
  * Iteratee for reading in SPARQL Queries
  * @author Henry Story
  */
 class SparqlUpdateIteratee[Rdf<:RDF, +SyntaxType]
-(implicit ops: SparqlOps[Rdf])
+(implicit ops: SparqlOps[Rdf], ec: ExecutionContext)
   extends RDFIteratee[Rdf#UpdateQuery, SyntaxType] {
+
   /**
    *
    * @param loc the location of the document to evaluate relative URLs (this will not make a connection)
    * @return an iteratee to process a streams of bytes that will parse to an RDF#Graph
    */
-  def apply(loc: Option[URL]): Iteratee[Array[Byte], Try[Rdf#UpdateQuery]] =
+  def apply(loc: Option[URL])(implicit ec: ExecutionContext): Iteratee[Array[Byte], Try[Rdf#UpdateQuery]] =
     Iteratee.fold[Array[Byte],ByteArrayOutputStream](new ByteArrayOutputStream()){
     (stream,bytes) => {stream.write(bytes); stream }
   } mapDone { stream =>

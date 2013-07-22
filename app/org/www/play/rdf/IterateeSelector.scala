@@ -17,6 +17,7 @@
 package org.www.play.rdf
 
 import org.w3.banana.{Syntax, MimeType}
+import scala.concurrent.ExecutionContext
 
 
 /**
@@ -26,7 +27,7 @@ import org.w3.banana.{Syntax, MimeType}
 trait IterateeSelector[Result] extends (MimeType => Option[RDFIteratee[Result,Any]]) {
   def unapply(mime: MimeType) = apply(mime)
   def combineWith(other: IterateeSelector[Result]): IterateeSelector[Result] = IterateeSelector.combine(this, other)
-  def map[B](transform: Result => B) = new IterateeSelector[B] {
+  def map[B](transform: Result => B)(implicit ec: ExecutionContext) = new IterateeSelector[B] {
     def apply(v1: MimeType) = IterateeSelector.this.apply(v1).map( rit => rit.map(transform) )
   }
 }

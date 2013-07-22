@@ -3,13 +3,14 @@ package org.www.play.rdf.plantain
 import org.www.play.rdf.{IterateeSelector, SparqlQueryIteratee}
 import org.w3.banana.SparqlQuery
 import org.w3.banana.plantain.Plantain
+import scala.concurrent.ExecutionContext
 
 /**
  * User: hjs
  * Date: 10/01/2013
  */
 object PlantainSparqlQueryIteratee {
-  implicit val apply = new SparqlQueryIteratee[Plantain, SparqlQuery]
+  implicit def apply(implicit ec: ExecutionContext) = new SparqlQueryIteratee[Plantain, SparqlQuery]
 
-  val sparqlSelector = IterateeSelector[Plantain#Query, SparqlQuery]
+  def sparqlSelector(implicit ec: ExecutionContext) = IterateeSelector[Plantain#Query, SparqlQuery]
 }

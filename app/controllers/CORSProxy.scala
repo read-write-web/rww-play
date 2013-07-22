@@ -1,16 +1,16 @@
-//package controllers
-//
-//import org.w3.banana.jena.{JenaRDFWriter, Jena}
-//import controllers.setup._
-//import play.api.mvc.Action
-//
-//object CORSProxy
-//  extends org.www.readwriteweb.play.CORSProxy[Jena](
-//    jenaAsync.graphIterateeSelector,
-//    JenaRDFWriter.selector) {
-//
-//  def about = Action {
-//    Ok( views.html.rww.corsProxy() )
-//  }
-//
-//}
+package controllers
+
+import play.api.mvc.Action
+
+object CORSProxy extends org.www.readwriteweb.play.CORSProxy {
+
+  def action(url: Option[String]) = url match {
+    case Some(url) => get(url)
+    case None => about
+  }
+
+  def about = Action {
+    Ok( views.html.rww.corsProxy() )
+  }
+
+}

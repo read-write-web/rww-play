@@ -18,6 +18,7 @@ package org.www.play.rdf
 import java.net.URL
 import play.api.libs.iteratee.Iteratee
 import util.Try
+import scala.concurrent.ExecutionContext
 
 /**
  *
@@ -25,17 +26,16 @@ import util.Try
  * @tparam SyntaxType The Syntax type that this iteratee parses
  */
 trait RDFIteratee[Result, +SyntaxType] {
-
   /**
    * @param loc the location of the document to evaluate relative URLs (this will not make a connection)
    * @return an iteratee to process a streams of bytes that will parse to an RDF#Graph
    *
    */
-  def apply(loc: Option[URL] = None): Iteratee[Array[Byte], Try[Result]]
+  def apply(loc: Option[URL] = None)(implicit ec: ExecutionContext): Iteratee[Array[Byte], Try[Result]]
 
-  def map[OtherResult](trans: Result => OtherResult): RDFIteratee[OtherResult,SyntaxType] =
+  def map[OtherResult](trans: Result => OtherResult)(implicit ec: ExecutionContext): RDFIteratee[OtherResult,SyntaxType] =
     new RDFIteratee[OtherResult,SyntaxType] {
-    def apply(loc: Option[URL]) = RDFIteratee.this.apply(loc).map{ it =>
+    def apply(loc: Option[URL])(implicit ec: ExecutionContext) = RDFIteratee.this.apply(loc).map{ it =>
       it.map{res => trans.apply(res)}
     }
   }

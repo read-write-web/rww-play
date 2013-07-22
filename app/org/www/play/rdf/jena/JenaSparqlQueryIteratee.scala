@@ -19,11 +19,12 @@ package org.www.play.rdf.jena
 import org.www.play.rdf.{IterateeSelector, SparqlQueryIteratee}
 import org.w3.banana.jena.Jena
 import org.w3.banana.SparqlQuery
+import scala.concurrent.ExecutionContext
 
 object JenaSparqlQueryIteratee {
 
- implicit val apply = new SparqlQueryIteratee[Jena, SparqlQuery]
+ implicit def apply(implicit ec: ExecutionContext) = new SparqlQueryIteratee[Jena, SparqlQuery]
 
- val sparqlSelector = IterateeSelector[Jena#Query, SparqlQuery]
+ def sparqlSelector(implicit ec: ExecutionContext) = IterateeSelector[Jena#Query, SparqlQuery]
 
 }

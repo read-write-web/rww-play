@@ -4,6 +4,7 @@ import org.www.play.rdf.{IterateeSelector, SparqlQueryIteratee}
 import org.w3.banana.jena.Jena
 import org.w3.banana.SparqlQuery
 import org.w3.banana.sesame.Sesame
+import scala.concurrent.ExecutionContext
 
 /**
  * Date: 10/01/2013
@@ -11,8 +12,8 @@ import org.w3.banana.sesame.Sesame
  */
 object SesameSparqlQueryIteratee {
 
-  implicit val apply = new SparqlQueryIteratee[Sesame, SparqlQuery]
+  implicit def apply(implicit ec: ExecutionContext) = new SparqlQueryIteratee[Sesame, SparqlQuery]
 
-  val sparqlSelector = IterateeSelector[Sesame#Query, SparqlQuery]
+  def sparqlSelector(implicit ec: ExecutionContext) = IterateeSelector[Sesame#Query, SparqlQuery]
 
 }

@@ -26,13 +26,13 @@ import com.hp.hpl.jena.rdf.model.{ModelFactory, Model}
 import patch.AsyncJenaParser
 import com.hp.hpl.jena.rdf.arp.SAX2Model
 import org.www.play.rdf.RDFIteratee
-import concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import util.{Failure, Success, Try}
 
 
 object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
 
-  def apply(loc: Option[URL]): Iteratee[Array[Byte],Try[Jena#Graph]] =  {
+  def apply(loc: Option[URL])(implicit ec: ExecutionContext): Iteratee[Array[Byte],Try[Jena#Graph]] =  {
     val it : Iteratee[Array[Byte],RdfXmlFeeder]= Iteratee.fold2[Array[Byte], RdfXmlFeeder](new RdfXmlFeeder(loc)) {
       (feeder, bytes) =>
         try {

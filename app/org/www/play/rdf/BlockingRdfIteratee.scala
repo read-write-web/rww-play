@@ -39,7 +39,7 @@ import util.{Failure, Success, Try}
  * @tparam SyntaxType the mime type parsed
  */
 class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, SyntaxType])
-(implicit ops: RDFOps[Rdf], ec: ExecutionContext)
+(implicit ops: RDFOps[Rdf])
   extends RDFIteratee[Rdf#Graph, SyntaxType] {
 
   import webid.Logger.log
@@ -51,7 +51,7 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, Syntax
   new net.rootdev.javardfa.jena.RDFaReader
   //import shellac's rdfa parser
 
-  def apply(loc: Option[URL] = None): Iteratee[Array[Byte], Try[Rdf#Graph]] = {
+  def apply(loc: Option[URL] = None)(implicit ec: ExecutionContext): Iteratee[Array[Byte], Try[Rdf#Graph]] = {
 
     val in = new PipedInputStream()
     val out = new PipedOutputStream(in)

@@ -1,5 +1,6 @@
 import sbt._
 import sbt.Keys._
+import play.Project._
 
 object ApplicationBuild extends Build {
 
@@ -26,7 +27,15 @@ object ApplicationBuild extends Build {
     val main = play.Project(appName, appVersion, appDependencies).settings(
       resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
       resolvers += "sesame-repo-releases" at "http://repo.aduna-software.org/maven2/releases",
-      resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
+      /*
+      if you want to compile banana-* yourself then you need to remove the following resolver
+      you may need to first remove the org.w3 directory from the Play/repository/cache directory
+      note: you can use `publish_local` from you banana-rdf clone but must set the
+      following env var before using sbt
+        export SBT_PROPS=-Dsbt.ivy.home=$RWW_PLAY_HOME/Play20/repository
+      finally you may need to rebuild your IDE files ( clearing the previous ones perhaps )
+      */
+      //    resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
       scalaVersion := "2.10.1",
       javacOptions ++= Seq("-source","1.7", "-target","1.7")
   )
