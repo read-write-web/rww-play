@@ -616,8 +616,9 @@ Play repository that you are using. So before running the `publish-local` comman
 for your library, run the following
 
 ```bash
-$ export $play=$rwwHome/Play20
-$ export SBT_PROPS="-Dsbt.ivy.home=$play/repository -Dplay.home=$play/framework"
+$ cd Play20
+$ export PLAY=`pwd`/Play20
+$ export SBT_PROPS=-Dsbt.ivy.home=$PLAY/repository
 $ ./sbt
 > publish-local
 ```
