@@ -16,14 +16,12 @@
 
 package org.www.readwriteweb.play
 
-import play.api.mvc._
+import play.api.mvc.{Controller, Action}
+import org.w3.banana.{RDFOps, WriterSelector, RDF}
+import org.www.readwriteweb.play.PlayWriterBuilder._
 import akka.util.Timeout
-import scala.concurrent.{ExecutionContext, Future, Promise}
 import akka.actor.ActorSystem
-import play.api.libs.iteratee._
-import play.api.libs.ws.WS
-import play.api.mvc.SimpleResult
-import play.api.mvc.ResponseHeader
+import org.w3.banana.ldp._
 
 /**
 * A <a href="http://www.w3.org/TR/cors/">CORS</a> proxy that allows a client to fetch remote RDF
@@ -32,95 +30,59 @@ import play.api.mvc.ResponseHeader
 * Currently this only permits GET operations. It is unclear what PUT, POST, DELETE operations would
 * look like for a CORS proxy.
 *
-* note: graphSelector used to be an IterateeSelector[Rdf#Graph], should try to get write non blocking parsers
 */
-class CORSProxy extends Controller {
+class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
+                         (implicit ops: RDFOps[Rdf], writerSelector: WriterSelector[Rdf#Graph])
+  extends Controller {
+
+  import ops._
 
   implicit val system = ActorSystem("MySystem")
-  implicit val executionContext = scala.concurrent.ExecutionContext.global //todo: make sure this is right
+  implicit val executionContext = system.dispatcher
   // turn a header map into an (att,val) sequence
   private implicit def sequentialise(headers: Map[String,Seq[String]]) = headers.toSeq.flatMap(pair=>pair._2.map(v=>(pair._1,v)))
 
-  def get(url: String) = EssentialAction { request =>
+  def get(url: String) = Action.async { request =>
+    System.out.println("in CORSProxy.get(" + url + ")")
+    val iri = URI(url)
     implicit val timeout = Timeout(10 * 1000)
-    val res: Iteratee[Array[Byte],SimpleResult] = Iteratee.ignore[Array[Byte]].mapM { Unit =>
-      val resultPromise = Promise[SimpleResult]()
-      WS.url(url) //todo: develop a WS for each client, so that one can separate their views
-        .withHeaders(request.headers.toSimpleMap.toSeq: _*) //todo: this looses headers, must fix WS.withHeaders method
-        .get {  response =>
-          val code = if (response.status == 200) 203
-          else response.status
-          val hdrs = response.headers.map {
-            //todo: we loose info here too!
-            case (key, value) => (key, value.head)
-          }
-          val corsHeaders = if (!hdrs.contains("Access-Control-Allow-Origin")) {
-            hdrs + ("Access-Control-Allow-Origin" -> request.headers.get("Origin").getOrElse("*"))
-          } else {
-            hdrs
-          }
+    import PlayWriterBuilder.writerFor
 
-          //tie an interatee and an enum together in a pipe <- key to getting this to work
-          val (getIteratee, actionResultEnum) = joined[Array[Byte]]
+    val futureGraph = for {
+      nr <- wsClient.get(iri)
+    } yield {
+      writerFor(request)(writerSelector).map { wr =>
+        nr match {
+          case ldpr: LDPR[Rdf] => {
+            val hdrs = request.headers.toSimpleMap - "ContentType"
+            //todo: this needs to be refined a lot, and thought through quite a lot more carefully
 
-          //todo: this does not work with chunked docs such as http://www.httpwatch.com/httpgallery/chunked/
-          val result = if (response.headers.get("Transfer-Encoding").exists(_.exists(_.trim.equalsIgnoreCase("chunked")))) {
-            actionResultEnum &> Results.chunk
-          } else actionResultEnum
-
-          resultPromise.trySuccess(SimpleResult(ResponseHeader(code, corsHeaders), result))
-          getIteratee.map{Unit=>Done(Input.EOF)}
-      }
-      resultPromise.future
-    }
-    res
-  }
-
-  /**
-   * Create a joined iteratee enumerator pair.
-   * found in http://jazzy.id.au/default/2013/06/12/call_response_websockets_in_play_framework.html
-   *
-   * When the enumerator is applied to an iteratee, the iteratee subsequently consumes whatever the iteratee in the pair
-   * is applied to.  Consequently the enumerator is "one shot", applying it to subsequent iteratees will throw an
-   * exception.
-   */
-  def joined[A]: (Iteratee[A, Unit], Enumerator[A]) = {
-    val promisedIteratee = Promise[Iteratee[A, Unit]]()
-    val enumerator = new Enumerator[A] {
-      def apply[B](finalIteratee: Iteratee[A, B]): Future[Iteratee[A,B]] = {
-        val doneIteratee = Promise[Iteratee[A, B]]()
-
-        // Equivalent to map, but allows us to handle failures
-        def wrap(delegate: Iteratee[A, B]): Iteratee[A, B] = new Iteratee[A, B] {
-          def fold[C](folder: (Step[A, B]) => Future[C])(implicit ec: ExecutionContext): Future[C] = {
-            val toReturn = delegate.fold {
-              case done @ Step.Done(a, in) => {
-                doneIteratee.success(done.it)
-                folder(done)
-              }
-              case Step.Cont(k) => {
-                folder(Step.Cont(k.andThen(wrap)))
-              }
-              case err @ Step.Error(msg,in)=> {
-                doneIteratee.failure(new Exception(msg)) //todo: this may not be right, for if the code is parsed and can backtrack
-                folder(err)
-              }
+            val corsHeaders = if (!hdrs.contains("Access-Control-Allow-Origin")) {
+              val origin = request.headers.get("Origin")
+              hdrs + ("Access-Control-Allow-Origin" -> origin.getOrElse("*"))
+            } else {
+              hdrs
             }
-            toReturn.onFailure {
-              case e => doneIteratee.failure(e)
-            }
-            toReturn
+            result(203, wr)(ldpr.graph).withHeaders(corsHeaders.toSeq: _*)
+          }
+          case other => {
+            UnsupportedMediaType("Cannot proxy non rdf resources at present. Request sent " +
+              request.headers.get(play.api.http.HeaderNames.ACCEPT))
           }
         }
-
-        if (promisedIteratee.trySuccess(wrap(finalIteratee).map(_ => ()))) {
-          doneIteratee.future
-        } else {
-          throw new IllegalStateException("Joined enumerator may only be applied once")
-        }
-      }
+      }.getOrElse(
+        UnsupportedMediaType("could not find RDF type of resource at remote location" +
+          request.headers.get(play.api.http.HeaderNames.ACCEPT))
+      )
     }
-    (Iteratee.flatten(promisedIteratee.future), enumerator)
+    futureGraph recover {
+      case RemoteException(msg, headers) => ExpectationFailed(msg)
+      case LocalException(msg) => ExpectationFailed(msg)
+    }
   }
 
 }
+
+
+
+
