@@ -305,7 +305,7 @@ Content-Length: 0
 ( TODO: The Content-Length should not be 0 for HEAD. Bug in Play2.0 probably )
 
 So we add the couch acl which gives access to that information in addition to the default owner of the collection, 
-to two groups of people
+to two groups of people by patching the acl with [couch.acl.patch](eg/couch.acl.patch)
 
 ```bash
 $  curl -X PATCH -k -i -H "Content-Type: application/sparql-update; utf-8"  --cert ../eg/test-localhost.pem:test --data-binary @../eg/couch.acl.patch https://localhost:8443/2013/couch.acl
