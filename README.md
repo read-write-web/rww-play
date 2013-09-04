@@ -118,7 +118,11 @@ These conventions are provisional implementation decisions, and improvements are
  - allow symbolic links to point to different default formats
 )
 
-Let us look at some of these files in more detail
+These files will then be mapped to HTTP resources such that each non acl resource will have an
+HTTP `Link` header of relation type `acl` pointing to an acl file, and the acl file itself will
+describe access to one or more resources, as shown here: ![Web ACL example diagram](doc/img/WebACL.jpg)
+
+Let us look at some of these files in more detail.
 
 The acl for `card` just includes the acl for the directory/collection .
 (TODO: `wac:include` has not yet been defined in the [Web Access Control Ontology](http://www.w3.org/ns/auth/acl#))
