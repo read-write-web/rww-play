@@ -52,6 +52,57 @@
 	<key>GraphicsList</key>
 	<array>
 		<dict>
+			<key>Class</key>
+			<string>LineGraphic</string>
+			<key>Head</key>
+			<dict>
+				<key>ID</key>
+				<integer>474</integer>
+				<key>Info</key>
+				<integer>3</integer>
+			</dict>
+			<key>ID</key>
+			<integer>419</integer>
+			<key>Points</key>
+			<array>
+				<string>{976.11757652349047, 103.25381346647794}</string>
+				<string>{1076.5509994360671, 211.22448519794511}</string>
+				<string>{1064.2856935717973, 274.48979008907793}</string>
+				<string>{1068.3673261454187, 395.76403060879636}</string>
+				<string>{1067.3469180020134, 475.93874392336693}</string>
+				<string>{1066.326509858608, 601.75508816825129}</string>
+				<string>{921.73171268051658, 623.79651431091804}</string>
+			</array>
+			<key>Style</key>
+			<dict>
+				<key>stroke</key>
+				<dict>
+					<key>Color</key>
+					<dict>
+						<key>b</key>
+						<string>0.882653</string>
+						<key>g</key>
+						<string>0.568663</string>
+						<key>r</key>
+						<string>0.427855</string>
+					</dict>
+					<key>HeadArrow</key>
+					<string>0</string>
+					<key>Legacy</key>
+					<true/>
+					<key>LineType</key>
+					<integer>1</integer>
+					<key>TailArrow</key>
+					<string>FilledArrow</string>
+				</dict>
+			</dict>
+			<key>Tail</key>
+			<dict>
+				<key>ID</key>
+				<integer>375</integer>
+			</dict>
+		</dict>
+		<dict>
 			<key>Bounds</key>
 			<string>{{832.37503519026359, 435.7707467829382}, {106, 30}}</string>
 			<key>Class</key>
@@ -833,57 +884,6 @@
 			</dict>
 			<key>Wrap</key>
 			<string>NO</string>
-		</dict>
-		<dict>
-			<key>Class</key>
-			<string>LineGraphic</string>
-			<key>Head</key>
-			<dict>
-				<key>ID</key>
-				<integer>474</integer>
-				<key>Info</key>
-				<integer>3</integer>
-			</dict>
-			<key>ID</key>
-			<integer>419</integer>
-			<key>Points</key>
-			<array>
-				<string>{976.11757652349047, 103.25381346647794}</string>
-				<string>{1076.5509994360671, 211.22448519794511}</string>
-				<string>{1064.2856935717973, 274.48979008907793}</string>
-				<string>{1068.3673261454187, 395.76403060879636}</string>
-				<string>{1067.3469180020134, 475.93874392336693}</string>
-				<string>{1066.326509858608, 601.75508816825129}</string>
-				<string>{921.73171268051658, 623.79651431091804}</string>
-			</array>
-			<key>Style</key>
-			<dict>
-				<key>stroke</key>
-				<dict>
-					<key>Color</key>
-					<dict>
-						<key>b</key>
-						<string>0.882653</string>
-						<key>g</key>
-						<string>0.568663</string>
-						<key>r</key>
-						<string>0.427855</string>
-					</dict>
-					<key>HeadArrow</key>
-					<string>0</string>
-					<key>Legacy</key>
-					<true/>
-					<key>LineType</key>
-					<integer>1</integer>
-					<key>TailArrow</key>
-					<string>FilledArrow</string>
-				</dict>
-			</dict>
-			<key>Tail</key>
-			<dict>
-				<key>ID</key>
-				<integer>375</integer>
-			</dict>
 		</dict>
 		<dict>
 			<key>Bounds</key>
@@ -3398,7 +3398,7 @@
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2013-09-04 09:26:12 +0000</string>
+	<string>2013-09-04 09:47:59 +0000</string>
 	<key>Modifier</key>
 	<string>Henry Story</string>
 	<key>NotesVisible</key>
