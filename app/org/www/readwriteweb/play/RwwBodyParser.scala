@@ -59,15 +59,15 @@ class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
       Done(Right(emptyContent), Empty)
     } else rh.contentType.map { str =>
       MimeType(str) match {
-        case sparqlSelector(iteratee) => iteratee().mapDone {
+        case sparqlSelector(iteratee) => iteratee().map {
           case Failure(e) => Left(BadRequest("could not parse query "+e))
           case Success(sparql) => Right(QueryRwwContent(sparql))
         }
-        case graphSelector(iteratee) => iteratee().mapDone {
+        case graphSelector(iteratee) => iteratee().map {
           case Failure(e) => Left(BadRequest("cought " + e))
           case Success(graph) => Right(GraphRwwContent(graph))
         }
-        case sparqlUpdateSelector(iteratee) => iteratee().mapDone {
+        case sparqlUpdateSelector(iteratee) => iteratee().map {
           case Failure(e) => Left(BadRequest("cought " + e))
           case Success(update) => Right(PatchRwwContent(update))
         }

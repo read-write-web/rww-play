@@ -52,7 +52,7 @@ object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
           }
         }
     }
-    it.mapDone(_.result)
+    it.map(_.result)
   }
 
 

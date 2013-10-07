@@ -39,7 +39,7 @@ class SparqlUpdateIteratee[Rdf<:RDF, +SyntaxType]
   def apply(loc: Option[URL])(implicit ec: ExecutionContext): Iteratee[Array[Byte], Try[Rdf#UpdateQuery]] =
     Iteratee.fold[Array[Byte],ByteArrayOutputStream](new ByteArrayOutputStream()){
     (stream,bytes) => {stream.write(bytes); stream }
-  } mapDone { stream =>
+  } map { stream =>
       val query = new String(stream.toByteArray,"UTF-8")//todo, where do we get UTF-8?
       Try{ops.UpdateQuery(query)}
     }

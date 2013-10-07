@@ -70,7 +70,7 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, Syntax
       } catch {
         case ioe: IOException => Future.failed(ioe)
       }
-    } mapDone {
+    } map {
       finished =>
         try {
           out.flush(); out.close()

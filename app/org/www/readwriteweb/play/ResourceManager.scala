@@ -98,7 +98,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
               val b = resrc.asInstanceOf[BinaryResource[Rdf]]
               //todo: very BAD. This will block the agent, and so on long files break the collection.
               //this needs to be sent to another agent, or it needs to be rethought
-              Enumerator.fromFile(tmpFile.file)(b.write)
+              Enumerator.fromFile(tmpFile.file)(ec)(b.write)
               resrc.location
             })
         }
@@ -235,7 +235,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
           for {
             b <- createBinary(URI(path), slug, mime)
           } yield {
-            Enumerator.fromFile(tmpFile.file)(b.write)
+            Enumerator.fromFile(tmpFile.file)(ec)(b.write)
             b.location
           }
         }
