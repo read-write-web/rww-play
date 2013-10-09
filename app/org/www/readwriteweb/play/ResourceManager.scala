@@ -129,7 +129,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
     getAuthFor(URI(path), wacIt(mode)).flatMap {
       agents =>
         if (agents.contains(foaf.Agent)) Future.successful(())
-        else if (List() == agents) {
+        else if (agents.isEmpty) {
           Future.failed(AccessDenied(s"no agents allowed access with $mode on ${request.path}"))
         }
         else {
