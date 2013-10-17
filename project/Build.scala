@@ -20,7 +20,8 @@ object ApplicationBuild extends Build {
       //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
     )
 
-    val main = play.Project(appName, appVersion, appDependencies).settings(
+
+  val main = play.Project(appName, appVersion, appDependencies).settings(
       resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
       resolvers += "sesame-repo-releases" at "http://repo.aduna-software.org/maven2/releases",
       /*
@@ -33,7 +34,15 @@ object ApplicationBuild extends Build {
       */
       //    resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
       scalaVersion := "2.10.2",
-      javacOptions ++= Seq("-source","1.7", "-target","1.7")
+      javacOptions ++= Seq("-source","1.7", "-target","1.7"),
+      initialize := {
+        //thanks to http://stackoverflow.com/questions/19208942/enforcing-java-version-for-scala-project-in-sbt/19271814?noredirect=1#19271814
+        val _ = initialize.value // run the previous initialization
+        val specVersion = sys.props("java.specification.version")
+        assert(java.lang.Float.parseFloat(specVersion) >= 1.7, "Java 1.7 or above required. Your version is " + specVersion)
+      }
+
+
   )
 
 }
