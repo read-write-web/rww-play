@@ -22,17 +22,24 @@ Getting going
 
 ```bash
  $ git clone git://github.com/read-write-web/rww-play.git 
-```
-=== The short version ===
+``` 
+### The short version
 
-In the `rww-play` home directory, run the `run` bash script. It will download a precompiled tuned 
-version of play, build the application, and run it
+In the _rww-play_ home directory, run the `build` bash script. It will download a precompiled tuned 
+version of play, build the application, and run it. (If there is no remotely downloadable version
+it will build it from source in the `Play20` directory.)
+
+```bash
+$ ./build
+```
+
+You can then run _rww-play_ with all the right options just by executing `run` on the command line:
 
 ```bash
 $ ./run
 ```
 
-=== The longer version ===
+### The longer version
 
 Compile the [bblfish's TLS branch of Play 2.0](https://github.com/bblfish/Play20) that is available as a [submodule](http://git-scm.com/book/en/Git-Tools-Submodules) in the cloned repository as follows:
 
