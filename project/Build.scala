@@ -27,12 +27,11 @@ object ApplicationBuild extends Build {
       /*
       if you want to compile banana-* yourself then you need to remove the following resolver
       you may need to first remove the org.w3 directory from the Play/repository/cache directory
-      note: you can use `publish_local` from you banana-rdf clone but must set the
-      following env var before using sbt
-        export SBT_PROPS=-Dsbt.ivy.home=$RWW_PLAY_HOME/Play20/repository
+      note: you can use `publish_local` from you banana-rdf clone but must start sbt with
+        $ sbt  -ivy $RWW_PLAY_HOME/Play20/repository/
       finally you may need to rebuild your IDE files ( clearing the previous ones perhaps )
       */
-      //    resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
+      resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
       scalaVersion := "2.10.2",
       javacOptions ++= Seq("-source","1.7", "-target","1.7"),
       initialize := {
