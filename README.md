@@ -298,20 +298,17 @@ $ curl -k -i -X GET --cert ../eg/test-localhost.pem:test https://localhost:8443/
 HTTP/1.1 200 OK
 Link: <https://localhost:8443/2013/.acl>; rel=acl
 Content-Type: text/turtle
-Content-Length: 862
+Content-Length: 701
 
 
 <> <http://xmlns.com/foaf/0.1/maker> <http://bblfish.net/people/henry/card#me> ;
-	<http://www.w3.org/ns/ldp#created> <raw/> , <card> , <test/> , <couch> .
+	<http://www.w3.org/ns/ldp#created> <card> , <test/> , <couch> .
 
-<couch> <http://www.w3.org/ns/posix/stat#size> "9"^^<http://www.w3.org/2001/XMLSchema#integer> ;
-	<http://www.w3.org/ns/posix/stat#mtime> "1373749480000"^^<http://www.w3.org/2001/XMLSchema#integer> .
-
-<test/> <http://www.w3.org/ns/posix/stat#mtime> "1372416714000"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+<test/> <http://www.w3.org/ns/posix/stat#mtime> "1382465690000"^^<http://www.w3.org/2001/XMLSchema#integer> ;
 	a <http://www.w3.org/ns/ldp#Container> .
 
-<raw/> <http://www.w3.org/ns/posix/stat#mtime> "1372366589000"^^<http://www.w3.org/2001/XMLSchema#integer> ;
-	a <http://www.w3.org/ns/ldp#Container> .
+<couch> <http://www.w3.org/ns/posix/stat#mtime> "1382465783000"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+	<http://www.w3.org/ns/posix/stat#size> "9"^^<http://www.w3.org/2001/XMLSchema#integer> .
 
 <card> <http://www.w3.org/ns/posix/stat#size> "8"^^<http://www.w3.org/2001/XMLSchema#integer> ;
 	<http://www.w3.org/ns/posix/stat#mtime> "1372357799000"^^<http://www.w3.org/2001/XMLSchema#integer> .
