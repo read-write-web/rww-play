@@ -106,7 +106,8 @@ All files with the same initial name up to the `.` are considered to work togeth
 
 Symbolic links are useful in that they:
  - allow one to write and follow linked data that works on the file system without needing to name files by their extensions. For example
-a statement such as `[] wac:agent <card#me>` can work on the file system just as well as on the web.
+following the relation `foaf:maker` in the triple `<> foaf:maker <card#me>` will lead one to the `<card>` resource on the file system 
+just as it does on the web.
  - they guide the web agent to which the default representation should be
  - currently they also help the web agent decide which are the resources it should serve.
 
@@ -193,7 +194,7 @@ Notice the `Link` header above. Every resource points to its ACL file in such a 
 
 The client certificate in `../eg/test-localhost.pem` contains exactly the private key given in the above 
 cert as you can see by comparing the modulus and exponents in both representations. This
-is what allows the authentication to go through, using the (WebID over TLS protocol)[http://webid.info/spec/].
+is what allows the authentication to go through, using the [WebID over TLS protocol](http://webid.info/spec/).
 
 ```bash
 $ openssl x509 -in ../eg/test-localhost.pem -inform pem -text
@@ -297,12 +298,28 @@ $ curl -k -i -X GET --cert ../eg/test-localhost.pem:test https://localhost:8443/
 HTTP/1.1 200 OK
 Link: <https://localhost:8443/2013/.acl>; rel=acl
 Content-Type: text/turtle
-Content-Length: 119
+Content-Length: 862
 
 
-<> <http://www.w3.org/ns/ldp#created> <raw/> , <card> , <test/> , <couch> ;
-    a <http://www.w3.org/ns/ldp#Container> .
+<> <http://xmlns.com/foaf/0.1/maker> <http://bblfish.net/people/henry/card#me> ;
+	<http://www.w3.org/ns/ldp#created> <raw/> , <card> , <test/> , <couch> .
+
+<couch> <http://www.w3.org/ns/posix/stat#size> "9"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+	<http://www.w3.org/ns/posix/stat#mtime> "1373749480000"^^<http://www.w3.org/2001/XMLSchema#integer> .
+
+<test/> <http://www.w3.org/ns/posix/stat#mtime> "1372416714000"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+	a <http://www.w3.org/ns/ldp#Container> .
+
+<raw/> <http://www.w3.org/ns/posix/stat#mtime> "1372366589000"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+	a <http://www.w3.org/ns/ldp#Container> .
+
+<card> <http://www.w3.org/ns/posix/stat#size> "8"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+	<http://www.w3.org/ns/posix/stat#mtime> "1372357799000"^^<http://www.w3.org/2001/XMLSchema#integer> .
 ```
+
+Each resource in the *LDPC* is listed and the size of its Turtle representation on disk is given. 
+Notice also that the *LDPC* `</2013>` is described as having been made by Henry Story. Such information is stored in the
+[test_www/.ttl](test_www/.ttl) file, which can also be edited using the usual LDP protocol. (TODO: is this ok with LDP?)
 
 We can find out about the ACL for this resource using HEAD (TODO: OPTIONS would be better, but is not implemented yet )
 
