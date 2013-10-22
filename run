@@ -1,11 +1,12 @@
 #/bin/sh -x
 
 cd Play20
-PLAY_VERSION="2-TLS-`git log -n 1 --pretty=format:%H`"
+PLAY_VERSION="2.2-TLS-`git log -n 1 --pretty=format:%H`"
 cd ..
 PLAY=play-$PLAY_VERSION/play 
 if [ ! -x $PLAY ]
 then
+ cd Play20/repository
  ./build
 fi
 
