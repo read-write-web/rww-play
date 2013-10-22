@@ -1,4 +1,4 @@
-#/bin/sh -x
+#/bin/sh 
 
 cd Play20
 PLAY_VERSION="2.2-TLS-`git log -n 1 --pretty=format:%H`"
