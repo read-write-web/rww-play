@@ -68,7 +68,8 @@ class WebIDAuthN[Rdf <: RDF](verifier: WebIDVerifier[Rdf]) extends AuthN {
       val agent = agentParser.parse(ua)
       import net.sf.uadetector.UserAgentFamily._
       val family = agent.getFamily()
-      val res = (family == CURL || family == JAVA || family == SAFARI || family == OPERA )
+      val res = (family == CURL || family == JAVA || family == SAFARI || family == OPERA ||
+        req.headers.get("X-Requested-With").map(_.trim.equalsIgnoreCase("XMLHttpRequest")).getOrElse(false))
       res
     }.getOrElse(false)
   }
