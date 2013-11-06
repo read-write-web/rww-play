@@ -31,7 +31,7 @@ object ApplicationBuild extends Build {
         $ sbt  -ivy $RWW_PLAY_HOME/Play20/repository/
       finally you may need to rebuild your IDE files ( clearing the previous ones perhaps )
       */
-      resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
+//      resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
       scalaVersion := "2.10.2",
       javacOptions ++= Seq("-source","1.7", "-target","1.7"),
       initialize := {
