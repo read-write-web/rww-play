@@ -16,16 +16,16 @@
 
 package controllers
 
-import org.www.readwriteweb.play._
+import rww.play._
 import org.w3.banana.plantain._
 import java.nio.file.Path
 import org.w3.banana._
-import org.www.play.rdf.IterateeSelector
+import rww.play.rdf.IterateeSelector
 import concurrent.ExecutionContext
 import java.io.File
 import akka.util.Timeout
 import java.util.concurrent.TimeUnit
-import org.www.play.auth.WebIDAuthN
+import rww.play.auth.WebIDAuthN
 import akka.actor.Props
 import org.w3.banana.ldp._
 import org.w3.banana.ldp.auth.{WACAuthZ, WebIDVerifier}

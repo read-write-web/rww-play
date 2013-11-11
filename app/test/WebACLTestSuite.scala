@@ -22,7 +22,7 @@
 //import concurrent.{Await, Future}
 //import concurrent.duration.Duration
 //import java.net.URL
-//import org.www.play.auth.Subject
+//import rww.play.auth.Subject
 //import org.w3.banana.LinkedDataResource
 //import play.api.cache
 //import org.w3.banana.diesel.Diesel

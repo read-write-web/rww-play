@@ -1,6 +1,6 @@
 //package controllers
 //
-//import org.www.play.auth.{WebIDVerifier, WebIDAuthN, WebIDAuth}
+//import rww.play.auth.{WebIDVerifier, WebIDAuthN, WebIDAuth}
 //import play.api.mvc.Controller
 //import org.w3.banana.jena.Jena
 //import org.w3.banana.plantain.Plantain

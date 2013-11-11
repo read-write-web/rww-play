@@ -2,17 +2,17 @@ package controllers
 
 import akka.actor.ActorSystem
 import concurrent.ExecutionContext
-import org.www.play.rdf.IterateeSelector
+import rww.play.rdf.IterateeSelector
 import org.w3.banana.ldp.{WSClient, WebClient}
 import org.w3.banana._
 import scala.Some
 
-//import org.www.readwriteweb.play.{IterateeLDCache, LinkedDataCache}
-//import org.www.play.auth.WebAccessControl
+//import rww.play.{IterateeLDCache, LinkedDataCache}
+//import rww.play.auth.WebAccessControl
 import play.api.Logger
 import java.net.URL
 import org.w3.banana.plantain.Plantain
-import org.www.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
+import rww.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
 
 /**
  * gather some common setup values
