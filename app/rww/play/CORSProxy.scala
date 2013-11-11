@@ -21,7 +21,7 @@ import org.w3.banana.{RDFOps, WriterSelector, RDF}
 import rww.play.PlayWriterBuilder._
 import akka.util.Timeout
 import akka.actor.ActorSystem
-import org.w3.banana.ldp._
+import rww.ldp._
 
 /**
 * A <a href="http://www.w3.org/TR/cors/">CORS</a> proxy that allows a client to fetch remote RDF

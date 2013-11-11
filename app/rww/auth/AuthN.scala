@@ -6,7 +6,7 @@ import org.w3.banana.RDF
 import java.security.cert.{X509Certificate, Certificate}
 import java.security.Principal
 import net.sf.uadetector.service.UADetectorServiceFactory
-import org.w3.banana.ldp.auth.{Claim, WebIDVerifier}
+import rww.ldp.auth.{Claim, WebIDVerifier}
 
 
 /**

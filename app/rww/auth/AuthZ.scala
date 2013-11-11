@@ -24,7 +24,7 @@ import java.net.{URI, URL}
 import play.api.mvc.BodyParsers.parse
 import play.api.mvc.AsyncResult
 import scala.Some
-import org.w3.banana.ldp.auth.WebIDPrincipal
+import rww.ldp.auth.WebIDPrincipal
 
 
 /**

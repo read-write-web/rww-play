@@ -27,8 +27,8 @@ import akka.util.Timeout
 import java.util.concurrent.TimeUnit
 import rww.play.auth.WebIDAuthN
 import akka.actor.Props
-import org.w3.banana.ldp._
-import org.w3.banana.ldp.auth.{WACAuthZ, WebIDVerifier}
+import rww.ldp._
+import rww.ldp.auth.{WACAuthZ, WebIDVerifier}
 import java.net.URL
 
 

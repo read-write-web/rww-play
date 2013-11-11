@@ -2,7 +2,7 @@ package rww.play
 
 import play.api.mvc._
 import org.w3.banana._
-import org.w3.banana.ldp._
+import rww.ldp._
 import play.api.mvc.Results._
 import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
@@ -12,11 +12,11 @@ import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import play.api.http.Status._
 import play.api.libs.iteratee.Enumerator
-import org.w3.banana.ldp.AccessDenied
-import org.w3.banana.ldp.WrongTypeException
+import rww.ldp.AccessDenied
+import rww.ldp.WrongTypeException
 import scala.Some
 import play.api.mvc.SimpleResult
-import org.w3.banana.ldp.ParentDoesNotExist
+import rww.ldp.ParentDoesNotExist
 import play.api.mvc.ResponseHeader
 import java.util
 

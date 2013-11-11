@@ -5,20 +5,35 @@ import play.Project._
 object ApplicationBuild extends Build {
 
     val appName         = "RWWeb"
-    val appVersion      = "0.7.1-SNAPSHOT"
+    val appVersion      = "0.7.2-SNAPSHOT"
 
     val banana = (name:String) => "org.w3" %% name % "2013_10_07-SNAPSHOT" excludeAll(ExclusionRule(organization = "org.scala-stm"))
 
-    val appDependencies = Seq("banana-jena","banana-sesame","banana-rdf","plantain","ldp").map(banana) ++ Seq(
-      "org.scalatest" % "scalatest_2.10" % "2.0.M6-SNAP8",
+    val iterateeDeps = "com.typesafe.play" %% "play-iteratees" % "2.2.0"
+    val scalatest = "org.scalatest" %% "scalatest" % "2.0.RC1-SNAP4"
+    val scalaActors = "org.scala-lang" % "scala-actors" % "2.10.2"
+
+    val testsuiteDeps =
+      Seq(
+//        scalaActors,
+        scalatest
+    )
+
+
+  val appDependencies = Seq("banana-sesame","banana-jena","banana-rdf","plantain").map(banana) ++ Seq(
       "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
       "nu.validator.htmlparser" % "htmlparser" % "1.2.1",
       "org.scalaz" % "scalaz-core_2.10" % "7.0.0-RC1", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"
       "org.bouncycastle" % "bcprov-jdk15on" % "1.47",
       "org.scala-lang" % "scala-actors" % "2.10.0", //for tests because of sbt for some reason
-      "net.sf.uadetector" % "uadetector-resources" % "2012.12"
+      "net.sf.uadetector" % "uadetector-resources" % "2012.12",
+      iterateeDeps,
+      "org.scalatest" %% "scalatest" % "2.0.RC1-SNAP4",
+    "org.scala-lang" % "scala-actors" % "2.10.2"
+
       //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
     )
+
 
 
   val main = play.Project(appName, appVersion, appDependencies).settings(

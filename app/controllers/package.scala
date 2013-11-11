@@ -3,7 +3,7 @@ package controllers
 import akka.actor.ActorSystem
 import concurrent.ExecutionContext
 import rww.play.rdf.IterateeSelector
-import org.w3.banana.ldp.{WSClient, WebClient}
+import rww.ldp.{WSClient, WebClient}
 import org.w3.banana._
 import scala.Some
 

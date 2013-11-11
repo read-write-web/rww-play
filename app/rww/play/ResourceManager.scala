@@ -17,16 +17,16 @@
 package rww.play
 
 import org.w3.banana._
-import org.w3.banana.ldp.LDPCommand._
+import rww.ldp.LDPCommand._
 import concurrent.{Future, ExecutionContext}
 import play.api.libs.iteratee.Enumerator
 import scalaz.Either3
 import scalaz.Either3._
 import play.api.libs.Files.TemporaryFile
 import rww.play.auth.AuthN
-import org.w3.banana.ldp._
+import rww.ldp._
 import scala.Some
-import org.w3.banana.ldp.auth.WACAuthZ
+import rww.ldp.auth.WACAuthZ
 import java.net.URL
 
 

@@ -26,7 +26,7 @@
 //import org.w3.banana.LinkedDataResource
 //import play.api.cache
 //import org.w3.banana.diesel.Diesel
-//import org.w3.banana.ldp.RWW
+//import rww.ldp.RWW
 //
 //class WebACLTestSuite[Rdf<:RDF](implicit val dsl: Diesel[Rdf])
 //    extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper {
