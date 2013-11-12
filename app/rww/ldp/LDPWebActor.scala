@@ -224,7 +224,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
   final def run[A](sender: ActorRef, script: LDPCommand.Script[Rdf,A]) {
     script.resume match {
       case -\/(cmd) => {
-        if(local(cmd.uri.underlying,excluding.underlying) == None) {
+        if(RActor.local(cmd.uri.underlying,excluding.underlying) == None) {
           runCmd(cmd)
           //if we were to have some commands return an immediate value, then we could do
           // the following with the returned script

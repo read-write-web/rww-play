@@ -1,4 +1,4 @@
-package rww.ldp
+package test.ldp
 
 import org.scalatest._
 import scala.concurrent._

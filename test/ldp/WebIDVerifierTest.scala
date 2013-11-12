@@ -1,4 +1,4 @@
-package rww.ldp
+package test.ldp
 
 import akka.actor.Props
 import akka.util.Timeout
@@ -14,6 +14,7 @@ import rww.ldp.LDPCommand._
 import scala.Some
 import sun.security.x509.X500Name
 import java.security.Principal
+import rww.ldp._
 
 import org.w3.banana.plantain.Plantain
 
