@@ -66,7 +66,7 @@ case class CertReq(cn: String, webids: List[URL], subjPubKey: PublicKey, validFr
       sans.add(new GeneralName(new URIName(webId.toExternalForm)))
     }
     val sanExt =
-      new SubjectAlternativeNameExtension(true,sans)
+      new SubjectAlternativeNameExtension(false,sans)
 
     extensions.set(sanExt.getName, sanExt)
 
@@ -224,7 +224,7 @@ object ClientCertificateApp extends Controller {
 
   //start ten minuted ago, in order to avoid problems with watch synchronisations. Should be longer
   def tenMinutesAgo = new Date(System.currentTimeMillis() - (10*1000*60).toLong)
-  def aYearFromNow =  new Date(System.currentTimeMillis() + (365L*24L*60L*60L*1000L).toLong)
+  def yearsFromNow(year: Int) =  new Date(System.currentTimeMillis() + (365L*24L*60L*60L*1000L).toLong)
 
 
   val certForm = Form(
@@ -233,9 +233,10 @@ object ClientCertificateApp extends Controller {
       "webids" -> list(of[Option[URL]]).
         transform[List[URL]](_.flatten,_.map(e=>Some(e))).
         verifying("require at least one WebID", _.size > 0),
-      "spkac" -> of(spkacFormatter)
-    )((CN, webids, pubkey) => CertReq(CN,webids,pubkey,tenMinutesAgo,aYearFromNow))
-      ((req: CertReq) => Some(req.cn,req.webids,null))
+      "spkac" -> of(spkacFormatter),
+      "years" -> number(min=1,max=20)
+    )((CN, webids, pubkey,years) => CertReq(CN,webids,pubkey,tenMinutesAgo,yearsFromNow(years)))
+      ((req: CertReq) => Some(req.cn,req.webids,null,2))
   )
 
   def generate = Action { implicit request =>

@@ -181,13 +181,13 @@ Content-Type: text/turtle
 Content-Length: 1005
 
 
-<#me> <http://www.w3.org/ns/auth/cert#key> _:node17vcshtjbx1 ;
-	<http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
-	<http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
+_:node1896efo11x1 a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
+    <http://www.w3.org/ns/auth/cert#modulus> "A74A4CF7BD1261D930B9656CC1A457C79ABE6F86607DB76EF95FF024CA6B712DD03DDB178669562170D7CAA8431528E1139AE85D1E72B09BD552CAD0FA94225CACA9363D799A10C0269A7DD70E28AFE0971B8352048F5DFC55537480F334155CBA98434678A887457D6378D19C8C0E9F59CA99E21492308CE4510B68C12BA3002862E30839E7D91EE0F9BF1155E07854D99FE12A32B4FB03862466203BF0E5C0D3B90B5AB6B5CABA520811FD02097CE5680C1D8B55098C566C11066B37FE43A26FCD1AA93E7A9919446F39B0E3C0D6C1C9BEB509E86255101634CBE738C52553ACC14A7FE50D536BBA5F8D96BFE0B5DA33095466B61B4141CE91405838072477"^^<http://www.w3.org/2001/XMLSchema#hexBinary> ;
+    <http://www.w3.org/ns/auth/cert#exponent> "65537"^^<http://www.w3.org/2001/XMLSchema#integer> .
 
-_:node17vcshtjbx1 a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
-	<http://www.w3.org/ns/auth/cert#exponent> "65537"^^<http://www.w3.org/2001/XMLSchema#integer> ;
-	<http://www.w3.org/ns/auth/cert#modulus> "C13AB88098CF47FCE6B3463FC7E8762036154FE616B956544D50EE63133CC8748D692A00DAFF5331D2564BB1DD5AEF94636ED09EFFA9E776CA6B4A92022BB060BF18FC709936EF43D345289A7FD91C81801A921376D7BCC1C63BD3335FB385A01EC0B71877FCBD1E4525393CCD5F2922D68840945943A675CCAE245222E3EB99B87B180807002063CB78174C1605EA1ECFECF57264F7F60CD8C270175A1D8DD58DFC7D3C56DB273B0494B034EC185B09977CBB530E7E407206107A73CD4B49E17610559F2A81EA8E3F613C3D3C161C06FE5CB114A8522D20DED77CAAA8C761090022F9CD4AF2C8F21DF7CF05287E379225AEA6A3A6610D02C4A44AA7CEED2CC3"^^<http://www.w3.org/2001/XMLSchema#hexBinary> .
+<#me> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
+    <http://www.w3.org/ns/auth/cert#key> _:node1896efo11x1 ;
+    <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
 ```
 
 Notice the `Link` header above. Every resource points to its ACL file in such a header.
@@ -201,35 +201,35 @@ $ openssl x509 -in ../eg/test-localhost.pem -inform pem -text
 Certificate:
     Data:
         Version: 3 (0x2)
-        Serial Number: 13633800264985240815 (0xbd34fd1b251264ef)
+        Serial Number: 10306520952195172220 (0x8f081e3321b6c77c)
     Signature Algorithm: sha1WithRSAEncryption
         Issuer: O=\xE2\x88\x85, CN=WebID
         Validity
-            Not Before: May  3 19:36:33 2013 GMT
-            Not After : May  3 19:46:33 2014 GMT
-        Subject: O=ReadWriteWeb, CN=test@localhost
+            Not Before: Nov 12 15:03:11 2013 GMT
+            Not After : Nov 12 15:13:11 2014 GMT
+        Subject: O=ReadWriteWeb, CN=tester@localhost
         Subject Public Key Info:
             Public Key Algorithm: rsaEncryption
                 Public-Key: (2048 bit)
                 Modulus:
-                    00:c1:3a:b8:80:98:cf:47:fc:e6:b3:46:3f:c7:e8:
-                    76:20:36:15:4f:e6:16:b9:56:54:4d:50:ee:63:13:
-                    3c:c8:74:8d:69:2a:00:da:ff:53:31:d2:56:4b:b1:
-                    dd:5a:ef:94:63:6e:d0:9e:ff:a9:e7:76:ca:6b:4a:
-                    92:02:2b:b0:60:bf:18:fc:70:99:36:ef:43:d3:45:
-                    28:9a:7f:d9:1c:81:80:1a:92:13:76:d7:bc:c1:c6:
-                    3b:d3:33:5f:b3:85:a0:1e:c0:b7:18:77:fc:bd:1e:
-                    45:25:39:3c:cd:5f:29:22:d6:88:40:94:59:43:a6:
-                    75:cc:ae:24:52:22:e3:eb:99:b8:7b:18:08:07:00:
-                    20:63:cb:78:17:4c:16:05:ea:1e:cf:ec:f5:72:64:
-                    f7:f6:0c:d8:c2:70:17:5a:1d:8d:d5:8d:fc:7d:3c:
-                    56:db:27:3b:04:94:b0:34:ec:18:5b:09:97:7c:bb:
-                    53:0e:7e:40:72:06:10:7a:73:cd:4b:49:e1:76:10:
-                    55:9f:2a:81:ea:8e:3f:61:3c:3d:3c:16:1c:06:fe:
-                    5c:b1:14:a8:52:2d:20:de:d7:7c:aa:a8:c7:61:09:
-                    00:22:f9:cd:4a:f2:c8:f2:1d:f7:cf:05:28:7e:37:
-                    92:25:ae:a6:a3:a6:61:0d:02:c4:a4:4a:a7:ce:ed:
-                    2c:c3
+                    00:a7:4a:4c:f7:bd:12:61:d9:30:b9:65:6c:c1:a4:
+                    57:c7:9a:be:6f:86:60:7d:b7:6e:f9:5f:f0:24:ca:
+                    6b:71:2d:d0:3d:db:17:86:69:56:21:70:d7:ca:a8:
+                    43:15:28:e1:13:9a:e8:5d:1e:72:b0:9b:d5:52:ca:
+                    d0:fa:94:22:5c:ac:a9:36:3d:79:9a:10:c0:26:9a:
+                    7d:d7:0e:28:af:e0:97:1b:83:52:04:8f:5d:fc:55:
+                    53:74:80:f3:34:15:5c:ba:98:43:46:78:a8:87:45:
+                    7d:63:78:d1:9c:8c:0e:9f:59:ca:99:e2:14:92:30:
+                    8c:e4:51:0b:68:c1:2b:a3:00:28:62:e3:08:39:e7:
+                    d9:1e:e0:f9:bf:11:55:e0:78:54:d9:9f:e1:2a:32:
+                    b4:fb:03:86:24:66:20:3b:f0:e5:c0:d3:b9:0b:5a:
+                    b6:b5:ca:ba:52:08:11:fd:02:09:7c:e5:68:0c:1d:
+                    8b:55:09:8c:56:6c:11:06:6b:37:fe:43:a2:6f:cd:
+                    1a:a9:3e:7a:99:19:44:6f:39:b0:e3:c0:d6:c1:c9:
+                    be:b5:09:e8:62:55:10:16:34:cb:e7:38:c5:25:53:
+                    ac:c1:4a:7f:e5:0d:53:6b:ba:5f:8d:96:bf:e0:b5:
+                    da:33:09:54:66:b6:1b:41:41:ce:91:40:58:38:07:
+                    24:77
                 Exponent: 65537 (0x10001)
         X509v3 extensions:
             X509v3 Basic Constraints: 
@@ -238,19 +238,19 @@ Certificate:
                 Digital Signature, Non Repudiation, Key Encipherment, Key Agreement
             Netscape Cert Type: 
                 SSL Client, S/MIME
-            X509v3 Subject Alternative Name: critical
+            X509v3 Subject Alternative Name: 
                 URI:https://localhost:8443/2013/card#me
             X509v3 Subject Key Identifier: 
-                3C:1B:CF:F2:E5:59:9A:E8:76:BE:83:1D:64:FB:07:4E:08:C6:FC:14
+                A7:ED:1E:CB:82:50:7C:49:AA:60:84:D2:BA:C8:E4:A4:4A:D7:72:F7
     Signature Algorithm: sha1WithRSAEncryption
-         07:97:78:f5:11:58:00:50:17:91:14:e8:e3:0d:34:22:74:07:
-         ae:61:39:87:23:7a:6c:5c:14:af:13:a6:c8:54:ac:55:d4:41:
-         25:45:eb:52:90:ff:56:b0:f9:71:be:ec:c8:2c:a1:19:1c:86:
-         42:04:3c:55:7c:96:5c:60:70:0a:d7:ed:5b:53:11:56:7e:14:
-         32:92:b9:22:a7:c6:ce:ff:77:17:4a:ac:da:02:ac:24:0e:0e:
-         35:18:bd:e3:73:00:3b:8a:aa:ec:86:76:66:dd:4b:1b:da:0c:
-         c8:a1:d3:27:26:df:bf:6f:55:11:50:3b:8e:04:12:5a:b9:d4:
-         7d:7e
+         3c:e6:65:95:0e:05:32:8a:8b:83:a0:18:f7:fb:ff:2c:ac:15:
+         56:f5:65:42:f5:23:ad:3a:4a:45:fb:e8:4d:47:73:0e:41:b6:
+         78:fa:20:0f:c9:6d:b8:dd:7d:92:51:48:19:ee:67:5b:29:5c:
+         e1:61:18:8b:30:e5:4d:b9:31:31:9c:52:ab:b8:7e:26:99:94:
+         cd:c1:52:af:32:92:9e:49:27:8c:8c:8a:69:41:ce:84:37:87:
+         b7:e8:75:0c:a9:e2:19:36:fb:98:08:da:01:e5:3e:b2:ab:07:
+         ac:2d:76:be:a1:23:bd:1f:36:91:b9:5d:f2:ac:0d:40:56:dd:
+         72:7f
 ```
 
 We would of course like to make the card world readable so that the certificate

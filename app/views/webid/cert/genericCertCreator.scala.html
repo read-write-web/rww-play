@@ -29,6 +29,10 @@
                 '_error -> { if (webidField.name == "webids[0]") certForm("webids").error}
             )
         }
+        @inputText(certForm("years"),
+            '_label -> "Valid for (years)",
+            '_error -> "invalid number of years (1..20)"
+        )
         <div class="clearfix" id="keygen">
             <label for="keygenerator">Key Strength</label>
             <div class="input">
