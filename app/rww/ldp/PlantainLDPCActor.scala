@@ -19,6 +19,9 @@ import scala.io.Codec
 import java.io.{File, FileOutputStream}
 import java.nio.file.DirectoryStream.Filter
 import org.w3.banana.diesel.Diesel
+import com.google.common.cache._
+import java.util.concurrent.Callable
+import scalax.io.Resource
 
 /**
  * A LDP Container actor that is responsible for the equivalent of a directory
@@ -36,10 +39,6 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
   import org.w3.banana.syntax._
   import ops._
   import diesel._
-
-
-
-
 
   override lazy val fileName = ""
 
@@ -74,7 +73,6 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
     })
   }
 
-
   override
   def localName(uri: Plantain#URI): String = {
     val requestedPath = uri.underlying.getPath
@@ -83,7 +81,6 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
     if (ldpcPath.length > requestedPath.length) fileName
     else super.localName(uri)
   }
-
 
   private def descriptionFor(path: Path, attrs: BasicFileAttributes): Plantain#Graph = {
     def graphFor(uri: Plantain#URI) = {
@@ -338,7 +335,32 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   import ops._
   import scala.collection.convert.decorateAsScala._
 
-  val cache = scala.collection.mutable.Map[String, NamedResource[Plantain]]()
+  //google cache with soft values: at least it will remove the simplest failures
+  val cacheg: LoadingCache[String,NamedResource[Plantain]] = CacheBuilder.newBuilder()
+                        .softValues()
+                        .build(new CacheLoader[String,NamedResource[Plantain]]() {
+    import scalax.io.{Resource=>xResource}
+
+    def load(key: String) = {
+        //at this point it is still very easy - only two cases! but won't stay like this...
+        val (file, iri) = fileAndURIFor(key)
+
+        if (file.createNewFile()) {
+          if (file.toString.endsWith(ext)) {
+            LocalLDPR[Plantain](iri, Graph.empty, Option(new Date(path.toFile.lastModified())))
+          } else {
+            LocalBinaryR[Plantain](file.toPath, iri)
+          }
+        } else {
+          val res = xResource.fromFile(file)
+          val ldprOpt = reader.read(res, iri.toString).map {
+            g =>
+              LocalLDPR[Plantain](iri, g, Option(new Date(path.toFile.lastModified())))
+          }
+          ldprOpt.get //todo: this could break
+        }
+      }
+  })
 
   def filter = new Filter[Path]() {
     val fileName = path.getFileName.toString
@@ -374,48 +396,9 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
    */
   @throws[ResourceDoesNotExist]
   def getResource(name: String): NamedResource[Plantain] = {
-    import scalax.file.{Path=>xPath}
     import scalax.io.{Resource=>xResource}
     //todo: the file should be verified to see if it is up to date.
-    cache.getOrElseUpdate(name, {
-      //at this point it is still very easy - only two cases! but won't stay like this...
-      val (file,iri) = fileAndURIFor(name)
-
-      if (file.createNewFile()) {
-        if (file.toString.endsWith(ext)) {
-           LocalLDPR[Plantain](iri,Graph.empty,Option(new Date(path.toFile.lastModified())))
-        } else {
-           LocalBinaryR[Plantain](file.toPath, iri)
-        }
-      } else {
-        val res = xResource.fromFile(file)
-        val ldprOpt = reader.read(res, iri.toString).map { g =>
-            LocalLDPR[Plantain](iri, g, Option(new Date(path.toFile.lastModified())))
-        }
-        ldprOpt.get //todo: this could break
-      }
-    })
-
-//      //todo: this globbing is not secure. Requests could contain files with globs in them.
-//      val pathStream = Files.newDirectoryStream(path.getParent,fileName+".*")
-//      val paths = try {
-//        for (p <- pathStream.asScala) yield p
-//      } finally {
-//        pathStream.close()
-//      }
-//      paths.collectFirst{
-//        case path if path.endsWith(".ttl") =>
-//        val res = xResource.fromFile(path.toFile)
-//          cache = reader.read(res,"").toOption.map{g=>
-//            LocalLDPR[Plantain](baseUri, g,Option(new Date(path.toFile.lastModified())))
-//          }
-//          cache
-//        case path if path.endsWith(".jpg") =>  {
-//          cache = Option(LocalBinaryR[Plantain](path,baseUri))
-//          cache
-//        }
-//      }.flatten
-//    }
+    cacheg.get(name)
   }
 
   /**
@@ -451,7 +434,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
       case scala.util.Failure(t) => throw new StoreProblem(t)
       case x => x
     }
-    cache.put(name,LocalLDPR[Plantain](iri,graph,Some(new Date(file.lastModified()))))
+    cacheg.put(name,LocalLDPR[Plantain](iri,graph,Some(new Date(file.lastModified()))))
   }
 
 
