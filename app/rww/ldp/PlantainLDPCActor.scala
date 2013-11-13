@@ -114,7 +114,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
   override def getResource(name: String): NamedResource[Plantain] = {
     val ldpr = super.getResource(name).asInstanceOf[LDPR[Plantain]]
     if (name==fileName) { //if this is the index file, add all the content info
-      var contentGrph = ldpr.graph
+      var contentGrph = ldpr.graph + Triple(baseUri, rdf.typ, ldp.Container)
       Files.walkFileTree(root,util.Collections.emptySet(), 1,
       new SimpleFileVisitor[Path] {
 
