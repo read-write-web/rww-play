@@ -114,6 +114,8 @@ trait Meta[Rdf <: RDF] {
   def ops: RDFOps[Rdf]
 
   def size: Option[Long]
+
+  def updated: Option[Date]
   /*
  * A resource should ideally be versioned, so any change would get a version URI
  **/
@@ -177,6 +179,9 @@ case class OperationNotSupported(msg: String) extends Exception(msg)
 
 //todo: the way of finding the meta data should not be set here, but in the implementation
 trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
+
+  def path: Path
+
   lazy val acl: Option[Rdf#URI]= Some{
     var loc=location.toString
     if (loc.endsWith(".acl")) location
@@ -232,6 +237,7 @@ case class LocalBinaryR[Rdf<:RDF](path: Path, location: Rdf#URI)
  */
 case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
                                   graph: Rdf#Graph,
+                                  path: Path,
                                   updated: Option[Date] = Some(new Date))
                                  (implicit val ops: RDFOps[Rdf])
   extends LDPR[Rdf] with LocalNamedResource[Rdf]{
