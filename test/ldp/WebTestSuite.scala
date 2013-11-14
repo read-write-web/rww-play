@@ -1,4 +1,4 @@
-package rww.ldp
+package test.ldp
 
 import akka.actor.Props
 import akka.util.Timeout
@@ -15,6 +15,7 @@ import scala.Some
 import scala.concurrent.{ExecutionContext, Await}
 import scala.concurrent.duration.Duration
 import rww.ldp.auth.{WebIDPrincipal, WebIDVerifier, WACAuthZ}
+import rww.ldp._
 
 
 object WebTestSuite {

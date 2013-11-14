@@ -1,4 +1,4 @@
-package rww.ldp
+package test.ldp
 
 import akka.actor.Props
 import akka.util.Timeout
@@ -13,7 +13,8 @@ import org.w3.banana.plantain.Plantain
 import play.api.libs.iteratee._
 import scala.concurrent.{ExecutionContext, Await}
 import scala.concurrent.duration.Duration
-import auth._
+import rww.ldp._
+import rww.ldp.auth._
 
 
 object LDRTestSuite {

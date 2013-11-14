@@ -1,9 +1,10 @@
-package rww.ldp
+package test.ldp
 
 import org.w3.banana._
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.scalatest.matchers.MustMatchers
 import org.w3.banana.plantain.Plantain
+import rww.ldp._
 
 class PlantainLinkHeaderParserTest extends LinkHeaderParserTest[Plantain]()(plantain.PlantainOps)
 

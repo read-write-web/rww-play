@@ -33,6 +33,9 @@ trait RActor extends Actor with akka.actor.ActorLogging {
       }
     }
 
+}
+
+object RActor {
   def local(u: jURI, base: jURI): Option[String] = {
     val res = if ((!u.isAbsolute ) || (u.getScheme == base.getScheme && u.getHost == base.getHost && u.getPort == base.getPort)) {
       if (u.getPath.startsWith(base.getPath)) {
@@ -40,14 +43,18 @@ trait RActor extends Actor with akka.actor.ActorLogging {
         val sections = res.split('/')
         val fileName = sections.last
         var idot= fileName.indexOf('.')
-        if (idot>=0) sections.update(sections.length-1,fileName.substring(0,idot))
-        Option(sections.mkString("/"))
+        val treated = if (idot>0) {
+          sections.update(sections.length-1,fileName.substring(0,idot))
+          sections.toSeq
+        }else if (idot==0) sections.toSeq.dropRight(1)
+        else sections.toSeq
+        Option(treated.mkString("/"))
       } else None
     } else None
     res
   }
-
 }
+
 
 class LocalSetup {
   def aclPath(path: String) = {
@@ -107,6 +114,8 @@ trait Meta[Rdf <: RDF] {
   def ops: RDFOps[Rdf]
 
   def size: Option[Long]
+
+  def updated: Option[Date]
   /*
  * A resource should ideally be versioned, so any change would get a version URI
  **/
@@ -170,6 +179,9 @@ case class OperationNotSupported(msg: String) extends Exception(msg)
 
 //todo: the way of finding the meta data should not be set here, but in the implementation
 trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
+
+  def path: Path
+
   lazy val acl: Option[Rdf#URI]= Some{
     var loc=location.toString
     if (loc.endsWith(".acl")) location
@@ -225,6 +237,7 @@ case class LocalBinaryR[Rdf<:RDF](path: Path, location: Rdf#URI)
  */
 case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
                                   graph: Rdf#Graph,
+                                  path: Path,
                                   updated: Option[Date] = Some(new Date))
                                  (implicit val ops: RDFOps[Rdf])
   extends LDPR[Rdf] with LocalNamedResource[Rdf]{
@@ -354,7 +367,7 @@ class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
 
   /** We in fact ignore the R and A types, since we cannot capture */
   protected def forwardSwitch[A](cmd: Cmd[Rdf,A]) {
-      local(cmd.command.uri.underlying,baseUri.underlying).map { path=>
+     RActor.local(cmd.command.uri.underlying,baseUri.underlying).map { path=>
         rootContainer match {
           case Some(root) => {
             val p = root.path / path.split('/').toIterable

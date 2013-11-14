@@ -1,4 +1,4 @@
-package rww.ldp
+package test.ldp
 
 import org.w3.banana._
 import org.w3.banana.plantain._
@@ -16,6 +16,7 @@ import scala.Some
 import akka.actor.Props
 import rww.ldp.auth.WACAuthZ
 import scala.util.Try
+import rww.ldp._
 
 object PlantainTest {
   val dir = Files.createTempDirectory("plantain" )

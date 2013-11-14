@@ -1,4 +1,4 @@
-package rww.ldp
+package test.ldp
 
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import java.security.{KeyPair, KeyPairGenerator}
@@ -9,6 +9,7 @@ import scala.concurrent.Future
 import org.w3.play.api.libs.ws.ResponseHeaders
 import org.w3.banana
 import org.scalatest.{Suite, BeforeAndAfter}
+import rww.ldp._
 
 /**
  * Build up a set of Graphs with representing some realistic scenarios that can then be used
