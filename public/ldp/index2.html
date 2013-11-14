@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>stample.rww.io: Index of /</title>
+    <base href="http://stample.rww.io/">
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.js"></script>
+	<link rel="stylesheet" href="/common/css/blueprint.css" type="text/css" media="screen, projection" />
+    <link rel="stylesheet" href="/common/css/common.css" type="text/css" media="screen, projection" />
+    <link rel="stylesheet" href="/common/css/font-awesome.min.css" type="text/css" media="screen, projection" />
+    <link rel="stylesheet" href="/common/css/buttons.css" type="text/css" media="screen, projection" />
+	<script type="text/javascript" src="http://localhost/~ameliemedem/rdflib.js/dist/rdflib.js" ></script>
+	<script type="text/javascript" src="http://localhost/~ameliemedem/rdflib.js/example/ldp/js/fetchRdfGraph.js" ></script>
+	<script src="/common/js/prototype.js" type="text/javascript"></script>
+    <script src="/common/js/common.js" type="text/javascript"></script>
+    <script type="text/javascript">
+    cloud.init({request_base:'https://localhost:8443/2013/',request_url:'/2013/'});
+    </script>
+</head>
+<body>
+    <div id="alert" style="display: none;">
+        <div id="alertbody" style="display: inline;"></div>
+    </div>
+    <div id="title" style="display: none;">Index of /</div>
+
+    <div id="topnav" class="topnav center">
+    <img src="/common/images/logo.svg" class="logo-icon left" /><span class="title" title="Home"><a href="http://rww.io">RWW.I/O</a></span>
+
+            <div class="login">
+                <span class="login-links"><a class="white" href="https://stample.rww.io">WebID Login</a>
+                <br/><a class="white" href="#" onclick="showWebID()">Get a WebID</a></span>
+                <img class="login-photo" src="/common/images/nouser.png" />
+            </div>
+    </div>
+
+<div id="container">
+
+<table id="webid-gen" style="display:none;">
+    <form method="POST" action="">
+        <tr><td><input type="text" name="name" size="40" class="required" placeholder="full name..."></td></tr>
+        <tr><td><input type="text" name="path" size="40" value="/profile/card#me" class="required"></td></tr>
+        <tr><td><input type="email" name="email" size="40" placeholder="recovery email..."></td></tr>
+        <tr class="keygen" hidden><td>Key size<br /><keygen name="SPKAC" challenge="randomchars" keytype="rsa"></td></tr>
+        <tr><td><button type="submit" onclick="hideWebID()">Create WebID</button>
+                <button type="button" onclick="hideWebID()">Cancel</button>
+        </td></tr>
+    </form>
+</table>
+
+<div id="editor" class="editor" style="display:none">
+    <input class="cleft left" style="margin: 0;" type="text" id="editorpath" placeholder="loading..." />
+    <select id="editorType" class="left" style="margin: 0;" onchange="cloud.edit($F('editorpath'))">
+        <option disabled="disabled"></option>
+        <option>text/turtle</option>
+        <option>text/rdf+xml</option>
+        <option>text/rdf+nt</option>
+        <option>application/json</option>
+        <option>application/json-ld</option>
+        <option disabled="disabled">----</option>
+        <option>text/txt</option>
+        <option>text/css</option>
+        <option>text/html</option>
+        <option>text/javascript</option>
+    </select>
+    <textarea class="editor-content clear left" id="editorarea" disabled="disabled"></textarea><br/>
+    <div class="right actions"><a href="#" class="button button-rounded button-flat-caution" onclick="$('editor').hide();"><i class="icon-remove"></i> Cancel</a></div>
+    <div class="right"><a href="#" class="button button-rounded button-flat-primary" onclick="cloud.save();"><i class="icon-save"></i> Save</a></div>
+</div>
+
+<div id="wac-editor" class="wac-editor" style="display: none;">
+    <span id="wac-reqpath" name="wac-reqpath" style="display: none;"></span>
+    <h3>Resource name: <b><span id="wac-path" name="wac-path"></span></b></h3>
+    <input type="hidden" id="wac-exists" value="0" />
+    <input type="hidden" id="wac-owner" value="dns:90.24.245.239" />
+    <div>
+        <div class="left"><input type="checkbox" id="wac-read" name="Read"> Read </div>
+        <div class="left"><input type="checkbox" id="wac-write" name="Write" onclick="toggleCheck('wac-write','wac-append')"> Write </div>
+        <div class="left"><input type="checkbox" id="wac-append" name="Append" onclick="toggleCheck('wac-append','wac-write')"> Append </div>
+        <br/>
+        <p>
+        <div id="recursive" class="left" style="display: none;"><input type="checkbox" id="wac-recursive" name="Recursive"> Default for all new files in this directory?</div>
+        </p>
+    </div>
+    <br />
+    <br />
+    <div>
+        Allow access for:<br />
+        <small>(comma separated WebID addresses OR leave blank for everyone)</small>
+    </div>
+    <textarea id="wac-users" name="users" cols="5" rows="5"></textarea>
+    <br/>
+    <div class="right actions"><a href="#" class="button button-rounded button-flat-caution" onclick="wac.hide()"><i class="icon-remove"></i> Cancel</a></div>
+    <div class="right"><a href="#" class="button button-rounded button-flat-primary" onclick="wac.save()"><i class="icon-save"></i> Save</a></div>
+</div>
+
+
+<div class="center">
+
+
+<div>
+
+<div class="cloudactions center width-1024">
+    <div>
+        <div class="newitems">
+        <div class="left cell inline-block sep-right"><img class="pointer newitem" src="/common/images/refresh.png" title="Refresh list" onclick="window.location.reload(true);" /></div>
+        <div class="left cell inline-block sep-right"><img class="pointer newitem" src="/common/images/home.png" title="Go to top level" onclick="window.location.replace('/');" /></div>
+        <div class="left cell inline-block actions"><img class="pointer newitem" src="/common/images/images.png" title="Upload an image" onclick="showImage();" /></div>
+        <div class="left cell inline-block"><img class="pointer newitem" src="/common/images/add_folder.png" title="Create a new directory" onclick="showCloudNew('dir');" /></div>
+        <div class="left cell inline-block"><img class="pointer newitem" src="/common/images/add_file.png" title="Create a new file" onclick="showCloudNew('file');" /></div>
+        <div class="left cell inline-block"><input id="create-item" class="item" type="text" name="" style="display:none;" onkeypress="cloudListen(event)" /></div>
+        <div class="left cell inline-block"><img id="submit-item" class="pointer newitem" src="/common/images/ok.png" title="Create" style="display:none;" onclick="createItem();" /></div>
+        <div class="left cell inline-block"><img id="cancel-item" class="pointer newitem" src="/common/images/cancel.png" title="Cancel" style="display:none;" onclick="hideCloud();" /></div>
+        <div class="left cell inline-block"><form id="imageform" name="imageform" method="post" enctype="multipart/form-data"><input type="file" id="addimage" name="image" style="display:none;" /></form></div>
+        <div class="left cell inline-block"><img id="submit-image" class="pointer newitem" src="/common/images/upload.png" title="Upload" style="display:none;" onclick="submitImage();" /></div>
+        <div class="left cell inline-block"><img id="cancel-image" class="pointer newitem" src="/common/images/cancel.png" title="Cancel" style="display:none;" onclick="hideImage();" /></div>
+        </div>
+    </div>
+
+    <div class="meta right top-5">
+                <a class="pointer" onclick="setCookie('showMetaFiles', '0', '1');">Hide</a>
+                <span> hidden files?</span>
+    </div>
+
+</div>
+
+<table id="index" class="files center box-shadow">
+<thead>
+    <tr>
+        <th> Name</th>
+        <th>Size</th>
+        <th>Type</th>
+        <th>Last Modified</th>
+        <th colspan="3">Actions</th>
+    </tr>
+</thead>
+	<tbody class="lines">
+    </tbody>
+</table>
+
+</div>
+
+<div class="clear spacer"></div>
+</div>
+
+<script type="text/javascript">
+
+// Graphs.
+graphsCache = {};
+
+function showWebID() {
+    // get the mouse position
+    var e = window.event;
+    var topVal = e.clientY;
+    var leftVal = e.clientX-300;
+    // set the coords
+    $('webid-gen').setStyle({
+        top: topVal+'px',
+        left: leftVal+'px'
+    });
+    $('webid-gen').show();
+}
+
+function hideWebID() {
+    $('webid-gen').hide();
+}
+
+function showImage() {
+    hideCloud();
+    $('addimage').show();
+    $('submit-image').show();
+    $('cancel-image').show();
+}
+
+function hideImage() {
+    document.imageform.reset();
+    $('addimage').hide();
+    $('submit-image').hide();
+    $('cancel-image').hide();
+}
+
+function submitImage() {
+    document.imageform.submit();
+    $('addimage').hide();
+    $('submit-image').hide();
+    $('cancel-image').hide();
+}
+
+function createItem() {
+    var res = document.getElementById("create-item");
+    console.log(res.name+' / val='+res.value);
+    if (res.name == 'file')
+        cloud.append(res.value);
+    else if (res.name == 'dir')
+        cloud.mkdir(res.value);
+}
+
+function cloudListen(e) {
+    // 13 = the Enter key
+    if (e.which == 13 || e.keyCode == 13) {
+        createItem();
+    }
+}
+
+function showCloudNew(type) {
+    if (type == 'file')
+        var text = 'file name...';
+    else
+        var text = 'directory name...';
+
+    hideImage();
+    $('create-item').setAttribute('name', type);
+    $('create-item').setAttribute('placeholder', text);
+    $('create-item').show();
+    $('create-item').focus();
+    $('submit-item').show();
+    $('cancel-item').show();
+}
+
+function hideCloud() {
+    $('create-item').hide();
+    $('create-item').clear();
+    $('submit-item').hide();
+    $('cancel-item').hide();
+}
+
+function toggleCheck(e1,e2) {
+    if ($(e2).checked == true) {
+        if ($(e1).checked == true)
+            $(e2).checked = false;
+    }
+}
+
+$(document).observe('keydown', function(e) {
+    if (e.keyCode == 27) { // ESC
+        $('editor').hide();
+        $('wac-editor').hide();
+        hideWebID();
+        hideCloud();
+        hideImage();
+    }
+    });
+
+</script>
+
+<hr class="center" />
+<div class="center align-right width-1024">
+
+<div onclick="$('codeID').toggle();">
+<div class="footer">
+<span class="left">
+    <a href="https://github.com/deiu/rww.io" target="_blank">GitHub</a> | <a href="http://rww.io/help">Help?</a> | Show your support
+</span>
+<span class="left">
+    <a data-code="ed957952a941abf15d50696973fa4b92" href="https://coinbase.com/checkouts/ed957952a941abf15d50696973fa4b92" target="_blank"><img src="/common/images/bitcoin.png" alt="Bitcoin donation" title="Bitcoin donation" border="0" /></a>
+</span>
+<span class="left">
+    <a href="http://flattr.com/thing/1748916/" target="_blank"><img src="/common/images/flattr.png" alt="Flattr this project" title="Flattr this project" border="0" /></a>
+</span>
+<span class="left">
+    <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YCG7HFRPTVD4A" target="_blank"><img src="/common/images/paypal.png" alt="Paypal donation" title="Paypal donation" border="0" /></a>
+</span>
+
+<span id="codeID" class="align-right" style="display:none;">
+ request completed in 0.0167s
+with 1 query in 0.0002s
+ [ librdf: 1.0.14 / raptor: 2.0.6 / rasqal: 0.9.28 ]
+</span>
+<span id="codeTime">Performance info...</span>
+</div>
+
+</div>
+</div>
+<div class="clear"></div>
+</div>
+
+</body>
+</html>

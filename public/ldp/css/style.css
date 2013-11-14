@@ -1,0 +1,21 @@
+
+/* File viewer */s
+.editor {
+	padding: 10px;
+	background: #607891;
+	width: auto;
+	z-index: 1000;
+	position: fixed;
+	font-size:1em;
+}
+
+.editor-content {
+	min-width: 935px;
+	bottom: 2em;
+	border-color: #ddd;
+}
+
+#editorType {
+	padding: 10px;
+	margin-left: 10px;
+}

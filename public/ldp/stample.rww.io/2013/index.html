@@ -1,0 +1,91 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+<html>
+
+<head>
+	<title>Primary Html file.</title>
+	<base href="https://localhost:8443/assets/ldp/">
+	<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+	<script type="text/javascript" src="js/underscore.js"></script>
+	<script type="text/javascript" src="js/rdflib.js"></script>
+	<script type="text/javascript">
+		var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
+		var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+		var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
+
+		// Get the graph related to Base Uri.
+		graphsCache = {};
+		var baseUri = 'https://localhost:8443/2013/card';
+		var viewerUri = 'https://localhost:8443/assets/ldp/viewer.ttl';
+		var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
+		var fetch = $rdf.fetcher(graph);
+		fetch.nowOrWhenFetched(baseUri, undefined, function () {
+			// Load the main view.
+			loadScript("https://localhost:8443/assets/ldp/js/bodyViewer.js", function() {
+				console.log('loaded !!!');
+			});
+			// Serialize the RDF graph.
+			var data = new $rdf.Serializer(graph).toN3(graph);
+			console.log(data);
+			console.log("End !!!!!!!!!!!!!!!!!!!");
+			// Get ressource type.
+			var items = graph.any( $rdf.sym(baseUri), LDP("created"));
+			var type = (items) ? 1 : 2;
+
+			// Get the config file : viewer.ttl
+			var graph2 = graphsCache[viewerUri] =  new $rdf.IndexedFormula();
+			var fetch2 = $rdf.fetcher(graph2);
+			fetch2.nowOrWhenFetched(viewerUri, undefined, function () {
+				// Select related viewer.js.
+				var viewerJs;
+				if (type === 1) {
+					viewerJs = graph2.any( LDP('Container'), STAMPLE("view"));
+				}
+				else {
+					viewerJs = graph2.any( LDP('Ressource'), STAMPLE("view"));
+				}
+				var viewerJsUri = viewerJs.uri;
+				console.log(viewerJs);
+				console.log(viewerJsUri);
+
+				// Make the graph cache global.
+				//console.log(document);
+				//document.graphsCache = null;
+				//document.baseUri = null;
+				$rdf.graphsCache = graphsCache;
+				$rdf.baseUri = baseUri;
+
+				// Load related viewer.
+				loadScript(viewerJsUri, function() {
+					console.log('loaded !!!');
+				});
+			});
+		});
+
+
+		function initialLoad() {
+			// Load CSS.
+			loadScript();
+
+			// Load CSS.
+			loadCSS();
+		}
+
+		function loadScript () {
+			var scriptLoad = document.createElement("script");
+			scriptLoad.src = "js/loadScript.js";
+			document.head.appendChild(scriptLoad);
+		}
+
+		function loadCSS () {
+			var cssLoad = document.createElement("script");
+			cssLoad.src = "js/loadCss.js";
+			document.head.appendChild(cssLoad);
+		}
+
+	</script>
+</head>
+
+<body onload="initialLoad()"></body>
+
+</html>

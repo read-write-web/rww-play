@@ -1,0 +1,30 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+<html>
+
+<head>
+	<title>Primary Html file.</title>
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+	<script src="js/rdflib.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		console.log("hello");
+		// Load view.ttl file.
+		var graph = new $rdf.IndexedFormula();
+		var fetch = $rdf.fetcher(graph);
+		fetch.nowOrWhenFetched("https://localhost:8443/assets/ldp/viewer.ttl", undefined, function() {
+			// Serialize the RDF graph.
+			var data = new $rdf.Serializer(graph).toN3(graph);
+			console.log(data);
+
+			//graph.find
+		});
+
+
+	</script>
+</head>
+
+<body>
+heldddlo
+</body>
+
+</html>
