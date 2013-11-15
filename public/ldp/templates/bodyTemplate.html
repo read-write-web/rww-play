@@ -59,29 +59,7 @@
 
 	<div>
 
-		<div class="cloudactions center width-1024">
-			<div>
-				<div class="newitems">
-					<div class="left cell inline-block sep-right"><img class="pointer newitem" src="images/refresh.png" title="Refresh list" onclick="window.location.reload(true);" /></div>
-					<div class="left cell inline-block sep-right"><img class="pointer newitem" src="images/home.png" title="Go to top level" onclick="window.location.replace('/');" /></div>
-					<div class="left cell inline-block actions"><img class="pointer newitem" src="images/images.png" title="Upload an image" onclick="showImage();" /></div>
-					<div class="left cell inline-block"><img class="pointer newitem" src="images/add_folder.png" title="Create a new directory" onclick="showCloudNew('dir');" /></div>
-					<div class="left cell inline-block"><img class="pointer newitem" src="images/add_file.png" title="Create a new file" onclick="showCloudNew('file');" /></div>
-					<div class="left cell inline-block"><input id="create-item" class="item" type="text" name="" style="display:none;" onkeypress="cloudListen(event)" /></div>
-					<div class="left cell inline-block"><img id="submit-item" class="pointer newitem" src="images/ok.png" title="Create" style="display:none;" onclick="createItem();" /></div>
-					<div class="left cell inline-block"><img id="cancel-item" class="pointer newitem" src="images/cancel.png" title="Cancel" style="display:none;" onclick="hideCloud();" /></div>
-					<div class="left cell inline-block"><form id="imageform" name="imageform" method="post" enctype="multipart/form-data"><input type="file" id="addimage" name="image" style="display:none;" /></form></div>
-					<div class="left cell inline-block"><img id="submit-image" class="pointer newitem" src="images/upload.png" title="Upload" style="display:none;" onclick="submitImage();" /></div>
-					<div class="left cell inline-block"><img id="cancel-image" class="pointer newitem" src="images/cancel.png" title="Cancel" style="display:none;" onclick="hideImage();" /></div>
-				</div>
-			</div>
-
-			<div class="meta right top-5">
-				<a class="pointer" onclick="setCookie('showMetaFiles', '0', '1');">Hide</a>
-				<span> hidden files?</span>
-			</div>
-
-		</div>
+		<div class="cloudactions center width-1024"></div>
 
 		<table id="index" class="files center box-shadow">
 			<thead>
@@ -101,106 +79,6 @@
 
 	<div class="clear spacer"></div>
 </div>
-
-<script type="text/javascript">
-
-	// Graphs.
-	graphsCache = {};
-
-	function showWebID() {
-		// get the mouse position
-		var e = window.event;
-		var topVal = e.clientY;
-		var leftVal = e.clientX-300;
-		// set the coords
-		$('webid-gen').setStyle({
-			top: topVal+'px',
-			left: leftVal+'px'
-		});
-		$('webid-gen').show();
-	}
-
-	function hideWebID() {
-		$('webid-gen').hide();
-	}
-
-	function showImage() {
-		hideCloud();
-		$('addimage').show();
-		$('submit-image').show();
-		$('cancel-image').show();
-	}
-
-	function hideImage() {
-		document.imageform.reset();
-		$('addimage').hide();
-		$('submit-image').hide();
-		$('cancel-image').hide();
-	}
-
-	function submitImage() {
-		document.imageform.submit();
-		$('addimage').hide();
-		$('submit-image').hide();
-		$('cancel-image').hide();
-	}
-
-	function createItem() {
-		var res = document.getElementById("create-item");
-		console.log(res.name+' / val='+res.value);
-		if (res.name == 'file')
-			cloud.append(res.value);
-		else if (res.name == 'dir')
-			cloud.mkdir(res.value);
-	}
-
-	function cloudListen(e) {
-		// 13 = the Enter key
-		if (e.which == 13 || e.keyCode == 13) {
-			createItem();
-		}
-	}
-
-	function showCloudNew(type) {
-		if (type == 'file')
-			var text = 'file name...';
-		else
-			var text = 'directory name...';
-
-		hideImage();
-		$('create-item').setAttribute('name', type);
-		$('create-item').setAttribute('placeholder', text);
-		$('create-item').show();
-		$('create-item').focus();
-		$('submit-item').show();
-		$('cancel-item').show();
-	}
-
-	function hideCloud() {
-		$('create-item').hide();
-		$('create-item').clear();
-		$('submit-item').hide();
-		$('cancel-item').hide();
-	}
-
-	function toggleCheck(e1,e2) {
-		if ($(e2).checked == true) {
-			if ($(e1).checked == true)
-				$(e2).checked = false;
-		}
-	}
-
-	/*$(document).observe('keydown', function(e) {
-		if (e.keyCode == 27) { // ESC
-			$('editor').hide();
-			$('wac-editor').hide();
-			hideWebID();
-			hideCloud();
-			hideImage();
-		}
-	});*/
-
-</script>
 
 <hr class="center" />
 <div class="center align-right width-1024">

@@ -14,4 +14,6 @@ $.get(templateURI, function(data) {
 	// Append in the DOM.
 	$('body').append(template);
 
+	// Load the menu.
+	loadScript("https://localhost:8443/assets/ldp/js/menuViewer.js", null);
 }, 'html');

@@ -4,27 +4,59 @@
 
 <head>
 	<title>Primary Html file.</title>
-	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-	<script src="js/rdflib.js" type="text/javascript"></script>
+	<base href="https://localhost:8443/assets/ldp/">
+	<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+	<script type="text/javascript" src="js/underscore.js"></script>
+	<script type="text/javascript" src="js/rdflib.js"></script>
 	<script type="text/javascript">
-		console.log("hello");
-		// Load view.ttl file.
-		var graph = new $rdf.IndexedFormula();
-		var fetch = $rdf.fetcher(graph);
-		fetch.nowOrWhenFetched("https://localhost:8443/assets/ldp/viewer.ttl", undefined, function() {
-			// Serialize the RDF graph.
-			var data = new $rdf.Serializer(graph).toN3(graph);
-			console.log(data);
+		var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
+		var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+		var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
 
-			//graph.find
+		// Get the graph related to Base Uri.
+		graphsCache = {};
+		var baseUri = 'https://localhost:8443/2013/';
+		var viewerUri = 'https://localhost:8443/assets/ldp/viewer.ttl';
+		var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
+		var fetch = $rdf.fetcher(graph);
+		fetch.nowOrWhenFetched(baseUri, undefined, function () {
+			// Load the main view.
+			loadScript("https://localhost:8443/assets/ldp/js/bodyViewer.js", null);
+
+			// Get ressource type.
+			var items = graph.any( $rdf.sym(baseUri), LDP("created"));
+			var type = (items) ? 1 : 2;
+
+			// Make the graph cache global.
+			$rdf.graphsCache = graphsCache;
+			$rdf.baseUri = baseUri;
+			$rdf.type = type;
 		});
 
+
+		function initialLoad() {
+			// Load CSS.
+			loadScript();
+
+			// Load CSS.
+			loadCSS();
+		}
+
+		function loadScript () {
+			var scriptLoad = document.createElement("script");
+			scriptLoad.src = "js/loadScript.js";
+			document.head.appendChild(scriptLoad);
+		}
+
+		function loadCSS () {
+			var cssLoad = document.createElement("script");
+			cssLoad.src = "js/loadCss.js";
+			document.head.appendChild(cssLoad);
+		}
 
 	</script>
 </head>
 
-<body>
-heldddlo
-</body>
+<body onload="initialLoad()"></body>
 
 </html>
