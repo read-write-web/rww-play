@@ -5,6 +5,10 @@ $.get(templateURI, function(data) {
 	var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
 	var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
 
+	// Load useful js.
+	loadScript("https://localhost:8443/assets/ldp/js/createContainerFromString.js", null);
+	loadScript("https://localhost:8443/assets/ldp/js/createFileFromString.js", null);
+
 	// Load Html.
 	var template = _.template(data, tab);
 
@@ -27,9 +31,7 @@ $.get(templateURI, function(data) {
 		var viewerJsUri = viewerJs.uri;
 
 		// Load related viewer (Container / Ressource).
-		loadScript(viewerJsUri, function() {
-			console.log('loaded !!!');
-		});
+		loadScript(viewerJsUri, null);
 	});
 
 	// Bind events to Menu Dom elements.
@@ -52,17 +54,24 @@ $.get(templateURI, function(data) {
 	// Relative functions.
 	function createItem() {
 		var res = document.getElementById("create-item");
-		var onResult, onDone;
-		//var baseUri = $rdf.baseUri;
 		console.log(res.name+' / val='+res.value);
 		if (res.name === 'file') {
-			//cloud.append(res.value);
+			var success = function() {
+				window.location.reload();
+			};
+			var error = function() {
+				window.location.reload();
+			};
+			createFileFromString(res.value, $rdf.baseUri, success, error, null);
 		}
 		else if (res.name === 'dir') {
-			//cloud.mkdir(res.value);
-
-
-
+			var success = function() {
+				window.location.reload();
+			};
+			var error = function() {
+				window.location.reload();
+			};
+			createContainerFromString(res.value, $rdf.baseUri, success, error, null);
 		}
 	}
 
