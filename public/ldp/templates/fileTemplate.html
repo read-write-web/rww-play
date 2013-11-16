@@ -1,0 +1,21 @@
+<div id="fileViewer" class="fileViewer">
+	<input class="cleft left" type="text" id="editorpath" placeholder="loading...">
+	<select id="viewerType" class="left" onchange="cloud.edit($F('editorpath'))">
+		<option disabled="disabled"></option>
+		<option>text/turtle</option>
+		<option>text/rdf+xml</option>
+		<option>text/rdf+nt</option>
+		<option>application/json</option>
+		<option>application/json-ld</option>
+		<option disabled="disabled">----</option>
+		<option>text/txt</option>
+		<option>text/css</option>
+		<option>text/html</option>
+		<option>text/javascript</option>
+	</select>
+	<!-- textarea class="viewerContent clear left" id="editorarea"></textarea><br-->
+	<div class="viewerContent clear left" id="viewerContent"><span class="emptyFile"><%= fileContent %></span></div>
+	<br>
+	<!--div class="right actions"><a href="#" class="button button-rounded button-flat-caution" onclick="$('editor').hide();"><i class="icon-remove"></i> Cancel</a></div-->
+	<!--div class="right"><a href="#" class="button button-rounded button-flat-primary" onclick="cloud.save();"><i class="icon-save"></i> Save</a></div-->
+</div>

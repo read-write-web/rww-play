@@ -1,0 +1,31 @@
+
+/* File viewer */
+.fileViewer {
+	padding: 10px;
+	background: #607891;
+	width: auto;
+	z-index: 1000;
+	position: fixed;
+	font-size:1em;
+	max-width:1004px;
+}
+
+.viewerContent {
+	max-width: 945px;
+	bottom: 2em;
+	border-color: #ddd;
+	background: white;
+	padding:30px;
+	margin-bottom: 10px;
+	margin-top: 10px;
+	word-wrap: break-word;
+}
+
+.emptyFile {
+
+}
+
+#viewerType {
+padding: 10px;
+margin-left: 10px;
+}

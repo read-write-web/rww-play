@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="300"
+   height="300"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.48.3.1 r9886"
+   sodipodi:docname="logo.svg"
+   inkscape:export-filename="D:\proj\icons\icon_cube_green.png"
+   inkscape:export-xdpi="866.12"
+   inkscape:export-ydpi="866.12"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   version="1.0"
+   sodipodi:modified="TRUE">
+  <defs
+     id="defs4">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 15 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="30 : 15 : 1"
+       inkscape:persp3d-origin="15 : 10 : 1"
+       id="perspective18" />
+    <linearGradient
+       id="linearGradient14266">
+      <stop
+         style="stop-color:#73d216;stop-opacity:1;"
+         offset="0"
+         id="stop14268" />
+      <stop
+         style="stop-color:#5ba711;stop-opacity:1;"
+         offset="1"
+         id="stop14270" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient14266"
+       id="linearGradient2670"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(-2,-10.871051)"
+       x1="8.125"
+       y1="18.5"
+       x2="19.75"
+       y2="23.625" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.4142136"
+     inkscape:cx="102.50971"
+     inkscape:cy="163.13286"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:grid-bbox="true"
+     inkscape:grid-points="true"
+     inkscape:window-width="1190"
+     inkscape:window-height="772"
+     inkscape:window-x="0"
+     inkscape:window-y="27"
+     width="60px"
+     height="49px"
+     gridtolerance="10000"
+     inkscape:window-maximized="0">
+    <inkscape:grid
+       id="GridFromPre046Settings"
+       type="xygrid"
+       originx="0px"
+       originy="0px"
+       spacingx="1px"
+       spacingy="1px"
+       color="#0000ff"
+       empcolor="#0000ff"
+       opacity="0.2"
+       empopacity="0.4"
+       empspacing="4"
+       visible="true"
+       enabled="true"
+       snapvisiblegridlinesonly="true" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title>icon_cube_green</dc:title>
+        <dc:date>2008-05-09</dc:date>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Jean-Victor Balin</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:description>jean.victor.balin@gmail.com</dc:description>
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/publicdomain/" />
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>icon</rdf:li>
+            <rdf:li>cube</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/licenses/publicdomain/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Calque 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,270)">
+    <g
+       id="g2576"
+       transform="matrix(16.741732,0,0,16.741732,27.667261,-263.48787)">
+      <path
+         id="path8364"
+         d="m 7.8382344,0.12496639 c -0.096897,0.0129398 -0.190061,0.0458209 -0.2736141,0.0965697 L 0.35408508,4.3418419 C 0.13538682,4.467933 4.4947774e-4,4.7010064 -3.7043932e-6,4.9534498 l 0,7.2105352 C -8.0361027e-4,12.404276 0.12042253,12.628544 0.32189519,12.759498 L 6.502354,16.879804 c 0.2240483,0.144419 0.5102545,0.150641 0.7403674,0.01609 l 7.2105346,-4.120306 c 0.218698,-0.126091 0.353637,-0.359165 0.354089,-0.611608 l 0,-7.2105352 c 8e-4,-0.2402906 -0.120426,-0.4645588 -0.321899,-0.5955129 L 8.3049878,0.237631 C 8.1672954,0.14681071 8.0021958,0.10695911 7.8382344,0.12496639 l 0,0 z"
+         style="fill:#315b09;fill-opacity:1;stroke:none"
+         inkscape:connector-curvature="0" />
+      <g
+         transform="matrix(0.4542501,0,0,0.4542501,0.8738261,1.0597637)"
+         id="g16780">
+        <path
+           style="fill:#8ae234;fill-opacity:1;stroke:none"
+           d="m 1.375,9.503949 12,8 0,14 -12,-8 0,-14 z"
+           id="rect4447"
+           sodipodi:nodetypes="ccccc"
+           inkscape:connector-curvature="0" />
+        <path
+           style="fill:url(#linearGradient2670);fill-opacity:1;stroke:none"
+           d="m 15.375,1.503949 12,8 -14,8 -12,-8 14,-8 z"
+           id="path4450"
+           sodipodi:nodetypes="ccccc"
+           inkscape:connector-curvature="0" />
+        <path
+           style="fill:#4e9a06;fill-opacity:1;stroke:none"
+           d="m 27.375,9.503949 0,14 -14,8 0,-14 14,-8 z"
+           id="path5421"
+           sodipodi:nodetypes="ccccc"
+           inkscape:connector-curvature="0" />
+      </g>
+    </g>
+  </g>
+</svg>

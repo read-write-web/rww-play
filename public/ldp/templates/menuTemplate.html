@@ -1,0 +1,20 @@
+	<div>
+		<div class="newitems">
+			<div class="left cell inline-block sep-right"><img class="pointer newitem" src="images/refresh.png" title="Refresh list" onclick="window.location.reload(true);" /></div>
+			<!--div class="left cell inline-block sep-right"><img class="pointer newitem" src="images/home.png" title="Go to top level" onclick="window.location.replace('/');" /></div-->
+			<!--div class="left cell inline-block actions"><img class="pointer newitem" src="images/images.png" title="Upload an image" onclick="showImage();" /></div-->
+			<div class="left cell inline-block"><img class="pointer newitem newCategory" src="images/add_folder.png" title="Create a new directory" /></div>
+			<div class="left cell inline-block"><img class="pointer newitem newFile" src="images/add_file.png" title="Create a new file"  /></div>
+			<div class="left cell inline-block"><input id="create-item" class="item" type="text" name="" style="display:none;" /></div>
+			<div class="left cell inline-block"><img id="submit-item" class="pointer newitem" src="images/ok.png" title="Create" style="display:none;" /></div>
+			<div class="left cell inline-block"><img id="cancel-item" class="pointer newitem" src="images/cancel.png" title="Cancel" style="display:none;" /></div>
+			<div class="left cell inline-block"><form id="imageform" name="imageform" method="post" enctype="multipart/form-data"><input type="file" id="addimage" name="image" style="display:none;" /></form></div>
+			<div class="left cell inline-block"><img id="submit-image" class="pointer newitem" src="images/upload.png" title="Upload" style="display:none;" onclick="submitImage();" /></div>
+			<div class="left cell inline-block"><img id="cancel-image" class="pointer newitem" src="images/cancel.png" title="Cancel" style="display:none;" onclick="hideImage();" /></div>
+		</div>
+	</div>
+
+	<div class="meta right top-5">
+		<a class="pointer" onclick="setCookie('showMetaFiles', '0', '1');">Hide</a>
+		<span> hidden files?</span>
+	</div>
