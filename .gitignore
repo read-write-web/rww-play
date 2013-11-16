@@ -24,7 +24,7 @@ conf/generated.keystore
 .DS_Store
 
 # IDE specific #
-/.idea
+.idea
 /.classpath
 /.project
 /.settings
