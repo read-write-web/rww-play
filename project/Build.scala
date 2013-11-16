@@ -1,6 +1,7 @@
 import sbt._
 import sbt.Keys._
 import play.Project._
+import org.sbtidea.SbtIdeaPlugin._
 
 object ApplicationBuild extends Build {
 
@@ -18,7 +19,6 @@ object ApplicationBuild extends Build {
       //        scalaActors,
       scalatest
     )
-
 
   val appDependencies = Seq("banana-sesame", "banana-jena", "banana-rdf", "plantain").map(banana) ++ Seq(
     "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
@@ -47,6 +47,7 @@ object ApplicationBuild extends Build {
       $ sbt  -ivy $RWW_PLAY_HOME/Play20/repository/
     finally you may need to rebuild your IDE files ( clearing the previous ones perhaps )
     */
+    ideaExcludeFolders := Seq(".idea",".idea_modules","Play20","play-2.2-TLS.*" ),
     resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
     scalaVersion := "2.10.2",
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
