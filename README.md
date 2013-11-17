@@ -190,6 +190,8 @@ _:node1896efo11x1 a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
     <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
 ```
 
+_Note for OSX Mavericks users_: the `--cert` flag for curl no longer works and you will need to compile your own [for reasons explained in this bug report](http://curl.haxx.se/mail/archive-2013-10/0036.html)
+
 Notice the `Link` header above. Every resource points to its ACL file in such a header.
 
 The client certificate in `../eg/test-localhost.pem` contains exactly the private key given in the above 
