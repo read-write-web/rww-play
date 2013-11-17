@@ -1,7 +1,0 @@
-@prefix acl: <http://www.w3.org/ns/auth/acl#> .
-@prefix foaf: <http://xmlns.com/foaf/0.1/> .
-
-[acl:accessTo <allRead>; acl:mode acl:Read; acl:agentClass foaf:Agent ].
-[acl:accessTo <webIdRead>; acl:mode acl:Read;  acl:agentClass acl:WebIDAgent ].
-
-

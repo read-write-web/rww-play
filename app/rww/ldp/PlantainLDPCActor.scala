@@ -218,9 +218,6 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
         //todo: should these be in the header?
         val scrpt = LDPCommand.updateLDPR[Plantain](dirUri, add = graphToIterable(linkedGraph)).flatMap(_ => k(dirUri))
         ldpc forward Scrpt(scrpt)
-        val ldpr = getResource(fileName).asInstanceOf[LDPR[Plantain]]
-        val indx = ldpr.graph +  Triple(baseUri,ldp.created,dirUri)
-        setResource(fileName,indx)
       }
       case DeleteResource(uri, a) => {
 //        val name = uriW[Plantain](uri).lastPathSegment
@@ -237,10 +234,8 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
         } else {
           throw PreconditionFailed("Can't delete a container that has remaining members")
         }
-        val parent = uriW[Plantain](baseUri).resolve("..")
-        val scrpt = LDPCommand.updateLDPR[Plantain](parent,remove=Iterable(Triple(parent,ldp.created,baseUri)))
         context.stop(self)
-        rwwActor.tell(Scrpt(scrpt.flatMap(_=>a)),context.sender) //todo: why no function here?
+        rwwActor.tell(a,context.sender) //todo: why no function here?
       }
       case _ => super.runLocalCmd(cmd)
 //      case SelectLDPC(_,query, bindings, k) => {

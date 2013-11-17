@@ -25,12 +25,12 @@
 
 			// Get ressource type.
 			var items = graph.any( $rdf.sym(baseUri), LDP("created"));
-			var type = (items) ? 1 : 2;
+			var type = (items) ? 1 : 2;  //todo: use rdf resource names eg: ldp:Container
 
 			// Make the graph cache global.
 			$rdf.graphsCache = graphsCache;
 			$rdf.baseUri = baseUri;
-			$rdf.type = type;
+			$rdf.type = type;  //todo: use another global variable than the library
 		});
 
 
