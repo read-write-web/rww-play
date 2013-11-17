@@ -235,7 +235,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
           throw PreconditionFailed("Can't delete a container that has remaining members")
         }
         context.stop(self)
-        rwwActor.tell(a,context.sender) //todo: why no function here?
+        rwwActor.tell(Scrpt(a),context.sender)
       }
       case _ => super.runLocalCmd(cmd)
 //      case SelectLDPC(_,query, bindings, k) => {
@@ -475,7 +475,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
           pathStream.close()
         }
         context.stop(self)
-        rwwActor.tell(Scrpt(a),context.sender) //todo: why no function here?
+        rwwActor.tell(Scrpt(a),context.sender)
       }
       case UpdateLDPR(uri, remove, add, a) => {
         val nme = localName(uri)
