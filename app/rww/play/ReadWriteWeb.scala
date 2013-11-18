@@ -1,24 +1,24 @@
 package rww.play
-
-import play.api.mvc._
+import _root_.play.{api=>PlayApi}
+import PlayApi.mvc.Results._
+import PlayApi.libs.Files.TemporaryFile
+import PlayApi.http.Status._
+import PlayApi.libs.iteratee.Enumerator
+import PlayApi.mvc._
 import org.w3.banana._
 import rww.ldp._
-import play.api.mvc.Results._
 import concurrent.{Future, ExecutionContext}
-import java.io.{StringWriter, PrintWriter}
+import java.io.{File, StringWriter, PrintWriter}
 import java.net.URLDecoder
-import play.api.libs.Files.TemporaryFile
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
-import play.api.http.Status._
-import play.api.libs.iteratee.Enumerator
+import net.sf.uadetector.service.UADetectorServiceFactory
+import scala.Some
+import rww.ldp.ParentDoesNotExist
 import rww.ldp.AccessDenied
 import rww.ldp.WrongTypeException
-import scala.Some
-import play.api.mvc.SimpleResult
-import rww.ldp.ParentDoesNotExist
-import play.api.mvc.ResponseHeader
-import java.util
+import net.sf.uadetector.UserAgentType
+import scalax.io.Input
 
 object Method extends Enumeration {
   val read = Value
@@ -39,6 +39,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
   implicit def solutionsWriterSelector: WriterSelector[Rdf#Solutions]
   implicit val boolWriterSelector: WriterSelector[Boolean] = BooleanWriter.selector
   implicit val sparqlUpdateSelector: IterateeSelector[Plantain#UpdateQuery]
+
+  lazy val agentParser =  UADetectorServiceFactory.getResourceModuleParser
 
   import rww.play.PlayWriterBuilder._
 
@@ -69,22 +71,36 @@ trait ReadWriteWeb[Rdf <: RDF] {
   }
 
 
-  def getAsync(request: play.api.mvc.Request[AnyContent]): Future[SimpleResult] = {
+  def isStupidBrowser(request: PlayApi.mvc.Request[AnyContent]) = {
+    val isBrowser = (request.headers.get("User-Agent").map { ua =>
+      agentParser.parse(ua).getType eq UserAgentType.BROWSER
+    }).getOrElse(false)
+    isBrowser && !{
+      request.headers.getAll("Accept").exists(mime => mime.contains("application/rdf+xml") || mime.contains("text/turtle"))
+    }
+  }
+
+  def getAsync(request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
     val res = for {
       namedRes <- rwwActor.get(request, request.path)
     } yield {
       val link = namedRes.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
+
       namedRes match {
-        case ldpr: LDPR[Rdf] =>
-          writerFor[Rdf#Graph](request).map {
-            wr => {
-              import syntax._
+        case ldpr: LDPR[Rdf] =>  {
+          if (isStupidBrowser(request)) {
+            import scalax.io.{Resource=>xResource}
+            val input:Input = xResource.fromFile("public/ldp/index.html")
+            Ok(input.string).as("text/html")
+          } else {
+            writerFor[Rdf#Graph](request).map { wr =>
               result(200, wr, Map.empty ++ link)(ldpr.relativeGraph)
+            } getOrElse {
+              PlayApi.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
+                request.headers.get(PlayApi.http.HeaderNames.ACCEPT))
             }
-          } getOrElse {
-            play.api.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
-              request.headers.get(play.api.http.HeaderNames.ACCEPT))
           }
+        }
         case bin: BinaryResource[Rdf] => {
           SimpleResult(
             header = ResponseHeader(200, Map("Content-Type" -> "todo") ++ link),
@@ -130,7 +146,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
     val resultFuture = request.body match {
       case rww: GraphRwwContent[Rdf] => mk(Some(rww.graph))
       case rww.play.emptyContent => mk(None)
-      case _ => Future.successful(play.api.mvc.Results.UnsupportedMediaType("We only support RDF media types, for appending to collection."))
+      case _ => Future.successful(PlayApi.mvc.Results.UnsupportedMediaType("We only support RDF media types, for appending to collection."))
     }
     resultFuture recover {
       //case ResourceExists(e) => MethodNotAllowed(e) //no longer happens
@@ -167,7 +183,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
   def post(path: String) = Action.async(rwwBodyParser) { request =>
 
-    def postGraph(request: play.api.mvc.Request[RwwContent], rwwGraph: Option[Rdf#Graph]): Future[SimpleResult] = {
+    def postGraph(request: PlayApi.mvc.Request[RwwContent], rwwGraph: Option[Rdf#Graph]): Future[SimpleResult] = {
       for {
         location <- rwwActor.postGraph(request,
           request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
@@ -199,7 +215,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
               writerFor[Boolean](request).map {
                 wr => result(200, wr)(bool)
               }
-          ).getOrElse(play.api.mvc.Results.UnsupportedMediaType(s"Cannot publish answer of type ${answer.getClass} as" +
+          ).getOrElse(PlayApi.mvc.Results.UnsupportedMediaType(s"Cannot publish answer of type ${answer.getClass} as" +
             s"one of the mime types given ${request.headers.get("Accept")}"))
         }
       }
