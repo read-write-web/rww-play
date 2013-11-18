@@ -15,7 +15,9 @@
 
 		// Get the graph related to Base Uri.
 		graphsCache = {};
-		var baseUri = 'https://localhost:8443/2013/';
+		console.log(window.location.href);
+		//var baseUri = 'https://localhost:8443/2013/';
+		var baseUri = window.location.href;
 		var viewerUri = 'https://localhost:8443/assets/ldp/viewer.ttl';
 		var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
 		var fetch = $rdf.fetcher(graph);

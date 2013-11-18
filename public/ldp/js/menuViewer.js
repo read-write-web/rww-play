@@ -84,10 +84,11 @@ $.get(templateURI, function(data) {
 
 	function showCloudNew(type) {
 		var $createItem = $('#create-item');
+		var text;
 		if (type == 'file')
-			var text = 'file name...';
+			text = 'file name...';
 		else
-			var text = 'directory name...';
+			text = 'directory name...';
 		hideImage();
 		$createItem.attr('name', type);
 		$createItem.attr('placeholder', text);
@@ -107,9 +108,9 @@ $.get(templateURI, function(data) {
 
 	function hideImage() {
 		document.imageform.reset();
-		$('addimage').hide();
-		$('submit-image').hide();
-		$('cancel-image').hide();
+		$('#addimage').hide();
+		$('#submit-image').hide();
+		$('#cancel-image').hide();
 	}
 
 }, 'html');

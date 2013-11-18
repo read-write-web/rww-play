@@ -9,14 +9,14 @@ function createContainerFromString(name, baseUri, callbackSuccess, callbackError
 	$.ajax({
 		type: "POST",
 		url: baseUri,
-		dataType: "text/turtle",
+		dataType: "text",
 		contentType:"text/turtle",
 		processData:false,
 		data: stringData,
 		headers: {"Slug": name},
 		success: function(data, status, xhr) {
 			console.log('sucesss');
-			if (callbackSuccess) callbackSuccess()
+			//if (callbackSuccess) callbackSuccess()
 		},
 		error: function(xhr, status, error) {
 			console.log('error');
