@@ -67,9 +67,10 @@ class WebIDAuthN[Rdf <: RDF](verifier: WebIDVerifier[Rdf]) extends AuthN {
     req.headers.get("User-Agent").map{ ua =>
       val agent = agentParser.parse(ua)
       import net.sf.uadetector.UserAgentFamily._
+      import net.sf.uadetector.OperatingSystemFamily._
       val family = agent.getFamily()
       val res = (family == CURL || family == JAVA || family == SAFARI || family == OPERA ||
-        (family == CHROME && agent.getOperatingSystem == "OS_X") || //Version 32.0.1700.6 beta on OSX no longer work with WANT ( may be a setup issue )
+        (family == CHROME && agent.getOperatingSystem.getFamily == OS_X) || //Version 32.0.1700.6 beta on OSX no longer work with WANT ( may be a setup issue )
         req.headers.get("X-Requested-With").map(_.trim.equalsIgnoreCase("XMLHttpRequest")).getOrElse(false))
       res
     }.getOrElse(false)
