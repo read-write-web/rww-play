@@ -8,7 +8,7 @@ import PlayApi.mvc._
 import org.w3.banana._
 import rww.ldp._
 import concurrent.{Future, ExecutionContext}
-import java.io.{File, StringWriter, PrintWriter}
+import java.io.{StringWriter, PrintWriter}
 import java.net.URLDecoder
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
