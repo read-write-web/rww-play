@@ -1,5 +1,5 @@
 package rww.play
-import _root_.play.{api=>PlayApi}
+import _root_.play.{api => PlayApi, Routes}
 import PlayApi.mvc.Results._
 import PlayApi.libs.Files.TemporaryFile
 import PlayApi.http.Status._
@@ -9,7 +9,7 @@ import org.w3.banana._
 import rww.ldp._
 import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
-import java.net.URLDecoder
+import java.net.{URLEncoder, URLDecoder}
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import net.sf.uadetector.service.UADetectorServiceFactory
@@ -18,7 +18,6 @@ import rww.ldp.ParentDoesNotExist
 import rww.ldp.AccessDenied
 import rww.ldp.WrongTypeException
 import net.sf.uadetector.UserAgentType
-import scalax.io.Input
 
 object Method extends Enumeration {
   val read = Value
@@ -89,9 +88,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
       namedRes match {
         case ldpr: LDPR[Rdf] =>  {
           if (isStupidBrowser(request)) {
-            import scalax.io.{Resource=>xResource}
-            val input:Input = xResource.fromFile("public/ldp/index.html")
-            Ok(input.string).as("text/html")
+            TemporaryRedirect(controllers.routes.RDFViewer.htmlFor(request.path).toString())
           } else {
             writerFor[Rdf#Graph](request).map { wr =>
               result(200, wr, Map.empty ++ link)(ldpr.relativeGraph)
