@@ -16,4 +16,7 @@ $.get(templateURI, function(data) {
 
 	// Load the menu.
 	loadScript("https://localhost:8443/assets/ldp/js/menuViewer.js", null);
+	// Load utils js.
+	loadScript("https://localhost:8443/assets/ldp/js/utils.js", null);
+
 }, 'html');
