@@ -1,6 +1,0 @@
-@prefix ldp: <http://www.w3.org/ns/ldp#> .
-@prefix foaf: <http://xmlns.com/foaf/0.1/> .
-
-<> a ldp:Container;
-   foaf:topic "A container for some type X of resources";
-   foaf:maker <../card#me> .
