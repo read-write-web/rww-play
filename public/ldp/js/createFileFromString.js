@@ -9,22 +9,19 @@ function createFileFromString(name, baseUri, callbackSuccess, callbackError, cal
 	$.ajax({
 		type: "POST",
 		url: baseUri,
-		dataType: "text/turtle",
+		dataType: "text",
 		contentType:"text/turtle",
 		processData:false,
 		data: stringData,
 		headers: {"Slug": name},
 		success: function(data, status, xhr) {
-			console.log('sucesss');
 			if (callbackSuccess) callbackSuccess()
 		},
 		error: function(xhr, status, error) {
-			console.log('error');
 			if (callbackError) callbackError()
 		}
 	})
 		.done( function() {
-			console.log('done ');
 			if (callbackDone) callbackDone()
 		});
 }

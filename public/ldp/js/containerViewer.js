@@ -33,7 +33,7 @@ $.get(templateURI, function(data) {
 	// ...
 	onResult = function (result) {
 		console.log('OnResult');
-		console.log(result);
+
 		// Save ressource informations.
 		var informations = {};
 		informations.uri = result['?m'].uri;
@@ -69,71 +69,36 @@ $.get(templateURI, function(data) {
 		templateAll += template;
 	};
 
-	// ...
+	// Callback.
 	onDone = function (result) {
 		console.log('DONE');
-		console.log(result);
+
 		// Append all templates in DOM.
 		$lines.append(templateAll);
 
-		/*/ Bind click event to load its content.
-		$lines.find("a[href='" + result['?m'].uri +"']").bind('click', function(e) {
-			clickDir(e, result['?m'].uri);
-		});*/
-
+		// Bind events to view elements.
+		// Control ACL: load related editor.
 		$lines.find("a[class = 'accessControl']").bind('click', function(e) {
-			console.log('Manage ACL');
+			var container = $(e.target).parent().parent().parent();
+			$rdf.ressourceUri = container.find('.filename a').attr("href");
+			loadScript("https://localhost:8443/assets/ldp/js/aclEditorViewer.js", null);
 		});
 
+		// Delete Ressource.
 		$lines.find("a[class='deleteFile']").bind('click', function(e) {
-			console.log('Delete');
 			var container = $(e.target).parent().parent().parent();
-			var uri = $(e.target).parent().parent().parent().find('.filename a').attr("href");
-			console.log(uri);
+			var uri = container.find('.filename a').attr("href");
 			var success = function() {
-				console.log('sucess');
 				container.remove();
 			};
 			var error = function() {
-				console.log('error');
 				//window.location.reload();
 			};
 			deleteRessource(uri, success, error, null);
 		});
-
 	};
 
 	// Execute the query.
 	baseGraph.query(fileQuery, onResult, undefined, onDone);
-
-	// Get basename.
-	var basename = function (path) {
-		if (path.substring(path.length - 1) == '/')
-			path = path.substring(0, path.length - 1);
-
-		var a = path.split('/');
-		return a[a.length - 1];
-	};
-
-	// Format from Unix time.
-	var formatTime = function(mtime) {
-		var a = new Date(mtime*1);
-		var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-		var year = a.getFullYear();
-		var month = months[a.getMonth()];
-		var date = a.getDate();
-		var hour = a.getHours();
-		var min = a.getMinutes();
-		var sec = a.getSeconds();
-		var time = year+'-'+month+'-'+date+' '+hour+':'+min+':'+sec + " GMT";
-		return time;
-	};
-
-	// Check if uri point to a directory.
-	var isDirectory = function(uri) {
-		var res;
-		res = (uri.substring(uri.length - 1) == '/')? true: false;
-		return res;
-	};
 
 }, 'html');

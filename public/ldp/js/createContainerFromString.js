@@ -15,16 +15,13 @@ function createContainerFromString(name, baseUri, callbackSuccess, callbackError
 		data: stringData,
 		headers: {"Slug": name},
 		success: function(data, status, xhr) {
-			console.log('sucesss');
-			//if (callbackSuccess) callbackSuccess()
+			if (callbackSuccess) callbackSuccess()
 		},
 		error: function(xhr, status, error) {
-			console.log('error');
 			if (callbackError) callbackError()
 		}
 	})
 		.done( function() {
-			console.log('done ');
 			if (callbackDone) callbackDone()
 		});
 }

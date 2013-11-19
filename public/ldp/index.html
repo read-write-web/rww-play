@@ -5,9 +5,9 @@
 <head>
 	<title>Primary Html file.</title>
 	<base href="https://localhost:8443/assets/ldp/">
-	<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
-	<script type="text/javascript" src="js/underscore.js"></script>
-	<script type="text/javascript" src="js/rdflib.js"></script>
+	<script type="text/javascript" src="lib/jquery-1.7.1.min.js"></script>
+	<script type="text/javascript" src="lib/underscore.js"></script>
+	<script type="text/javascript" src="lib/rdflib.js"></script>
 	<script type="text/javascript">
 		var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
 		var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
@@ -15,8 +15,6 @@
 
 		// Get the graph related to Base Uri.
 		graphsCache = {};
-		console.log(window.location.href);
-		//var baseUri = 'https://localhost:8443/2013/';
 		var baseUri = window.location.href;
 		var viewerUri = 'https://localhost:8443/assets/ldp/viewer.ttl';
 		var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
@@ -26,13 +24,11 @@
 			loadScript("https://localhost:8443/assets/ldp/js/bodyViewer.js", null);
 
 			// Get ressource type.
-			var items = graph.any( $rdf.sym(baseUri), LDP("created"));
-			var type = (items) ? 1 : 2;  //todo: use rdf resource names eg: ldp:Container
+			$rdf.types = graph.each( $rdf.sym(baseUri), RDF("type"));
 
 			// Make the graph cache global.
 			$rdf.graphsCache = graphsCache;
 			$rdf.baseUri = baseUri;
-			$rdf.type = type;  //todo: use another global variable than the library
 		});
 
 

@@ -20,17 +20,14 @@ $.get(templateURI, function(data) {
 	var graph2 = graphsCache[viewerUri] =  new $rdf.IndexedFormula();
 	var fetch2 = $rdf.fetcher(graph2);
 	fetch2.nowOrWhenFetched(viewerUri, undefined, function () {
-		// Select related viewer.js.
-		var viewerJs;
-		if ($rdf.type === 1) {
-			viewerJs = graph2.any( LDP('Container'), STAMPLE("view"));
-		}
-		else {
-			viewerJs = graph2.any( LDP('Ressource'), STAMPLE("view"));
-		}
-		var viewerJsUri = viewerJs.uri;
+		// Check ressource type.
+		var viewerJsUri;
+		_.each($rdf.types,  function(type) {
+			var vjs = graph2.any(type, STAMPLE("view"));
+			if (vjs) viewerJsUri = vjs.uri
+		});
 
-		// Load related viewer (Container / Ressource).
+		// Load related viewer.
 		loadScript(viewerJsUri, null);
 	});
 
@@ -54,7 +51,6 @@ $.get(templateURI, function(data) {
 	// Relative functions.
 	function createItem() {
 		var res = document.getElementById("create-item");
-		console.log(res.name+' / val='+res.value);
 		if (res.name === 'file') {
 			var success = function() {
 				window.location.reload();
