@@ -51,7 +51,6 @@ object RActor {
         Option(treated.mkString("/"))
       } else None
     } else None
-    println(s"~~~~~~~~~~~~~~>local($u,$base)=$res")
     res
   }
 }
@@ -282,6 +281,7 @@ case class RequestNotAcceptable(message: String) extends Exception(message) with
 case class AccessDenied(message: String) extends Exception(message) with BananaException
 case class PreconditionFailed(message: String) extends Exception(message) with BananaException
 case class UnsupportedMediaType(message: String) extends Exception(message) with BananaException
+case class StorageError(message: String)  extends Exception(message) with BananaException
 
 trait RWW[Rdf <: RDF] {  //not sure which of exec or execute is going to be needed
   def system: ActorSystem

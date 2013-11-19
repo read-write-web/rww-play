@@ -13,7 +13,7 @@ import scalaz.-\/
 import scalaz.\/-
 import scala.Some
 import java.nio.file.Path
-import scala.util.{Success, Failure}
+import scala.util.{Try, Success, Failure}
 import java.util.Date
 import scala.io.Codec
 import java.io.{File, FileOutputStream}
@@ -111,25 +111,31 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
    * @throws ResourceDoesNotExist
    * @return
    */
-  override def getResource(name: String): LocalNamedResource[Plantain] = {
-    val ldpr = super.getResource(name).asInstanceOf[LocalLDPR[Plantain]]
-    if (name==fileName) { //if this is the index file, add all the content info
-      var contentGrph = ldpr.graph + Triple(baseUri, rdf.typ, ldp.Container)
-      Files.walkFileTree(root,util.Collections.emptySet(), 1,
-      new SimpleFileVisitor[Path] {
+  override def getResource(name: String): Try[LocalNamedResource[Plantain]] = {
+    super.getResource(name) match {
+      case ok @ Success(ldpr: LocalLDPR[Plantain]) => {
+        if (name == fileName) {
+          //if this is the index file, add all the content info
+          var contentGrph = ldpr.graph + Triple(baseUri, rdf.typ, ldp.Container)
+          Files.walkFileTree(root, util.Collections.emptySet(), 1,
+            new SimpleFileVisitor[Path] {
 
-        override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes) = {
-          if (dir == root) super.preVisitDirectory(dir,attrs)
-          else FileVisitResult.SKIP_SUBTREE
-        }
+              override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes) = {
+                if (dir == root) super.preVisitDirectory(dir, attrs)
+                else FileVisitResult.SKIP_SUBTREE
+              }
 
-        override def visitFile(file: Path, attrs: BasicFileAttributes) = {
-          contentGrph =  contentGrph union  descriptionFor(file,attrs)
-          FileVisitResult.CONTINUE
-        }
-      })
-      LocalLDPR[Plantain](baseUri,contentGrph,root,Some(new Date(Files.getLastModifiedTime(root).toMillis)))
-    } else ldpr
+              override def visitFile(file: Path, attrs: BasicFileAttributes) = {
+                contentGrph = contentGrph union descriptionFor(file, attrs)
+                FileVisitResult.CONTINUE
+              }
+            })
+          Success(LocalLDPR[Plantain](baseUri, contentGrph, root, Some(new Date(Files.getLastModifiedTime(root).toMillis))))
+        } else ok
+      }
+      case badContent @ Success(_) =>  Failure(StorageError(s"Data in LDPC must be a graph. "))
+      case err => err
+    }
   }
 
   def randomPathSegment(): String = java.util.UUID.randomUUID().toString.replaceAll("-", "")
@@ -264,17 +270,27 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
     def mkTmpFile: Path = {
       val file = Files.createTempFile(root, "r_", ext)
       val name = file.getFileName.toString
-      Files.createSymbolicLink(root.resolve(name.substring(0, name.length - ext.length)), file)
+      val link = root.resolve(name.substring(0, name.length - ext.length))
+      Files.createSymbolicLink(link, file)
+      val aclFile = link.resolveSibling(link.getFileName.toString+acl+ext)
+      Files.createFile(aclFile)
+      link
     }
     val path = slugOpt match {
       case None =>  mkTmpFile
       case Some(slug) => {
         val safeSlug = slug.replaceAll("[/.]+", "_")
-        val slugFile = root.resolve(safeSlug)
-        if (Files.exists(slugFile,LinkOption.NOFOLLOW_LINKS))
+        val slugLink = root.resolve(safeSlug)
+        val slugFile =  slugLink.resolveSibling(slugLink.getFileName.toString+ext)
+        val slugAcl = slugLink.resolveSibling(slugLink.getFileName.toString+acl+ext)
+        if (Files.exists(slugLink, LinkOption.NOFOLLOW_LINKS)
+          || Files.exists(slugFile)
+          || Files.exists(slugLink)) {
           mkTmpFile
-        else {
-          Files.createSymbolicLink(slugFile,slugFile.getFileSystem.getPath(slugFile.getFileName.toString+ext))
+        } else {
+          Files.createFile(slugFile)
+          Files.createFile(slugAcl)
+          Files.createSymbolicLink(slugLink, slugFile.getFileName)
         }
       }
     }
@@ -300,6 +316,8 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
         }
       }
     }
+    Files.createFile(path.resolve(ext))
+    Files.createFile(path.resolve(acl+ext))
     val uri = uriW[Plantain](baseUri) / path.getFileName.toString
     (uri, path)
 
@@ -331,30 +349,26 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   import scala.collection.convert.decorateAsScala._
 
   //google cache with soft values: at least it will remove the simplest failures
-  val cacheg: LoadingCache[String,LocalNamedResource[Plantain]] = CacheBuilder.newBuilder()
+  val cacheg: LoadingCache[String,Try[LocalNamedResource[Plantain]]] = CacheBuilder.newBuilder()
                         .softValues()
-                        .build(new CacheLoader[String,LocalNamedResource[Plantain]]() {
+                        .build(new CacheLoader[String,Try[LocalNamedResource[Plantain]]]() {
     import scalax.io.{Resource=>xResource}
 
     def load(key: String) = {
-        //at this point it is still very easy - only two cases! but won't stay like this...
-        val (file, iri) = fileAndURIFor(key)
+      //at this point it is still very easy - only two cases! but won't stay like this...
+      val (file, iri) = fileAndURIFor(key)
 
-        if (file.createNewFile()) {
-          if (file.toString.endsWith(ext)) {
-            LocalLDPR[Plantain](iri, Graph.empty, path, Option(new Date(path.toFile.lastModified())))
-          } else {
-            LocalBinaryR[Plantain](file.toPath, iri)
-          }
-        } else {
+      if (file.exists()) {
+
+        if (file.toString.endsWith(ext)) {
           val res = xResource.fromFile(file)
-          val ldprOpt = reader.read(res, iri.toString).map {
-            g =>
-              LocalLDPR[Plantain](iri, g, path, Option(new Date(path.toFile.lastModified())))
+          reader.read(res, iri.toString).map { g =>
+            LocalLDPR[Plantain](iri, g, path, Option(new Date(path.toFile.lastModified())))
           }
-          ldprOpt.get //todo: this could break
-        }
-      }
+        } else Success(LocalBinaryR[Plantain](file.toPath, iri))
+
+      } else Failure(ResourceDoesNotExist(s"no resource for $key"))
+    }
   })
 
   def filter = new Filter[Path]() {
@@ -390,11 +404,11 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
    * @return
    */
   @throws[ResourceDoesNotExist]
-  def getResource(name: String): LocalNamedResource[Plantain] = {
+  def getResource(name: String): Try[LocalNamedResource[Plantain]] = {
     import scalax.io.{Resource=>xResource}
     //todo: the file should be verified to see if it is up to date.
     cacheg.get(name) match {
-      case LocalLDPR(_,_,path,updated) if (path.toFile.lastModified() > updated.get.getTime) => {
+      case Success(LocalLDPR(_,_,path,updated)) if (path.toFile.lastModified() > updated.get.getTime) => {
         cacheg.invalidate(name)
         cacheg.get(name)
       }
@@ -435,7 +449,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
       case scala.util.Failure(t) => throw new StoreProblem(t)
       case x => x
     }
-    cacheg.put(name,LocalLDPR[Plantain](iri,graph, file.toPath, Some(new Date(file.lastModified()))))
+    cacheg.put(name,Success(LocalLDPR[Plantain](iri,graph, file.toPath, Some(new Date(file.lastModified())))))
   }
 
 
@@ -453,22 +467,23 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
 
     cmd match {
       case GetResource(uri, agent, k) => {
-        val res = getResource(localName(uri))
+        val res = getResource(localName(uri)).get
         self forward Scrpt(k(res))
       }
       case GetMeta(uri, k) => {
         //todo: GetMeta here is very close to GetResource, as currently there is no big work difference between the two
         //The point of GetMeta is mostly to remove work if there were work that was very time
         //consuming ( such as serialising a graph )
-        val res = getResource(localName(uri))
-        self forward Scrpt(k(res))
+        getResource(localName(uri)) match {
+          case Success(res) => self forward Scrpt(k(res))
+          case Failure(fail) =>  context.sender ! fail
+        }
+
       }
       case DeleteResource(uri, a) => {
-        log.info(s"DeleteResource($uri,$a)")
         val pathStream = Files.newDirectoryStream(path.getParent,filter)
         try {
           for (p <- pathStream.asScala) {
-            log.info(s"deleting $p")
             Files.delete(p)
           }
         } finally {
@@ -480,7 +495,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
       case UpdateLDPR(uri, remove, add, a) => {
         val nme = localName(uri)
         getResource(nme) match {
-          case LocalLDPR(_,graph,_,updated) => {
+          case Success(LocalLDPR(_,graph,_,updated)) => {
             val temp = remove.foldLeft(graph) {
               (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
             }
@@ -488,15 +503,16 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
               (graph, triple) => graph + triple.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
             }
             setResource(nme,resultGraph)
+            self forward Scrpt(a)
           }
-          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH, cannot Update")
+          case Success(_) => throw RequestNotAcceptable(s"$uri does not contain a GRAPH, cannot Update")
+          case Failure(fail) => context.sender ! fail
         }
-        self forward Scrpt(a)
       }
       case PatchLDPR(uri, update, bindings, k) => {
         val nme = localName(uri)
         getResource(nme) match {
-          case LocalLDPR(_,graph,_,updated) => {
+          case Success(LocalLDPR(_,graph,_,updated)) => {
             PlantainLDPatch.executePatch(graph,update,bindings) match {
               case Success(gr) => {
                 setResource(nme, gr)
@@ -505,20 +521,22 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
               case Failure(e) => throw e
              }
           }
-          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - PATCH is not possible")
+          case Success(_) =>  context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - PATCH is not possible")
+          case Failure(fail) => context.sender ! fail
         }
       }
       case SelectLDPR(uri, query, bindings, k) => {
         getResource(localName(uri)) match {
-          case LocalLDPR(_,graph,_,_) => {
+          case Success(LocalLDPR(_,graph,_,_)) => {
             val solutions = sparqlGraph(graph).executeSelect(query, bindings)
             self forward Scrpt(k(solutions))
           }
-          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
+          case Success(_) => context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
+          case Failure(fail) => context.sender ! fail
         }
       }
       case ConstructLDPR(uri, query, bindings, k) => {
-        getResource(localName(uri)) match {
+        getResource(localName(uri)).get match {
           case LocalLDPR(_,graph,_,_) => {
             val result = sparqlGraph(graph).executeConstruct(query, bindings)
             self forward Scrpt(k(result))
@@ -528,7 +546,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
 
       }
       case AskLDPR(uri, query, bindings, k) => {
-        getResource(localName(uri)) match {
+        getResource(localName(uri)).get match {
           case LocalLDPR(_,graph,_,_) => {
             val result = sparqlGraph(graph).executeAsk(query, bindings)
             self forward Scrpt(k(result))
@@ -568,10 +586,10 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
 
   def adviceCmd[A](cmd: LDPCommand[Plantain, LDPCommand.Script[Plantain,A]]) {
     //todo: improve for issues of extensions ( eg. .n3, ... )
-    val advices = adviceSelector(getResource(fileName))
-    advices foreach ( _.pre(cmd) map { throw _ } )
+//    val advices = adviceSelector(getResource(fileName))
+//    advices foreach ( _.pre(cmd) map { throw _ } )
     runLocalCmd(cmd)
-    advices foreach (_.post(cmd))
+//    advices foreach (_.post(cmd))
   }
 
   lazy val rwwActor= context.actorSelection("/user/rww")
