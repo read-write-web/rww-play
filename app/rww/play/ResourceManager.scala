@@ -19,10 +19,10 @@ package rww.play
 import org.w3.banana._
 import rww.ldp.LDPCommand._
 import concurrent.{Future, ExecutionContext}
-import play.api.libs.iteratee.Enumerator
+import _root_.play.api.libs.iteratee.Enumerator
+import _root_.play.api.libs.Files.TemporaryFile
 import scalaz.Either3
 import scalaz.Either3._
-import play.api.libs.Files.TemporaryFile
 import rww.play.auth.AuthN
 import rww.ldp._
 import scala.Some
@@ -32,7 +32,7 @@ import java.net.URL
 
 //the idea of this class was to not be reliant on Play! We need RequestHeader in order to do authentication
 //todo: find a way of abstracting this
-import play.api.mvc.{Request=>PlayRequest, RequestHeader=>PlayRequestHeader}
+import _root_.play.api.mvc.{Request=>PlayRequest, RequestHeader=>PlayRequestHeader}
 
 
 class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
@@ -61,7 +61,6 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
 
   def patch(request: PlayRequestHeader, content: RwwContent): Future[Boolean] = {
     val path = request.path
-    val (collection, file) = split(path)
     content match {
       case updatedQuery: PatchRwwContent[Rdf] => for {
         _ <- auth(request, new URL(base, path).toString, Method.write)
@@ -82,9 +81,9 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
         //todo: arbitrarily for the moment we only allow a PUT of same type things graphs on graphs, and other on other
         case grc: GraphRwwContent[Rdf] => {
           rww.execute(for {
-            resrc <- getResource(URI(file))
+            resrc <- getResource(URI(path))
             x <- resrc match {
-              case ldpr: LDPR[Rdf] => deleteResource(ldpr.location).flatMap(_ => createLDPR[Rdf](ldpr.location, Some(file), grc.graph))
+              case ldpr: LDPR[Rdf] => updateLDPR(ldpr.location,remove=Seq((ANY,ANY,ANY)),add=grc.graph.toIterable)
               case _ => throw new Error("yoyo")
             }
           } yield resrc.location)
@@ -92,7 +91,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
         case BinaryRwwContent(tmpFile, mime) => {
           rww.execute(
             for {
-              resrc <- getResource(URI(file))
+              resrc <- getResource(URI(path))
             //                if (resrc.isInstanceOf[BinaryResource[Rdf]])
             } yield {
               val b = resrc.asInstanceOf[BinaryResource[Rdf]]
@@ -184,9 +183,9 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
 
   /**
    * HTTP POST of a graph
-   * @param path
-   * @param content
+   * @param request
    * @param slug a suggested name for the resource
+   * @param content
    * @return
    */
   def postGraph(request: PlayRequestHeader, slug: Option[String], content: Option[Rdf#Graph]): Future[Rdf#URI] = {

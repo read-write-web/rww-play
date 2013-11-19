@@ -21,6 +21,7 @@ class RActorTest extends WordSpec with Matchers {
      local(new URI("/2013/test/img/"), localBase )  should be (Some("test/img"))
      local(new URI("/2013/test/img/cat.jpg"), localBase )  should be (Some("test/img/cat"))
      local(new URI("/2013/test/img/.acl.ttl"), localBase )  should be (Some("test/img"))
+     local(new URI("/2013/card.acl"), localBase )  should be (Some("card"))
   }
 
 
