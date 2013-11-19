@@ -65,4 +65,4 @@ class ReadWriteWebApp(base: URL, path: Path)(implicit val ops: RDFOps[Plantain],
 
 import plantain._
 
-object ReadWriteWebApp extends ReadWriteWebApp(plantain.rwwRoot,new File("test_www/").toPath.toAbsolutePath)
+object ReadWriteWebApp extends ReadWriteWebApp(plantain.rwwRoot, RwwConfiguration.rootContainerPath)
