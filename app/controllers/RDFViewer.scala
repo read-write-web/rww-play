@@ -1,7 +1,6 @@
 package controllers
 
 import play.api.mvc.Action
-import scalax.io.Input
 import play.api.mvc.Results._
 
 /**
@@ -9,10 +8,10 @@ import play.api.mvc.Results._
  */
 object RDFViewer {
 
+  // TODO it would probably be more elegant to use a real template key instead of "window.location.href"
   def htmlFor(url: String) = Action { request =>
-    import scalax.io.{Resource=>xResource}
-    val input:Input = xResource.fromFile("public/ldp/index.html")
-    val response = input.string.replace("window.location.href",s"'https://localhost:8443$url'")
+    val template = RwwConfiguration.rdfViewerHtmlTemplate
+    val response = template.replace("window.location.href",s"'https://localhost:8443$url'")
     Ok(response).as("text/html")
   }
 
