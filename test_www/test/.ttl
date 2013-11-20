@@ -1,0 +1,6 @@
+
+<> a <http://www.w3.org/ns/ldp#Container> ;
+	<http://xmlns.com/foaf/0.1/topic> "A container for some type X of resources"^^<http://www.w3.org/2001/XMLSchema#string> ;
+	<http://xmlns.com/foaf/0.1/maker> <https://localhost:8443/2013/card#me> .
+
+<https://localhost:8443/2013/> <http://www.w3.org/ns/ldp#created> <> .
