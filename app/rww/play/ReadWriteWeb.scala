@@ -109,8 +109,14 @@ trait ReadWriteWeb[Rdf <: RDF] {
     res recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case rse: ResourceDoesNotExist => NotFound(rse.getMessage + stackTrace(rse))
-      case auth: AccessDenied => Unauthorized(auth.message)
-      case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
+      case auth: AccessDenied => {
+        if (isStupidBrowser(request)) {
+          SeeOther(controllers.routes.RDFViewer.htmlFor(request.path).toString())
+        } else {
+          Unauthorized(auth.message)
+        }
+      }
+      case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
     }
   }
 
@@ -162,7 +168,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
-      case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
+      case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
     }
   }
 
@@ -174,7 +180,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
-      case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
+      case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
     }
   }
 

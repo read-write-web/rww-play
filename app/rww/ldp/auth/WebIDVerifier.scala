@@ -48,8 +48,8 @@ class WebIDVerifier[Rdf <: RDF](rww: RWW[Rdf])
   //todo document what is going on eg: sanPair.get(1)
 
   def verify(x509claim: Claim[X509Certificate]): List[Future[Principal]] = {
-      val listOfClaims =  webidClaims(x509claim).sequence
-      for ( webidclaim <- listOfClaims) yield verifyWebIDClaim(webidclaim)
+    val listOfClaims =  webidClaims(x509claim).sequence
+    for ( webidclaim <- listOfClaims) yield verifyWebIDClaim(webidclaim)
   }
 
   /**

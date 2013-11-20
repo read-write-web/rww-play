@@ -100,7 +100,7 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
               case Failure(e) => Future.failed(WrappedException("had problems parsing document returned by server", e))
             }
             case None => {
-              Future.failed(LocalException("no Iteratee/parser for Content-Type " + response.header("Content-Type")))
+              Future.failed(LocalException(s"no Iteratee/parser for Content-Type ${response.header("Content-Type")} fetching $url"))
             }
           }
         }
@@ -176,6 +176,6 @@ object RemoteException {
   }
 }
 
-case class LocalException(msg: String) extends FetchException
-case class WrappedException(msg: String, e: Throwable) extends FetchException
-case class WrongTypeException(msg: String) extends FetchException
+case class LocalException(msg: String) extends Exception(msg) with FetchException
+case class WrappedException(msg: String, e: Throwable) extends Exception(msg) with FetchException
+case class WrongTypeException(msg: String) extends Exception(msg) with FetchException
