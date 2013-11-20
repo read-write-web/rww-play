@@ -155,9 +155,8 @@ class WebIDVerifier[Rdf <: RDF](rww: RWW[Rdf])
               val failures: List[BananaException] = s.toList.map(  t =>
                 t match {
                   case Failure(e: BananaException) => e
-                  case Failure(e: Exception) => WrappedThrowable(e)
-                  case Failure(e) => throw e // a RunTimeException?
-                  case _ => throw new RuntimeException("impossible")
+                  case Failure(e)  => WrappedThrowable(e) // a RunTimeException?
+                  case Success(e)  => throw new Error("should never reach this point")
                 }
               )
               Failure(
