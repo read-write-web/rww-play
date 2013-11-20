@@ -97,10 +97,10 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
                 }
                 Future.successful(RemoteLDPR(URI(url.toString), g, meta, updated.toOption))
               }
-              case Failure(e) => Future.failed(WrappedException("had problems parsing document returned by server", e))
+              case Failure(e) => Future.failed(ParserException("had problems parsing document returned by server", e))
             }
             case None => {
-              Future.failed(LocalException(s"no Iteratee/parser for Content-Type ${response.header("Content-Type")} fetching $url"))
+              Future.failed(MissingParserException(s"no Iteratee/parser for Content-Type ${response.header("Content-Type")} fetching $url"))
             }
           }
         }
@@ -179,3 +179,5 @@ object RemoteException {
 case class LocalException(msg: String) extends Exception(msg) with FetchException
 case class WrappedException(msg: String, e: Throwable) extends Exception(msg) with FetchException
 case class WrongTypeException(msg: String) extends Exception(msg) with FetchException
+case class MissingParserException(msg: String) extends Exception(msg) with FetchException
+case class ParserException(msg: String, e: Throwable) extends Exception(msg,e) with FetchException

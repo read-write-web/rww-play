@@ -14,6 +14,8 @@ import rww.ldp.auth.{Claim, WebIDVerifier}
  */
 trait AuthN extends (RequestHeader => Future[Subject])
 
+case class AuthenticationError(cause: Throwable) extends Exception(cause)
+
 /**
  * WebID Authentication
  * @param verifier verifier for an x509 claim
@@ -40,7 +42,7 @@ class WebIDAuthN[Rdf <: RDF](verifier: WebIDVerifier[Rdf]) extends AuthN {
       //this I think forces all of the WebIDs to be verified before the future is ready, where I may prefer
       //to get going as soon as I find the first...
       val futurePrincipals: Future[List[Principal]]  = Future.sequence(principals)
-      futurePrincipals.map { principals => Subject(principals) }
+      futurePrincipals.map(principals => Subject(principals) ).transform(identity,AuthenticationError(_))
     }
   }
 

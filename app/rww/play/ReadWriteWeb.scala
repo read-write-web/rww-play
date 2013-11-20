@@ -18,6 +18,7 @@ import rww.ldp.ParentDoesNotExist
 import rww.ldp.AccessDenied
 import rww.ldp.WrongTypeException
 import net.sf.uadetector.UserAgentType
+import rww.play.auth.AuthenticationError
 
 object Method extends Enumeration {
   val read = Value
@@ -116,6 +117,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
           Unauthorized(auth.message)
         }
       }
+        //todo: 401 Unauthorizes requires some WWW-Authenticate header. Can we really use it this way?
+      case AuthenticationError(e) => Unauthorized("Could not authenticate user with TLS cert:"+e.getMessage+e.getStackTrace)
       case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
     }
   }
