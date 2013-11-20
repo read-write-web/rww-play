@@ -81,6 +81,9 @@ $ Play20/play
 An initial implementation of the [Linked Data Platform](http://www.w3.org/2013/ldp/hg/ldp.html) spec is implemented here. 
 The same way as the [Apache httpd server](http://httpd.apache.org/) it servers resource from the file system and maps
 them to the web. 
+
+### The file system 
+
 By default we map the `test_www` directory's content to [http://localhost:8443/2013/](http://localhost:8443/2013/).
 
 The test_www directory starts with a few files to get you going
@@ -125,6 +128,8 @@ These conventions are provisional implementation decisions, and improvements are
  - updates to the file system are not reflected yet in the server
  - allow symbolic links to point to different default formats
 )
+
+### Web Access Control
 
 These files will then be mapped to HTTP resources such that each non acl resource will have an
 HTTP `Link` header of relation type `acl` pointing to an acl file, and the acl file itself will
@@ -255,6 +260,8 @@ Certificate:
          72:7f
 ```
 
+### Updating a resource with PATCH
+
 We would of course like to make the card world readable so that the certificate
 can be used to login to other servers too. To do this the user `<card#me>` can
 append to the `<card.acl.ttl>` file an authorization making `card` world readable,
@@ -280,6 +287,7 @@ Link: <https://localhost:8443/2013/card.acl>; rel=acl
 Content-Type: text/turtle
 [...]
 ```
+### Creating a Resource
 
 Next we can publish a couch surfing opportunity using [HTTP's POST](http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.5) method  [as explained by the LDP spec](https://dvcs.w3.org/hg/ldpwg/raw-file/default/ldp.html#ldpc-HTTP_POST)
 
@@ -352,6 +360,8 @@ or if you  prefer rdf/xml over turtle as described by the [Content Negotiation s
 $ curl -k -i -X GET -H "Accept:application/rdf+xml;q=0.9,text/turtle;q=0.7" --cert ../eg/test-localhost.pem:test https://localhost:8443/2013/couch
 ```
 
+### SPARQL Queries
+
 It is then possible to also use [SPARQL queries](http://www.w3.org/TR/sparql11-query/) on particular resources.
 (TODO: find a better example)
 
@@ -385,6 +395,8 @@ Content-Length: 337
 
 ```
 
+### DELETEing a resource
+
 Finally if you no longer want the couch surfing opportunity to be published you can `DELETE` it.
 ( It would be better to express that it was sold: `DELETE`ing resources on the Web is usually 
 bad practice: it breaks the links that other people set up to your services )
@@ -408,6 +420,8 @@ Content-Length: 109
 <> a <http://www.w3.org/ns/ldp#Container> ;
     <http://www.w3.org/ns/ldp#created> <card> , <raw/> , <test/> .
 ```
+
+### Creating a Container
 
 To create a new container one just creates an LDP Resource that contains the triple `<> a ldp:Container`.
 
@@ -472,95 +486,6 @@ The code to run this is a few lines in [Application](https://github.com/read-wri
   ```
 
 The [Auth](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/readwriteweb/play/auth/AuthZ.scala#L33) class can be tuned for any type of authentication, by passing the relevant `authentication` and `acl` function to it.  The WebId Authentication code [WebIDAuthN](https://github.com/read-write-web/rww-play/blob/master/app/org/w3/play/auth/WebIDAuthN.scala) is quite short and makes use of the `Claim`s monad to help isolate what is verified and what is not.
-
-## Linked Data Platform
-
-NOTE: Please skip this part for the moment... It has not been tested recently
-
-A very initial implementation of the (LDP)[http://www.w3.org/2013/ldp/hg/ldp.html] spec is implemented here. At present it does not save the data! But you can try it out by using the Linked Data Collection LDC available at http://localhost:900/2013/
-
-First you can create a new resource with POST
-```bash
-$ curl -X POST -i  -H "Content-Type: text/turtle; utf-8"  -H "Slug: card" http://localhost:9000/2013/ -d @eg/card.ttl
-...
-HTTP/1.1 200 OK
-Location: /2013/card
-```
-
-This will then create a remote resource at the given location, in the above example
-`http://localhost:9000/2013/card`
-
-```bash
-$ curl  -i http://localhost:9000/2013/card
-HTTP/1.1 200 OK
-Link: <http://localhost:9000/2013/card;acl>; rel=acl
-Content-Type: text/turtle
-Content-Length: 236
-
-<#i> <http://xmlns.com/foaf/0.1/name> "Your Name"^^<http://www.w3.org/2001/XMLSchema#string> ;
-    <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
-
-<> <http://www.w3.org/2000/01/rdf-schema#member> <card> .
-```
-
-Then you can POST some more triples on that resource to APPEND to it,
-and you can GET it and DELETE it. 
-
-For example to append the triples in some file 'other.ttl' you can use. ( Note this has
-not been adopted by the LDP WG, though there is an issue open for it )
-
-```bash
-$ curl -i -X POST -H "Content-Type: text/turtle" http://localhost:9000/2013/card -d @eg/more.ttl
-```
-
-if you `GET` the `card` with curl as shown above, the server should now show your
-content with a few more relations. You can even fetch it in a different representation
-such as the older rdf/xml
-
-```bash
-$ curl -i -X GET -H "Accept: application/rdf+xml" http://localhost:9000/2013/card
-```
-
-finally if you wish to delete it you can run
-
-```bash
-$ curl -i -X DELETE http://localhost:9000/2013/card
-```
-
-A GET on that resource will from then on return an error.
-
-To make a collection you can use the MKCOL method as defined by [RFC4918: HTTP Extensions for WebDAV](http://tools.ietf.org/html/rfc4918#section-9.3)
-
-```bash
-$ curl -i -X MKCOL -H "Expect:" http://localhost:9000/2013/pix/
-HTTP/1.1 201 Created
-```
-
-But the LDP way to do this is to POST a new container.
-
-```bash
-$ curl -i -X POST -H "Content-Type: text/turtle" -H "Slug: type" -H "Expect:" http://localhost:9000/2013/ -d @eg/newContainer.ttl 
-HTTP/1.1 201 Created
-Location: http://localhost:9000/2013/type
-Content-Length: 0
-```
-
-You can then GET the content of the container
-
-```bash
-HTTP/1.1 200 OK
-Link: <http://localhost:9000/2013/type;acl>; rel=acl
-Content-Type: text/turtle
-Content-Length: 378
-
-
-<http://localhost:9000//2013/> a <http://www.w3.org/ns/ldp#Container> ;
-    <http://xmlns.com/foaf/0.1/topic> "A container for some type X of resources"^^<http://www.w3.org/2001/XMLSchema#string> ;
-    <http://xmlns.com/foaf/0.1/maker> <http://localhost:9000/card#me> .
-
-<http://localhost:9000/2013/> <http://www.w3.org/2000/01/rdf-schema#member> <http://localhost:9000/2012/type> .
-```
-
 
 
 For Web Access Control with [WebID](http://webid.info/) you have to start play in secure mode ( see above ) and  create a WebID.
