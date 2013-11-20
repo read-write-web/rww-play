@@ -88,7 +88,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
       namedRes match {
         case ldpr: LDPR[Rdf] =>  {
           if (isStupidBrowser(request)) {
-            Found(controllers.routes.RDFViewer.htmlFor(request.path).toString())
+            SeeOther(controllers.routes.RDFViewer.htmlFor(request.path).toString())
           } else {
             writerFor[Rdf#Graph](request).map { wr =>
               result(200, wr, Map.empty ++ link)(ldpr.relativeGraph)
