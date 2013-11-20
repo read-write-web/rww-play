@@ -10,14 +10,15 @@ import akka.util._
 import akka.pattern.ask
 import org.slf4j.LoggerFactory
 import java.util.Date
-import play.api.libs.iteratee._
-import play.api.libs.iteratee.Input.El
+import _root_.play.api.libs.iteratee._
+import _root_.play.api.libs.iteratee.Input.El
 import java.io.{IOException, OutputStream}
 import scala.util.Try
 import java.net.{URI => jURI}
 import scala.Some
 import scalaz.\/-
 import scalaz.-\/
+import org.w3.banana.syntax.URISyntax
 
 trait RActor extends Actor with akka.actor.ActorLogging {
 
@@ -184,8 +185,18 @@ trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
 
   lazy val acl: Option[Rdf#URI]= Some{
     var loc=location.toString
-    if (loc.endsWith(".acl")) location
-    else ops.URI(loc+".acl")
+    if (loc.endsWith(".acl")) {
+      location
+    } else if (loc.endsWith(".acl.ttl")) {
+      ops.URI(loc.substring(0,loc.length-4))
+    } else {
+      import URISyntax._
+      implicit val o = ops
+      val fileName = location.lastPathSegment
+      val i = fileName.indexOf('.')
+      val coreName = if ( i > 0) fileName.substring(0,i) else fileName
+      location.resolve(coreName+".acl")
+    }
   }
 }
 

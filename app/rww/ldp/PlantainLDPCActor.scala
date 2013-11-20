@@ -76,7 +76,6 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
   override
   def localName(uri: Plantain#URI): String = {
     val requestedPath = uri.underlying.getPath
-    uriW[Plantain](uri).lastPathSegment
     val ldpcPath = baseUri.underlying.getPath
     if (ldpcPath.length > requestedPath.length) fileName
     else super.localName(uri)
@@ -367,7 +366,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
           }
         } else Success(LocalBinaryR[Plantain](file.toPath, iri))
 
-      } else Failure(ResourceDoesNotExist(s"no resource for $key"))
+      } else Failure(ResourceDoesNotExist(s"no resource for '$key'"))
     }
   })
 
@@ -436,6 +435,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
    */
   def fileFrom(name: String): File = {
     if (name.endsWith(acl)) path.resolveSibling(name + ext).toFile
+    else if (name.endsWith(acl+ext)) path.resolveSibling(name).toFile
     else if (Files.isSymbolicLink(path)) path.resolveSibling(Files.readSymbolicLink(path)).toFile
     else path.resolveSibling(name + ext).toFile
   }
