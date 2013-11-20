@@ -53,6 +53,7 @@ $.get(templateURI, function(data) {
 		var common = "<" + ressourceUri+".acl" + ">";
 		var access = "<http://www.w3.org/ns/auth/acl#accessTo>";
 		var agent = "<http://www.w3.org/ns/auth/acl#agent>";
+		var agentClass = "<http://www.w3.org/ns/auth/acl#agentClass>";
 		var mode = "<http://www.w3.org/ns/auth/acl#mode>";
 		var request, accessTo, agents, modes;
 
@@ -64,52 +65,60 @@ $.get(templateURI, function(data) {
 			//console.log(data);
 
 			// Add accessTo.
-			request = common + " " + access + " " + "<" + ressourceUri + ">.";
+			accessTo = "[] " + "acl:accessTo "  + "<" + ressourceUri + ">";
 
-			// Add allowed users
+			// Add allowed users.
 			if ((users.length > 0) && (users[0].length > 0)) {
 				var i, n = users.length, user;
+				agents = "acl:agent ";
 				for (i=0;i<n;i++) {
 					var user = users[i].replace(/\s+|\n|\r/g,'');
-					request = request + "\n" + common + " " + agent + " " + "<" + user + ">.";
+					if (i+1 == n) agents = agents + "<"+ user + ">";
+					else agents = agents + "<"+ user + ">, ";
 				}
 			} else {
-				// Add FOAF agent. WAC('agentClass') / FOAF('Agent'));
-				//request = request + "\n" + common + " " + agent + " " + "<" + user + ">.";
+				agents = "	acl:agentClass foaf:Agent";
 			}
 
-			// Add access modes
+			// Add access modes.
+			modes = "	acl:mode " ;
 			if (read == true) {
-				var m = "<http://www.w3.org/ns/auth/acl#Read>";
-				request = request + "\n" + common + " " + mode + " " + m + ".";
+				modes = modes + "acl:Read, ";
 			}
 			if (write == true) {
-				var m = "<http://www.w3.org/ns/auth/acl#Write>";
-				request = request + "\n" + common + " " + mode + " " + m + ".";
+				modes = modes + "acl:Write";
 			}
 			else if (append == true) {
-				var m = "<http://www.w3.org/ns/auth/acl#Append>";
-				request = request + "\n" + common + " " + mode + " " + m + ".";
+				modes = modes + "acl:Append";
 			}
 			if (read == false && write == false) {
 				$viewContainer.find('#wac-editor').remove();
 				return;
 			}
 
-			var data = request;
+			// Make the SPARQL request.
+			var sparqlQuery =
+				"PREFIX acl: <http://www.w3.org/ns/auth/acl#> \n" +
+				"PREFIX foaf: <http://xmlns.com/foaf/0.1/> \n" +
+				"INSERT DATA { \n" +
+					accessTo + ";\n" +
+					modes + ";\n" +
+					agents + ".\n" +
+					"}"
+
 			// Send / PUT the new ACLs to the server.
 			$.ajax({
-				type: "PUT",
+				type: "PATCH",
 				url: ressourceUri+'.acl',
-				contentType: 'text/turtle',
+				contentType: 'application/sparql-update',
 				dataType: 'text',
 				processData:false,
-				data: data,
+				data: sparqlQuery,
 				success: function() {
 					console.log('Saved !!!');
 				},
 				error: function() {
-					console.log('Error');
+					console.log('Error !!!');
 				}
 			});
 		});
