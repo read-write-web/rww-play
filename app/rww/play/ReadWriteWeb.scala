@@ -118,7 +118,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
         }
       }
         //todo: 401 Unauthorizes requires some WWW-Authenticate header. Can we really use it this way?
-      case AuthenticationError(e) => Unauthorized("Could not authenticate user with TLS cert:"+e.getMessage+e.getStackTrace)
+      case AuthenticationError(e) => Unauthorized("Could not authenticate user with TLS cert:"+stackTrace(e))
       case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
     }
   }
