@@ -41,7 +41,7 @@ import scala.concurrent.ExecutionContext
  * @tparam Rdf
  */
 //todo: pass the base URL
-class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
+class RwwBodyParser[Rdf <: RDF](base: URL)(implicit ops: RDFOps[Rdf],
                                 sparqlOps: SparqlOps[Rdf],
                                 graphSelector: IterateeSelector[Rdf#Graph],
                                 sparqlSelector: IterateeSelector[Rdf#Query],
@@ -59,7 +59,7 @@ class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
       Done(Right(emptyContent), Empty)
     } else rh.contentType.map { str =>
       MimeType(str) match {
-        case sparqlSelector(iteratee) => iteratee().map {
+        case sparqlSelector(iteratee) => iteratee(Option(new URL(base,rh.path))).map {
           case Failure(e) => Left(BadRequest("could not parse query "+e))
           case Success(sparql) => Right(QueryRwwContent(sparql))
         }
@@ -67,7 +67,7 @@ class RwwBodyParser[Rdf <: RDF](implicit ops: RDFOps[Rdf],
           case Failure(e) => Left(BadRequest("cought " + e))
           case Success(graph) => Right(GraphRwwContent(graph))
         }
-        case sparqlUpdateSelector(iteratee) => iteratee().map {
+        case sparqlUpdateSelector(iteratee) => iteratee(Option(new URL(base,rh.path))).map {
           case Failure(e) => Left(BadRequest("cought " + e))
           case Success(update) => Right(PatchRwwContent(update))
         }

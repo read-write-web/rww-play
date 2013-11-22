@@ -1,5 +1,5 @@
 package rww.play
-import _root_.play.{api => PlayApi, Routes}
+import _root_.play.{api => PlayApi}
 import PlayApi.mvc.Results._
 import PlayApi.libs.Files.TemporaryFile
 import PlayApi.http.Status._
@@ -9,7 +9,7 @@ import org.w3.banana._
 import rww.ldp._
 import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
-import java.net.{URLEncoder, URLDecoder}
+import java.net.URLDecoder
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import net.sf.uadetector.service.UADetectorServiceFactory

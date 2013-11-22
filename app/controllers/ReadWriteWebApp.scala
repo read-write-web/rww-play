@@ -22,7 +22,6 @@ import java.nio.file.Path
 import org.w3.banana._
 import rww.play.rdf.IterateeSelector
 import concurrent.ExecutionContext
-import java.io.File
 import akka.util.Timeout
 import java.util.concurrent.TimeUnit
 import rww.play.auth.WebIDAuthN
@@ -44,7 +43,7 @@ class ReadWriteWebApp(base: URL, path: Path)(implicit val ops: RDFOps[Plantain],
 
 
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
-  implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain]()(ops,sparqlOps,graphIterateeSelector,
+  implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain](base)(ops,sparqlOps,graphIterateeSelector,
     sparqlIterateeSelector,sparqlUpdateSelector,ec)
   val baseUri = ops.URI(base.toString)
 

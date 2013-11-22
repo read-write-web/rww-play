@@ -16,7 +16,7 @@
 
 package rww.play.rdf
 
-import org.w3.banana.{SparqlOps, RDF}
+import org.w3.banana.{RDFOps, Prefix, SparqlOps, RDF}
 import java.net.URL
 import play.api.libs.iteratee.{Error, Done, Iteratee}
 import java.io.ByteArrayOutputStream
@@ -28,9 +28,9 @@ import scala.concurrent.ExecutionContext
  * @author Henry Story
  */
 class SparqlQueryIteratee[Rdf<:RDF, +SyntaxType]
-(implicit ops: SparqlOps[Rdf], ec: ExecutionContext)
+(implicit sparqlOps: SparqlOps[Rdf], ops: RDFOps[Rdf])
   extends RDFIteratee[Rdf#Query, SyntaxType] {
-
+  import sparqlOps._
   /**
    *
    * @param loc the location of the document to evaluate relative URLs (this will not make a connection)
@@ -40,8 +40,8 @@ class SparqlQueryIteratee[Rdf<:RDF, +SyntaxType]
     Iteratee.fold[Array[Byte],ByteArrayOutputStream](new ByteArrayOutputStream()){
     (stream,bytes) => {stream.write(bytes); stream }
   } map { stream =>
-      val query = new String(stream.toByteArray,"UTF-8")//todo, where do we get UTF-8?
-      ops.Query(query)
+      val query = loc.map(b=>s"base <${b.toString}> \n").getOrElse("")+new String(stream.toByteArray,"UTF-8")//todo, where do we get UTF-8?
+      Query(query) //todo: https://github.com/w3c/banana-rdf/issues/76
     }
 }
 
