@@ -3,7 +3,9 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 
-<card#me> foaf:name "Your name";
+<card#me>
+     a foaf:Person ;
+     foaf:name "Me (StampleIO test webid)";
      foaf:knows <http://bblfish.net/people/henry/card#me> ;
      cert:key [ a cert:RSAPublicKey;
                 cert:exponent 65537 ;
