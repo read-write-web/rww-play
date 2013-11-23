@@ -103,7 +103,8 @@ These conventions are provisional implementation decisions, and improvements are
 
 ### Web Access Control
 
-_Note for OSX Mavericks users_: the `--cert` flag for curl no longer works and you will need to compile your own [for reasons explained in this bug report](http://curl.haxx.se/mail/archive-2013-10/0036.html)
+_Note for OSX Mavericks users_: the `--cert` flag for curl no longer works and you will need to compile your own [for reasons explained in this bug report](http://curl.haxx.se/mail/archive-2013-10/0036.html).
+You can do this by using [the Fink Project](http://www.finkproject.org) or [Brew](http://brew.sh/).
 
 These files will then be mapped to HTTP resources such that each non acl resource will have an
 HTTP `Link` header of relation type `acl` pointing to an acl file, and the acl file itself will
