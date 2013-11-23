@@ -23,9 +23,8 @@ Getting going
 ```bash
  $ git clone git://github.com/read-write-web/rww-play.git 
 ``` 
-### The short version
 
-In the _rww-play_ home directory, run the `build` bash script. It will download a precompiled tuned 
+In the `rww-play` home directory, run the `build` bash script. It will download a precompiled tuned 
 version of play, build the application, and run it. (If there is no remotely downloadable version
 it will build it from source in the `Play20` directory.)
 
