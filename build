@@ -5,6 +5,9 @@ git submodule update --init --recursive
 #PLAY_VERSION="2.2-TLS-`git log -n 1 --pretty=format:%H`"
 PLAY_VERSION="2.2-TLS-7bbdcf599b80e1b1b9fa0aaaba4c6db1286eaf41"
 #cd ..
-curl -O http://bblfish.net/work/repo/builds/Play2/play-${PLAY_VERSION}.tar.bz2
-tar -xjf play-${PLAY_VERSION}.tar.bz2
-ln -s play-${PLAY_VERSION}.tar.bz2 Play20
+if [ ! -e play-${PLAY_VERSION} ]
+then
+    curl -O http://bblfish.net/work/repo/builds/Play2/play-${PLAY_VERSION}.tar.bz2
+    tar -xjf play-${PLAY_VERSION}.tar.bz2
+    ln -s play-${PLAY_VERSION} Play20
+fi
