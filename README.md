@@ -33,33 +33,6 @@ it will build it from source in the `Play20` directory.)
 $ ./build
 ```
 
-You can then run _rww-play_ with all the right options just by executing `run` on the command line:
-
-```bash
-$ ./run
-```
-
-### The longer version
-
-Compile the [bblfish's TLS branch of Play 2.0](https://github.com/bblfish/Play20) that is available as a [submodule](http://git-scm.com/book/en/Git-Tools-Submodules) in the cloned repository as follows:
-
-```
- $ git submodule init
- $ git submodule update
- $ cd Play20/framework
- $ ./build
- > publish-local 
-  ... [exit scala shell]
- $ cd ../..
-```
-
-* From the home directory of this project, start the previously compiled Play2.0 server you can run play on `http` port 9000 [TODO: Currently RWWPlay won't work correctly with non TLS Ports, as it uses client certificates for auth]
-
-```bash
-$ Play20/play
-> run
-```
-
 * to start Play in secure mode with lightweight client certificate verification (for WebID)
 
 ```bash
