@@ -5,7 +5,7 @@ This is an implementation in Play of a number of tools to build a Read-Write-Web
 It is very early stages at present and it implements sketches of the following
 
 * A [CORS](http://www.w3.org/TR/cors/) proxy
-* An initial implementation of [Linked Data Basic Profile](http://www.w3.org/2013/ldp/wiki/Main_Page)
+* An initial implementation of [Linked Data Basic Profile](http://www.w3.org/2012/ldp/wiki/Main_Page)
 
 This currently works in the [TLS branch of the bblfish fork of Play 2.x](https://github.com/bblfish/Play20), which comes with TLS support and a few more patches.
 
