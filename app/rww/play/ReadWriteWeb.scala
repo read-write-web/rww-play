@@ -1,4 +1,6 @@
 package rww.play
+
+import _root_.play.mvc.Http
 import _root_.play.{api => PlayApi}
 import PlayApi.mvc.Results._
 import PlayApi.libs.Files.TemporaryFile
@@ -9,7 +11,7 @@ import org.w3.banana._
 import rww.ldp._
 import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
-import java.net.URLDecoder
+import java.net.{URI, URLDecoder}
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import net.sf.uadetector.service.UADetectorServiceFactory
@@ -19,6 +21,7 @@ import rww.ldp.AccessDenied
 import rww.ldp.WrongTypeException
 import net.sf.uadetector.UserAgentType
 import rww.play.auth.AuthenticationError
+import controllers.routes
 
 object Method extends Enumeration {
   val read = Value
@@ -80,9 +83,16 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def getAsync(request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+  private def buildRootURI(implicit request: PlayApi.mvc.Request[AnyContent])  : URI = {
+    val path = routes.ReadWriteWebApp.get("")
+    new URI( path.absoluteURL(true).replace( path.url, request.path))
+  }
+
+  def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+
+
     val res = for {
-      namedRes <- rwwActor.get(request, request.path)
+      namedRes <- rwwActor.get(request, buildRootURI)
     } yield {
       val link = namedRes.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
 

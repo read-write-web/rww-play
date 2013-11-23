@@ -149,11 +149,11 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
   }
 
 
-  def get(request: PlayRequestHeader, path: String): Future[NamedResource[Rdf]] = {
-    for {
-      _ <- auth(request, new URL(base, path).toString, Method.read)
+  def get(request: PlayRequestHeader, baseUri: java.net.URI): Future[NamedResource[Rdf]] = {
+   for {
+      _ <- auth(request, baseUri.toString, Method.read)
       x <- rww.execute {
-        getResource(URI(path), None)
+        getResource(URI(baseUri.toString), None)
       }
     } yield x
   }
