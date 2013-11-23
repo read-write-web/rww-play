@@ -27,15 +27,15 @@ import scalax.io.Resource
  * A LDP Container actor that is responsible for the equivalent of a directory
  *
  *
- * @param baseUri the URI for the container
+ * @param ldpcUri the URI for the container
  * @param root the path on the file system where data is saved to
  * @param ops
  * @param sparqlGraph
  */
-class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
+class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
                                  (implicit ops: RDFOps[Plantain],
                                      sparqlGraph: SparqlGraph[Plantain],
-                                     adviceSelector: AdviceSelector[Plantain]=new EmptyAdviceSelector) extends PlantainLDPRActor(baseUri,root) {
+                                     adviceSelector: AdviceSelector[Plantain]=new EmptyAdviceSelector) extends PlantainLDPRActor(ldpcUri,root) {
   import org.w3.banana.syntax._
   import ops._
   import diesel._
@@ -76,7 +76,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
   override
   def localName(uri: Plantain#URI): String = {
     val requestedPath = uri.underlying.getPath
-    val ldpcPath = baseUri.underlying.getPath
+    val ldpcPath = ldpcUri.underlying.getPath
     if (ldpcPath.length > requestedPath.length) fileName
     else super.localName(uri)
   }
@@ -84,7 +84,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
   private def descriptionFor(path: Path, attrs: BasicFileAttributes): Plantain#Graph = {
     def graphFor(uri: Plantain#URI) = {
       var res = emptyGraph +
-        Triple(baseUri, ldp.created, uri) +
+        Triple(ldpcUri, ldp.created, uri) +
         Triple(uri, stat.mtime, TypedLiteral(attrs.lastModifiedTime().toMillis.toString,xsd.integer))
       if (attrs.isDirectory)
         res + Triple(uri, rdf.typ, ldp.Container)
@@ -102,7 +102,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
     } else Graph.empty
   }
 
-  private def absoluteUri(pathSegment: String) =  uriW[Plantain](baseUri)/pathSegment
+  private def absoluteUri(pathSegment: String) =  uriW[Plantain](ldpcUri)/pathSegment
 
   /**
    *
@@ -115,7 +115,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
       case ok @ Success(ldpr: LocalLDPR[Plantain]) => {
         if (name == fileName) {
           //if this is the index file, add all the content info
-          var contentGrph = ldpr.graph + Triple(baseUri, rdf.typ, ldp.Container)
+          var contentGrph = ldpr.graph + Triple(ldpcUri, rdf.typ, ldp.Container)
           Files.walkFileTree(root, util.Collections.emptySet(), 1,
             new SimpleFileVisitor[Path] {
 
@@ -129,7 +129,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
                 FileVisitResult.CONTINUE
               }
             })
-          Success(LocalLDPR[Plantain](baseUri, contentGrph, root, Some(new Date(Files.getLastModifiedTime(root).toMillis))))
+          Success(LocalLDPR[Plantain](ldpcUri, contentGrph, root, Some(new Date(Files.getLastModifiedTime(root).toMillis))))
         } else ok
       }
       case badContent @ Success(_) =>  Failure(StorageError(s"Data in LDPC must be a graph. "))
@@ -184,7 +184,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
         }
 
         //todo: move this into the resource created ( it should know on creation how to find the parent )
-        val linkedGraph = graph + Triple(baseUri, ldp.created, iri)
+        val linkedGraph = graph + Triple(ldpcUri, ldp.created, iri)
 
         //todo: should these be in the header?
         val scrpt = LDPCommand.updateLDPR[Plantain](iri, add = graphToIterable(linkedGraph)).flatMap(_ => k(iri))
@@ -218,7 +218,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
         val p = root.resolve(pathSegment)
         val dirUri = uriW[Plantain](uri) / ""
         val ldpc = context.actorOf(Props(new PlantainLDPCActor(dirUri, p)), pathSegment.getFileName.toString)
-        val creationRel = Triple(baseUri, ldp.created, dirUri)
+        val creationRel = Triple(ldpcUri, ldp.created, dirUri)
         val linkedGraph = graph + creationRel
         //todo: should these be in the header?
         val scrpt = LDPCommand.updateLDPR[Plantain](dirUri, add = graphToIterable(linkedGraph)).flatMap(_ => k(dirUri))
@@ -293,7 +293,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
         }
       }
     }
-    val uri = uriW[Plantain](baseUri) / path.getFileName.toString
+    val uri = uriW[Plantain](ldpcUri) / path.getFileName.toString
     (uri, path)
 
   }
@@ -317,7 +317,7 @@ class PlantainLDPCActor(baseUri: Plantain#URI, root: Path)
     }
     Files.createFile(path.resolve(ext))
     Files.createFile(path.resolve(acl+ext))
-    val uri = uriW[Plantain](baseUri) / path.getFileName.toString
+    val uri = uriW[Plantain](ldpcUri) / path.getFileName.toString
     (uri, path)
 
   }
