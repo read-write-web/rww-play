@@ -275,16 +275,7 @@ case class Scrpt[Rdf<:RDF,A](script:LDPCommand.Script[Rdf,A])
 case class Cmd[Rdf<:RDF,A](command: LDPCommand[Rdf, LDPCommand.Script[Rdf,A]])
 
 
-object RWWeb {
 
-  val logger = LoggerFactory.getLogger(this.getClass)
-
-  def apply[Rdf<:RDF](baseUri: Rdf#URI, root: Path, cache: Option[Props])
-                     (implicit ops: RDFOps[Rdf], timeout: Timeout = Timeout(5000)): RWWeb[Rdf] =
-    new RWWeb(baseUri)
-
-
-}
 
 case class ParentDoesNotExist(message: String) extends Exception(message) with BananaException
 case class ResourceDoesNotExist(message: String) extends Exception(message) with BananaException
@@ -294,114 +285,7 @@ case class PreconditionFailed(message: String) extends Exception(message) with B
 case class UnsupportedMediaType(message: String) extends Exception(message) with BananaException
 case class StorageError(message: String)  extends Exception(message) with BananaException
 
-trait RWW[Rdf <: RDF] {  //not sure which of exec or execute is going to be needed
-  def system: ActorSystem
-  def execute[A](script: LDPCommand.Script[Rdf,A]): Future[A]
-  def exec[A](cmd: LDPCommand[Rdf, LDPCommand.Script[Rdf,A]]): Future[A]
-  /*
-   * these two functions look wrong and very Java-y.
-   * I don't know what the right patter to do this is. Setting it up in a constructor seems too
-   * restrictive
-   */
-  def setWebActor(webActor: ActorRef)
-  def setLDPSActor(ldpsActor: ActorRef)
-  def shutdown(): Unit
-}
-
-class RWWeb[Rdf<:RDF](val baseUri: Rdf#URI)
-                           (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RWW[Rdf] {
-  val system = ActorSystem("plantain")
-  val rwwActorRef = system.actorOf(Props(new RWWebActor(baseUri)),name="rww")
-  import RWWeb.logger
-
-  logger.info(s"Created rwwActorRef=<$rwwActorRef>")
-
-  val listener = system.actorOf(Props(new Actor {
-    def receive = {
-      case d: DeadLetter if ( d.message.isInstanceOf[Scrpt[_,_]] || d.message.isInstanceOf[Cmd[_,_]] ) ⇒ {
-        d.sender !  akka.actor.Status.Failure(ResourceDoesNotExist(s"could not find actor for ${d.recipient}"))
-      }
-    }
-  }))
-  system.eventStream.subscribe(listener, classOf[DeadLetter])
-
-
-  def execute[A](script: LDPCommand.Script[Rdf, A]) = {
-    (rwwActorRef ? Scrpt[Rdf,A](script)).asInstanceOf[Future[A]]
-  }
-
-  def exec[A](cmd: LDPCommand[Rdf, LDPCommand.Script[Rdf,A]]) = {
-    (rwwActorRef ? Cmd(cmd)).asInstanceOf[Future[A]]
-  }
-
-  def shutdown(): Unit = {
-    system.shutdown()
-  }
-
-  def setWebActor(ref: ActorRef) {
-    rwwActorRef ! WebActor(ref)
-  }
-
-  def setLDPSActor(ldpsActor: ActorRef) {
-    rwwActorRef ! LDPSActor(ldpsActor)
-  }
-}
-
 
 case class WebActor(web: ActorRef)
 case class LDPSActor(ldps: ActorRef)
 
-class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
-                             (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RActor {
-  import syntax.URISyntax.uriW
-
-  var rootContainer: Option[ActorRef] = None
-  var web : Option[ActorRef] = None
-
-
-  def receive = returnErrors {
-    case Scrpt(script) => {
-       script.resume match {
-         case command: -\/[LDPCommand[Rdf, LDPCommand.Script[Rdf,_]]] => forwardSwitch(Cmd(command.a))
-         case \/-(res) => sender ! res
-       }
-    }
-    case cmd: Cmd[Rdf,_] => forwardSwitch(cmd)
-    case WebActor(webActor) => {
-      log.info(s"setting web actor to <$webActor> ")
-      web = Some(webActor)
-    }
-    case LDPSActor(ldps) => {
-       log.info(s"setting rootContainer to <$ldps> ")
-       rootContainer = Some(ldps)
-    }
-  }
-
-  /** We in fact ignore the R and A types, since we cannot capture */
-  protected def forwardSwitch[A](cmd: Cmd[Rdf,A]) {
-     RActor.local(cmd.command.uri.underlying,baseUri.underlying).map { path=>
-        rootContainer match {
-          case Some(root) => {
-            val p = root.path / path.split('/').toIterable
-            val to = context.actorSelection(p)
-              log.info(s"forwarding message $cmd to akka('$path')=$to ")
-              to.tell(cmd,context.sender)
-          }
-          case None => log.warning("RWWebActor not set up yet: missing rootContainer")
-        }
-    } getOrElse {
-      //todo: this relative uri comparison is too simple.
-      //     really one should look to see if it
-      //     is the same host and then send it to the local lpdserver ( because a remote server may
-      //     link to this server ) and if so there is no need to go though the external http layer to
-      //     fetch graphs
-      web.map {
-        log.info(s"sending message $cmd to general web agent <$web>")
-        _ forward cmd
-      }.getOrElse(log.warning("RWWebActor not set up yet: missing web actor"))
-    }
-
-  }
-
-
-}
