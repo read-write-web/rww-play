@@ -50,7 +50,7 @@ assume are those signed by an agent named "CN=WebID,O=∅". This is experimental
 Documentation
 -------------
 
-Further documentation can be found on the [[wiki]].
+Further documentation can be found on the [rww-play wiki](https://github.com/stample/rww-play/wiki).
 
 Licence
 -------
