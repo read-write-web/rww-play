@@ -19,4 +19,6 @@ package object play {
   implicit def toBananaURI (uri : java.net.URI): org.w3.banana.plantain.model.URI =
     org.w3.banana.plantain.model.URI.fromString(uri.toString)
 
+  implicit class EnhancedRequest(val request: PlayApi.mvc.Request[_]) extends AnyVal {   def getAbsoluteURI = buildRootURI(request) }
+
 }

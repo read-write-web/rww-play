@@ -85,10 +85,10 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
 
   def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
-
+     val uri = request.getAbsoluteURI
 
     val res = for {
-      namedRes <- rwwActor.get(request, buildRootURI)
+      namedRes <- rwwActor.get(request, uri)
     } yield {
       val link = namedRes.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
 
@@ -143,11 +143,11 @@ trait ReadWriteWeb[Rdf <: RDF] {
    * @param path
    * @return
    */
-  def mkcol(path: String) = Action.async(rwwBodyParser) { implicit request =>
+  def mkcol(path: String) = Action.async(rwwBodyParser) { request =>
     val correctedPath = if (!request.path.endsWith("/")) request.path else request.path.substring(0, request.path.length - 1)
     val pathUri = new java.net.URI(correctedPath)
     val coll = pathUri.resolve(".")
-    implicit  val uri  = buildRootURI
+    implicit val uri = request.getAbsoluteURI
 
     def mk(graph: Option[Rdf#Graph]): Future[SimpleResult] = {
       val path = correctedPath.toString.substring(coll.toString.length)
@@ -171,8 +171,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def put(path: String) = Action.async(rwwBodyParser) { implicit request =>
-    implicit val uri = buildRootURI
+  def put(path: String) = Action.async(rwwBodyParser) { request =>
+    implicit val uri = request.getAbsoluteURI
     val future = for {
       answer <- rwwActor.put(request, request.body)
     } yield {
@@ -184,8 +184,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def patch(path: String) = Action.async(rwwBodyParser) { implicit request =>
-    implicit val uri = buildRootURI
+  def patch(path: String) = Action.async(rwwBodyParser) { request =>
+    implicit val uri = request.getAbsoluteURI
     val future = for {
       _ <- rwwActor.patch(request, request.body)
     } yield {
@@ -198,8 +198,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
   }
 
 
-  def post(path: String) = Action.async(rwwBodyParser) { implicit request =>
-    implicit val uri = buildRootURI
+  def post(path: String) = Action.async(rwwBodyParser) { request =>
+    implicit val uri = request.getAbsoluteURI
 
     def postGraph(request: PlayApi.mvc.Request[RwwContent], rwwGraph: Option[Rdf#Graph]): Future[SimpleResult] = {
       for {
