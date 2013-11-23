@@ -18,10 +18,10 @@ Getting going
 
 
 * You need Java 7 at least - the official Oracle JVM or another one based on [the GPLed code](http://openjdk.java.net/): removing the dependency on Oracle's JVM will require [publishing of the GPLed java security libs](http://stackoverflow.com/questions/12982595/openjdk-sun-security-libs-on-maven)
-* clone [this project](https://github.com/read-write-web/rww-play) 
+* clone [this project](https://github.com/stample/rww-play) 
 
 ```bash
- $ git clone git://github.com/read-write-web/rww-play.git 
+ $ git clone git://github.com/stample/rww-play.git 
 ``` 
 
 In the `rww-play` home directory, run the `build` bash script. It will download a precompiled tuned 
@@ -32,15 +32,15 @@ it will build it from source in the `Play20` directory.)
 $ ./build
 ```
 
-* to start Play in secure mode with lightweight client certificate verification (for WebID)
+To start Play in secure mode with lightweight client certificate verification (for WebID)
 
 ```bash
  $ Play20/play
  > run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
 ```
 
-* You can also start the server so that it only accepts WebID certificates - which we will currently
- assume are those signed by an agent named "CN=WebID,O=∅". This is experimental! The previous solution is recommended.
+_Experimental_: You can also start the server so that it only accepts WebID certificates - which we will currently
+assume are those signed by an agent named "CN=WebID,O=∅". This is experimental! The previous solution is recommended.
 
 ```bash
  $ Play20/play
@@ -56,7 +56,7 @@ them to the web.
 
 ### The file system 
 
-By default we map the `test_www` directory's content to [http://localhost:8443/2013/](http://localhost:8443/2013/).
+By default we map the `test_www` directory's content to [https://localhost:8443/2013/](https://localhost:8443/2013/).
 
 The test_www directory starts with a few files to get you going
 
@@ -102,6 +102,8 @@ These conventions are provisional implementation decisions, and improvements are
 )
 
 ### Web Access Control
+
+_Note for OSX Mavericks users_: the `--cert` flag for curl no longer works and you will need to compile your own [for reasons explained in this bug report](http://curl.haxx.se/mail/archive-2013-10/0036.html)
 
 These files will then be mapped to HTTP resources such that each non acl resource will have an
 HTTP `Link` header of relation type `acl` pointing to an acl file, and the acl file itself will
@@ -167,7 +169,6 @@ _:node1896efo11x1 a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
     <http://xmlns.com/foaf/0.1/knows> <http://bblfish.net/people/henry/card#me> .
 ```
 
-_Note for OSX Mavericks users_: the `--cert` flag for curl no longer works and you will need to compile your own [for reasons explained in this bug report](http://curl.haxx.se/mail/archive-2013-10/0036.html)
 
 Notice the `Link` header above. Every resource points to its ACL file in such a header.
 
