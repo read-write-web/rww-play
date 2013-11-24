@@ -11,7 +11,7 @@ import org.w3.banana._
 import rww.ldp._
 import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
-import java.net.{URI, URLDecoder}
+import java.net.{URLEncoder, URI, URLDecoder}
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import net.sf.uadetector.service.UADetectorServiceFactory
@@ -95,10 +95,11 @@ trait ReadWriteWeb[Rdf <: RDF] {
       namedRes match {
         case ldpr: LDPR[Rdf] =>  {
           if (isStupidBrowser(request)) {
-            SeeOther(controllers.routes.RDFViewer.htmlFor(request.path).toString())
+            //SeeOther(controllers.routes.RDFViewer.htmlFor(request.path).toString())
+            SeeOther("https://localhost:8443/srv/rdfViewer?url="+URLEncoder.encode(uri.toString))
           } else {
             writerFor[Rdf#Graph](request).map { wr =>
-              result(200, wr, Map.empty ++ link)(ldpr.relativeGraph)
+              result(200, wr, Map("Access-Control-Allow-Origin"-> "*") ++ link)(ldpr.relativeGraph)
             } getOrElse {
               PlayApi.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
                 request.headers.get(PlayApi.http.HeaderNames.ACCEPT))
