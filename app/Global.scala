@@ -17,7 +17,7 @@ object Global extends GlobalSettings {
     if (uri.getPath.startsWith("/assets/") ||
         uri.getPath.startsWith("/srv/")) {
       super.onRouteRequest(req)
-    } else if (uri.getHost != RwwConfiguration.hostName) {
+    } else if (uri.getHost != controllers.plantain.host) {
       req.method match {
         case "GET" => Some(controllers.ReadWriteWebApp.get(req.path))
         case "POST" => Some(controllers.ReadWriteWebApp.post(req.path))

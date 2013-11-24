@@ -6,10 +6,12 @@ import rww.play.rdf.IterateeSelector
 import rww.ldp.{WSClient, WebClient}
 import org.w3.banana._
 import scala.Some
+import java.io.File
+import java.nio.file.Path
 
 //import rww.play.{IterateeLDCache, LinkedDataCache}
 //import rww.play.auth.WebAccessControl
-import play.api.Logger
+import play.api.{Play, Logger}
 import java.net.URL
 import org.w3.banana.plantain.Plantain
 import rww.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
@@ -22,18 +24,21 @@ trait Setup {
   implicit val executionContext: ExecutionContext = system.dispatcher
 
   val logger = Logger("rww")
+  val httpsPortKey = "https.port"
+  val httpHostnameKey = "http.hostname"
+  val RdfViewerHtmlTemplatePathKey = "rww.rdf.html.viewer.template.path"
+  val RootContainerPathKey = "rww.root.container.path"
+  val baseHostnameKey = "http.hostname"
 
   //Play setup: needed for WebID info
   //todo: the code below should be adapted to finding the real default of Play.
-  lazy val securePort: Option[Int] = Option(System.getProperty("https.port")).map(
-    Integer.parseInt(_)
-  ).orElse(Some(8443))
+  lazy val securePort: Option[Int] = Play.current.configuration.getInt(httpsPortKey)
 
-  lazy val port: Int = Option(System.getProperty("http.port")).map(p=> Integer.parseInt(p)).orElse(securePort).get
+  lazy val port: Int = Play.current.configuration.getInt(httpsPortKey).orElse(securePort).get
 
-  lazy val host: String = {
-    Option(System.getProperty("http.hostname")).getOrElse("localhost")
-  }
+  lazy val host: String =
+    Play.current.configuration.getString(httpHostnameKey).getOrElse("localhost")
+
 
   lazy val hostRoot: URL = {
     val protocol = if (securePort==None) "http" else "https"
@@ -41,17 +46,45 @@ trait Setup {
   }
 
   lazy val rwwRoot: URL =  {
-    val path = Option(System.getProperty("rww.root")).orElse(Some("/2013/")).get
+    val path = controllers.routes.ReadWriteWebApp.about.url
     new URL(hostRoot,path)
   }
 
+  /**
+   * we check the existence of the file because Resource.fromFile creates the file if it doesn't exist
+   * (the doc says it raises an exception but it's not the case)
+   * @param key
+   * @return
+   */
+  def getFileForConfigurationKey(key: String): File = {
+    val path = Play.current.configuration.getString(key)
+    require(path.isDefined,s"Missing configuration for key $key")
+    val file = new File(path.get)
+    require(file.exists() && file.canRead,s"Unable to find or read file/directory: $file")
+    file
+  }
 
-  logger.info(s"""" +
+
+  val rdfViewerHtmlTemplate: File = getFileForConfigurationKey(RdfViewerHtmlTemplatePathKey)
+
+
+
+  val rootContainerPath: Path = {
+    val file = getFileForConfigurationKey(RootContainerPathKey)
+    require(file.isDirectory,s"The root container ($file) is not a directory")
+    file.toPath.toAbsolutePath
+  }
+
+
+  logger.info(s""""
     secure port=$securePort
     port = $port
     host = $host
     hostRoot = $hostRoot
-    rwwRoot = $rwwRoot """)
+    rwwRoot = $rwwRoot
+    rdfViewerHtmlTemplate = $rdfViewerHtmlTemplate
+    rww root LDPC path = $rootContainerPath
+    """)
 }
 
 /**
