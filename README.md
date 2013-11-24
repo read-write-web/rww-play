@@ -36,6 +36,8 @@ To start Play in secure mode with lightweight client certificate verification (f
 
 ```bash
  $ Play20/play
+ > idea with-sources=yes // if you want to run intelliJ
+ > compile
  > run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
 ```
 
