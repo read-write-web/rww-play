@@ -20,9 +20,8 @@ object RWWebActorSubdomains {
 
       if (subhost == None) RWWebActor.local(u, base).map(p=>Switch(None,p))
       else {
-        val pathStart = if (u.getPath.startsWith("/")) u.getPath.substring(1) else u.getPath
-        val path = if (pathStart.endsWith("/")) pathStart.substring(0, pathStart.length - 1) else pathStart
-        Option(Switch(subhost,path))
+        val path = RWWebActor.cleanDots(u.getPath)
+        Option(Switch(subhost,path.mkString("/")))
       }
     } else None
   }

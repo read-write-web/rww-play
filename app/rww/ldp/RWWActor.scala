@@ -11,20 +11,27 @@ object RWWebActor {
     val res = if ((!u.isAbsolute ) || (u.getScheme == base.getScheme && u.getHost == base.getHost && u.getPort == base.getPort)) {
       if (u.getPath.startsWith(base.getPath)) {
         val res = u.getPath.substring(base.getPath.size)
-        val sections = res.split('/')
-        val fileName = sections.last
-        var idot= fileName.indexOf('.')
-        val treated = if (idot>0) {
-          sections.update(sections.length-1,fileName.substring(0,idot))
-          sections.toSeq
-        }else if (idot==0) sections.toSeq.dropRight(1)
-        else sections.toSeq
+        val treated = cleanDots(res)
         Option(treated.mkString("/"))
       } else None
     } else None
     res
   }
 
+
+  def cleanDots(path: String) = {
+    val split = path.split('/').toIndexedSeq
+
+    println(s"split($split).length="+split.length)
+    val sections = if (split.length>0 && split(0).isEmpty) split.tail else split
+    val fileName = sections.lastOption.getOrElse("")
+    var idot = fileName.indexOf('.')
+    if (idot > 0) {
+      sections.updated(sections.length - 1, fileName.substring(0, idot))
+    } else if (idot == 0){
+      sections.take(sections.length-1)
+    } else sections
+  }
 }
 
 /**
