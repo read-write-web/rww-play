@@ -7,22 +7,23 @@ import scalaz.{\/-, -\/}
 import java.net.{URI=>jURI}
 
 object RWWebActorSubdomains {
-  case class Switch(subhost: String, path: String)
-
-  val nosubdomain = "self"
+  case class Switch(subhost: Option[String], path: String)
 
   def local(u: jURI, base: jURI): Option[Switch] = {
     if (!u.isAbsolute ) {
-      RWWebActor.local(u,base).map(path=>Switch(nosubdomain,path))
+      RWWebActor.local(u,base).map(path=>Switch(None,path))
     } else if (u.getScheme == base.getScheme && u.getHost.endsWith(base.getHost) && u.getPort == base.getPort) {
       val subhost = if (u.getHost == base.getHost)
-        nosubdomain
+        None
       else
-        u.getHost.substring(0,u.getHost.length - base.getHost.length-1)
+        Some(u.getHost.substring(0,u.getHost.length - base.getHost.length-1) )
 
-      val pathStart = if (u.getPath.startsWith("/")) u.getPath.substring(1) else u.getPath
-      val path = if (pathStart.endsWith("/")) pathStart.substring(0,pathStart.length-1) else pathStart
-      Option(Switch(subhost,path))
+      if (subhost == None) RWWebActor.local(u, base).map(p=>Switch(None,p))
+      else {
+        val pathStart = if (u.getPath.startsWith("/")) u.getPath.substring(1) else u.getPath
+        val path = if (pathStart.endsWith("/")) pathStart.substring(0, pathStart.length - 1) else pathStart
+        Option(Switch(subhost,path))
+      }
     } else None
   }
 
@@ -33,7 +34,7 @@ object RWWebActorSubdomains {
  * A actor that receives commands on a server with subdomains, and knows how to ship
  * them off either to the right WebActor or to the right LDPSActor
  *
- * @param baseUri
+ * @param baseUri: the base URI of the main domain. From this the subdomains are constructed
  * @param ops
  * @param timeout
  * @tparam Rdf
@@ -70,7 +71,8 @@ class RWWebActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
     local(cmd.command.uri.underlying,baseUri.underlying).map { switch =>
       rootContainer match {
         case Some(root) => {
-          val p = root.path / switch.subhost/switch.path.split('/').toIterable
+          val pathList = switch.path.split('/').toList
+          val p = root.path / switch.subhost.map(_::pathList).getOrElse(pathList)
           val to = context.actorSelection(p)
           log.info(s"forwarding message $cmd to akka('$switch')=$to ")
           to.tell(cmd,context.sender)

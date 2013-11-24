@@ -33,7 +33,7 @@ class RWWeb[Rdf<:RDF](val baseUri: Rdf#URI)
                      (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RWW[Rdf] {
   import RWW._
   val system = ActorSystem(systemPath)
-  val rwwActorRef = system.actorOf(Props(new RWWebActor(baseUri)),name="router")
+  val rwwActorRef = system.actorOf(Props(new RWWebActorSubdomains(baseUri)),name="router")
   import RWWeb.logger
 
   logger.info(s"Created rwwActorRef=<$rwwActorRef>")
