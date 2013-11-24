@@ -9,7 +9,7 @@ object RwwConfiguration {
 
   val RdfViewerHtmlTemplatePathKey = "rww.rdf.html.viewer.template.path"
   val RootContainerPathKey = "rww.root.container.path"
-
+  val baseHostnameKey = "http.hostname"
   /**
    * we check the existence of the file because Resource.fromFile creates the file if it doesn't exist
    * (the doc says it raises an exception but it's not the case)
@@ -37,6 +37,10 @@ object RwwConfiguration {
     val file = getFileForConfigurationKey(RootContainerPathKey)
     require(file.isDirectory,s"The root container ($file) is not a directory")
     file.toPath.toAbsolutePath
+  }
+
+  val hostName: String = {
+    Play.current.configuration.getString(baseHostnameKey).getOrElse("localhost")
   }
 
 

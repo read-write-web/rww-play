@@ -1,9 +1,9 @@
 console.log("Container view");
 
 // Load useful js.
-loadScript("https://localhost:8443/assets/ldp/js/deleteRessource.js", null);
+loadScript("/assets/ldp/js/deleteRessource.js", null);
 
-var templateURI = "https://localhost:8443/assets/ldp/templates/containerTemplate.html";
+var templateURI = "/assets/ldp/templates/containerTemplate.html";
 $.get(templateURI, function(data) {
 	var onResult, onDone;
 	var templateAll = "";
@@ -81,7 +81,7 @@ $.get(templateURI, function(data) {
 		$lines.find("a[class = 'accessControl']").bind('click', function(e) {
 			var container = $(e.target).parent().parent().parent();
 			$rdf.ressourceUri = container.find('.filename a').attr("href");
-			loadScript("https://localhost:8443/assets/ldp/js/aclEditorViewer.js", null);
+			loadScript("/assets/ldp/js/aclEditorViewer.js", null);
 		});
 
 		// Delete Ressource.

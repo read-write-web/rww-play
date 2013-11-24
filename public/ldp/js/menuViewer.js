@@ -1,4 +1,4 @@
-var templateURI = "https://localhost:8443/assets/ldp/templates/menuTemplate.html";
+var templateURI = "/assets/ldp/templates/menuTemplate.html";
 var tab = {};
 $.get(templateURI, function(data) {
 	var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
@@ -6,8 +6,8 @@ $.get(templateURI, function(data) {
 	var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
 
 	// Load useful js.
-	loadScript("https://localhost:8443/assets/ldp/js/createContainerFromString.js", null);
-	loadScript("https://localhost:8443/assets/ldp/js/createFileFromString.js", null);
+	loadScript("/assets/ldp/js/createContainerFromString.js", null);
+	loadScript("/assets/ldp/js/createFileFromString.js", null);
 
 	// Load Html.
 	var template = _.template(data, tab);
@@ -16,7 +16,7 @@ $.get(templateURI, function(data) {
 	$('.cloudactions').append(template);
 
 	// Get the config file : viewer.ttl
-	var viewerUri = 'https://localhost:8443/assets/ldp/viewer.ttl';
+	var viewerUri = '/assets/ldp/viewer.ttl';
 	var graph2 = graphsCache[viewerUri] =  new $rdf.IndexedFormula();
 	var fetch2 = $rdf.fetcher(graph2);
 	fetch2.nowOrWhenFetched(viewerUri, undefined, function () {
