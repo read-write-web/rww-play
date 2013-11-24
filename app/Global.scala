@@ -3,7 +3,7 @@
  * Date: 24/11/2013
  */
 
-import controllers.routes
+import controllers.{RwwConfiguration, routes}
 import play.api._
 import mvc.RequestHeader
 import java.net._
@@ -16,7 +16,7 @@ object Global extends GlobalSettings {
 
 
 
-    if (uri.getHost != "localhost") {
+    if (uri.getHost != RwwConfiguration.rootSimpleDomainHostName) {
       req.method match {
         case "GET" => Some(controllers.ReadWriteWebApp.get(req.path))
         case "POST" => Some(controllers.ReadWriteWebApp.post(req.path))

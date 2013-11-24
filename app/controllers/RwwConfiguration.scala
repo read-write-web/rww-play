@@ -9,6 +9,7 @@ object RwwConfiguration {
 
   val RdfViewerHtmlTemplatePathKey = "rww.rdf.html.viewer.template.path"
   val RootContainerPathKey = "rww.root.container.path"
+  private val RootSimpleDomainHostName = "rww.root.hostname"
 
   /**
    * we check the existence of the file because Resource.fromFile creates the file if it doesn't exist
@@ -39,5 +40,9 @@ object RwwConfiguration {
     file.toPath.toAbsolutePath
   }
 
+
+  val rootSimpleDomainHostName: String = {
+    Play.current.configuration.getString(RootSimpleDomainHostName).getOrElse("localhost")
+  }
 
 }
