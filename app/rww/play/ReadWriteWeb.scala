@@ -265,7 +265,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
   }
 
   def delete(path: String) = Action.async { implicit request =>
-    implicit  val uri = buildRootURI
+    implicit  val uri = request.getAbsoluteURI
     val future = for {
       _ <- rwwActor.delete(request)
     } yield {
