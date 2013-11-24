@@ -240,7 +240,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
           throw PreconditionFailed("Can't delete a container that has remaining members")
         }
         context.stop(self)
-        rwwActor.tell(Scrpt(a),context.sender)
+        rwwRouterActor.tell(Scrpt(a),context.sender)
       }
       case _ => super.runLocalCmd(cmd)
 //      case SelectLDPC(_,query, bindings, k) => {
@@ -468,14 +468,14 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
     cmd match {
       case GetResource(uri, agent, k) => {
         val res = getResource(localName(uri)).get
-        self forward Scrpt(k(res))
+        rwwRouterActor.tell(Scrpt(k(res)),sender)
       }
       case GetMeta(uri, k) => {
         //todo: GetMeta here is very close to GetResource, as currently there is no big work difference between the two
         //The point of GetMeta is mostly to remove work if there were work that was very time
         //consuming ( such as serialising a graph )
         getResource(localName(uri)) match {
-          case Success(res) => self forward Scrpt(k(res))
+          case Success(res) => rwwRouterActor.tell(Scrpt(k(res)),context.sender)
           case Failure(fail) =>  context.sender ! fail
         }
 
@@ -490,7 +490,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
           pathStream.close()
         }
         context.stop(self)
-        rwwActor.tell(Scrpt(a),context.sender)
+        rwwRouterActor.tell(Scrpt(a),context.sender)
       }
       case UpdateLDPR(uri, remove, add, a) => {
         val nme = localName(uri)
@@ -503,7 +503,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
               (graph, triple) => graph + triple.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
             }
             setResource(nme,resultGraph)
-            self forward Scrpt(a)
+            rwwRouterActor.tell(Scrpt(a),context.sender)
           }
           case Success(_) => throw RequestNotAcceptable(s"$uri does not contain a GRAPH, cannot Update")
           case Failure(fail) => context.sender ! fail
@@ -516,7 +516,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
             PlantainLDPatch.executePatch(graph,update,bindings) match {
               case Success(gr) => {
                 setResource(nme, gr)
-                self forward Scrpt(k(true))
+                rwwRouterActor.tell(Scrpt(k(true)),context.sender)
               }
               case Failure(e) => throw e
              }
@@ -529,7 +529,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         getResource(localName(uri)) match {
           case Success(LocalLDPR(_,graph,_,_)) => {
             val solutions = sparqlGraph(graph).executeSelect(query, bindings)
-            self forward Scrpt(k(solutions))
+            rwwRouterActor.tell(Scrpt(k(solutions)),context.sender)
           }
           case Success(_) => context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
           case Failure(fail) => context.sender ! fail
@@ -539,7 +539,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         getResource(localName(uri)).get match {
           case LocalLDPR(_,graph,_,_) => {
             val result = sparqlGraph(graph).executeConstruct(query, bindings)
-            self forward Scrpt(k(result))
+            rwwRouterActor.tell(Scrpt(k(result)),context.sender)
           }
           case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
         }
@@ -549,7 +549,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         getResource(localName(uri)).get match {
           case LocalLDPR(_,graph,_,_) => {
             val result = sparqlGraph(graph).executeAsk(query, bindings)
-            self forward Scrpt(k(result))
+            rwwRouterActor.tell(Scrpt(k(result)),context.sender)
           }
           case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
         }
@@ -572,8 +572,8 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
           adviceCmd(cmd)
         }
         else {
-          log.info(s"sending to $rwwActor")
-          rwwActor.tell(Cmd(cmd),context.sender)
+          log.info(s"sending to $rwwRouterActor")
+          rwwRouterActor.tell(Cmd(cmd),context.sender)
         }
       }
       case \/-(a) => {
@@ -592,7 +592,6 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
 //    advices foreach (_.post(cmd))
   }
 
-  lazy val rwwActor= context.actorSelection("/user/rww")
 
   def receive = returnErrors {
     case s: Scrpt[Plantain,_]  => {

@@ -4,12 +4,20 @@ import org.w3.banana.RDF
 import akka.actor.{ActorRef, ActorSystem}
 import scala.concurrent.Future
 
+object RWW {
+  // the two values below specify the akka paths
+  // full example akka://rww/user/router
+
+  val systemPath = "rww"
+  val rwwPath = "/user/router"
+}
+
 /**
  * Trait for interactions with ReadWriteWeb
  * @tparam Rdf
  */
 trait RWW[Rdf <: RDF] {  //not sure which of exec or execute is going to be needed
-def system: ActorSystem
+   def system: ActorSystem
 
   /**
    * Execute a script and return an answer

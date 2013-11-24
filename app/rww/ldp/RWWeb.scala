@@ -14,6 +14,7 @@ object RWWeb {
 
   val logger = LoggerFactory.getLogger(this.getClass)
 
+
   def apply[Rdf<:RDF](baseUri: Rdf#URI, root: Path, cache: Option[Props])
                      (implicit ops: RDFOps[Rdf], timeout: Timeout = Timeout(5000)): RWWeb[Rdf] =
     new RWWeb(baseUri)
@@ -30,8 +31,9 @@ object RWWeb {
  */
 class RWWeb[Rdf<:RDF](val baseUri: Rdf#URI)
                      (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RWW[Rdf] {
-  val system = ActorSystem("plantain")
-  val rwwActorRef = system.actorOf(Props(new RWWebActor(baseUri)),name="rww")
+  import RWW._
+  val system = ActorSystem(systemPath)
+  val rwwActorRef = system.actorOf(Props(new RWWebActor(baseUri)),name="router")
   import RWWeb.logger
 
   logger.info(s"Created rwwActorRef=<$rwwActorRef>")

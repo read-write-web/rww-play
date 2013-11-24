@@ -8,8 +8,8 @@ import java.net.{URI, URL}
 /**
  * Created by hjs on 12/11/2013.
  */
-class RActorTest extends WordSpec with Matchers {
-  import RActor._
+class RWWebActorTest extends WordSpec with Matchers {
+  import rww.ldp.RWWebActor._
 
   val localBase = new URI("https://localhost:8443/2013/")
 
@@ -23,8 +23,5 @@ class RActorTest extends WordSpec with Matchers {
      local(new URI("/2013/test/img/.acl.ttl"), localBase )  should be (Some("test/img"))
      local(new URI("/2013/card.acl"), localBase )  should be (Some("card"))
   }
-
-
-
 
 }

@@ -34,26 +34,8 @@ trait RActor extends Actor with akka.actor.ActorLogging {
       }
     }
 
-}
+    def rwwRouterActor =  context.actorSelection(RWW.rwwPath)
 
-object RActor {
-  def local(u: jURI, base: jURI): Option[String] = {
-    val res = if ((!u.isAbsolute ) || (u.getScheme == base.getScheme && u.getHost == base.getHost && u.getPort == base.getPort)) {
-      if (u.getPath.startsWith(base.getPath)) {
-        val res = u.getPath.substring(base.getPath.size)
-        val sections = res.split('/')
-        val fileName = sections.last
-        var idot= fileName.indexOf('.')
-        val treated = if (idot>0) {
-          sections.update(sections.length-1,fileName.substring(0,idot))
-          sections.toSeq
-        }else if (idot==0) sections.toSeq.dropRight(1)
-        else sections.toSeq
-        Option(treated.mkString("/"))
-      } else None
-    } else None
-    res
-  }
 }
 
 

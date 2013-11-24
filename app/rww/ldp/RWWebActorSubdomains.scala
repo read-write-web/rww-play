@@ -6,40 +6,42 @@ import akka.actor.ActorRef
 import scalaz.{\/-, -\/}
 import java.net.{URI=>jURI}
 
-object RWWebActor {
-  def local(u: jURI, base: jURI): Option[String] = {
-    val res = if ((!u.isAbsolute ) || (u.getScheme == base.getScheme && u.getHost == base.getHost && u.getPort == base.getPort)) {
-      if (u.getPath.startsWith(base.getPath)) {
-        val res = u.getPath.substring(base.getPath.size)
-        val sections = res.split('/')
-        val fileName = sections.last
-        var idot= fileName.indexOf('.')
-        val treated = if (idot>0) {
-          sections.update(sections.length-1,fileName.substring(0,idot))
-          sections.toSeq
-        }else if (idot==0) sections.toSeq.dropRight(1)
-        else sections.toSeq
-        Option(treated.mkString("/"))
-      } else None
+object RWWebActorSubdomains {
+  case class Switch(subhost: String, path: String)
+
+  val nosubdomain = "self"
+
+  def local(u: jURI, base: jURI): Option[Switch] = {
+    if (!u.isAbsolute ) {
+      RWWebActor.local(u,base).map(path=>Switch(nosubdomain,path))
+    } else if (u.getScheme == base.getScheme && u.getHost.endsWith(base.getHost) && u.getPort == base.getPort) {
+      val subhost = if (u.getHost == base.getHost)
+        nosubdomain
+      else
+        u.getHost.substring(0,u.getHost.length - base.getHost.length-1)
+
+      val pathStart = if (u.getPath.startsWith("/")) u.getPath.substring(1) else u.getPath
+      val path = if (pathStart.endsWith("/")) pathStart.substring(0,pathStart.length-1) else pathStart
+      Option(Switch(subhost,path))
     } else None
-    res
   }
 
 }
 
 /**
  *
- * A actor that receives commands and ships them off either to a WebActor or to an LDPSActor
+ * A actor that receives commands on a server with subdomains, and knows how to ship
+ * them off either to the right WebActor or to the right LDPSActor
  *
  * @param baseUri
  * @param ops
  * @param timeout
  * @tparam Rdf
  */
-class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
+class RWWebActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
                           (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RActor {
   import syntax.URISyntax.uriW
-  import RWWebActor._
+  import RWWebActorSubdomains._
 
   var rootContainer: Option[ActorRef] = None
   var web : Option[ActorRef] = None
@@ -65,12 +67,12 @@ class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
 
   /** We in fact ignore the R and A types, since we cannot capture */
   protected def forwardSwitch[A](cmd: Cmd[Rdf,A]) {
-    local(cmd.command.uri.underlying,baseUri.underlying).map { path=>
+    local(cmd.command.uri.underlying,baseUri.underlying).map { switch =>
       rootContainer match {
         case Some(root) => {
-          val p = root.path / path.split('/').toIterable
+          val p = root.path / switch.subhost/switch.path.split('/').toIterable
           val to = context.actorSelection(p)
-          log.info(s"forwarding message $cmd to akka('$path')=$to ")
+          log.info(s"forwarding message $cmd to akka('$switch')=$to ")
           to.tell(cmd,context.sender)
         }
         case None => log.warning("RWWebActor not set up yet: missing rootContainer")

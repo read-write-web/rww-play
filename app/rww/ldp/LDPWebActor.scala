@@ -2,14 +2,11 @@ package rww.ldp
 
 import org.w3.banana._
 import akka.actor.ActorRef
-import scala.collection.{immutable, mutable}
 import concurrent.{ExecutionContext, Future}
 import scalaz.\/-
 import scalaz.-\/
 import util.Failure
 import util.Success
-import java.net.URL
-import java.util.concurrent.atomic.AtomicReference
 
 /**
 * A LDP actor that interacts with remote LDP resources
@@ -61,7 +58,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         val result = webc.post(container,slugOpt,graph,Syntax.Turtle)
         result.onComplete{ tryres =>
           tryres match {
-            case Success(url) => self tell (Scrpt(k(url)),sender)
+            case Success(url) => rwwRouterActor.tell(Scrpt(k(url)),sender)
             case Failure(e) => failMsg(e, sender,s"failure creating LDPR with $slugOpt to remote container <$container>")
           }
         }
@@ -78,7 +75,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         val result = webc.post(container,slugOpt,graph.union(Graph(Triple(URI(""),rdf.typ, ldp.Container))),Syntax.Turtle)
         result.onComplete{ tryres =>
           tryres match {
-            case Success(url) => self tell (Scrpt(k(url)),sender)
+            case Success(url) => rwwRouterActor.tell(Scrpt(k(url)),sender)
             case Failure(e) => failMsg(e, sender,s"failure creating a container with POST and slug $slugOpt in remote <$container>")
           }
         }
@@ -94,7 +91,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         val result = webc.get(uri)
         result.onComplete { tryres =>
           tryres match {
-            case Success(response) =>  self tell (Scrpt(k(response)),sender)
+            case Success(response) =>  rwwRouterActor.tell(Scrpt(k(response)),sender)
             case Failure(e) => {
               failMsg(e, sender,s"failure fetching resource <$uri>")
             }
@@ -109,7 +106,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           tryres match {
             case Success(response) => {
               log.info(s"cache received $response")
-              self tell (Scrpt(k(response.asInstanceOf[Meta[Rdf]])),sender)
+              rwwRouterActor.tell(Scrpt(k(response.asInstanceOf[Meta[Rdf]])),sender)
             }
             case Failure(e) => failMsg(e, sender,s"failure fetching acl for resource <$uri>")
           }
@@ -121,7 +118,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         result.onComplete{ tryres =>
           tryres match {
             case Success(()) => {
-              self tell (Scrpt(a),sender)
+              rwwRouterActor.tell(Scrpt(a),sender)
             }
             case Failure(e) => failMsg(e, sender,s"failure DELETing remote resource <$uri>")
           }
@@ -147,7 +144,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           tryRes match {
             case Success(ldpr) => {
               val solutions = sparqlGraph(ldpr.graph).executeSelect(query, bindings)
-              self tell  (Scrpt(k(solutions)),sender)
+              rwwRouterActor.tell(Scrpt(k(solutions)),sender)
             }
             case Failure(e) => sender ! akka.actor.Status.Failure({
               e match {
@@ -166,7 +163,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           tryRes match {
             case Success(ldpr) => {
               val solutions = sparqlGraph(ldpr.graph).executeConstruct(query, bindings)
-              self tell  (Scrpt(k(solutions)),sender)
+              rwwRouterActor tell  (Scrpt(k(solutions)),sender)
             }
             case Failure(e) => sender ! akka.actor.Status.Failure({
               e match {
@@ -184,7 +181,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           tryRes match {
             case Success(ldpr) => {
               val solutions = sparqlGraph(ldpr.graph).executeAsk(query, bindings)
-              self tell  (Scrpt(k(solutions)),sender)
+              rwwRouterActor tell  (Scrpt(k(solutions)),sender)
             }
             case Failure(e) => sender ! akka.actor.Status.Failure({
               e match {
@@ -224,17 +221,10 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
   final def run[A](sender: ActorRef, script: LDPCommand.Script[Rdf,A]) {
     script.resume match {
       case -\/(cmd) => {
-        if(RActor.local(cmd.uri.underlying,excluding.underlying) == None) {
           runCmd(cmd)
           //if we were to have some commands return an immediate value, then we could do
           // the following with the returned script
           //  run(sender, script)
-        }
-        else {
-          val a = context.actorFor("/user/web")
-          log.info(s"forwarding to $a")
-          a forward Cmd(cmd)
-        }
       }
       case \/-(a) => {
         log.info(s"returning to $sender $a")
