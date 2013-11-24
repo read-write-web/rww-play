@@ -50,7 +50,7 @@ class ReadWriteWebApp(base: URL, path: Path)(implicit val ops: RDFOps[Plantain],
   val rww: RWWeb[Plantain] = {
     val w = new RWWeb[Plantain](baseUri)(ops,Timeout(30,TimeUnit.SECONDS))
     //, path,Some(Props(new PlantainWebProxy(base,Plantain.readerSelector))))
-    val localActor = w.system.actorOf(Props(new PlantainLDPCActor(w.baseUri, path)),"rootContainer")
+    val localActor = w.system.actorOf(Props(new PlantainLDPCSubdomainActor(w.baseUri, path)),"rootContainer")
     w.setLDPSActor(localActor)
     val webActor = w.system.actorOf(Props(new LDPWebActor[Plantain](baseUri,wsClient)),"webActor")
     w.setWebActor(webActor)
