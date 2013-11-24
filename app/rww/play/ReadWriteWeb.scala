@@ -1,4 +1,6 @@
 package rww.play
+
+import _root_.play.mvc.Http
 import _root_.play.{api => PlayApi}
 import PlayApi.mvc.Results._
 import PlayApi.libs.Files.TemporaryFile
@@ -9,7 +11,7 @@ import org.w3.banana._
 import rww.ldp._
 import concurrent.{Future, ExecutionContext}
 import java.io.{StringWriter, PrintWriter}
-import java.net.URLDecoder
+import java.net.{URI, URLDecoder}
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import net.sf.uadetector.service.UADetectorServiceFactory
@@ -19,6 +21,7 @@ import rww.ldp.AccessDenied
 import rww.ldp.WrongTypeException
 import net.sf.uadetector.UserAgentType
 import rww.play.auth.AuthenticationError
+import controllers.routes
 
 object Method extends Enumeration {
   val read = Value
@@ -80,9 +83,12 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def getAsync(request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+
+  def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+     val uri = request.getAbsoluteURI
+
     val res = for {
-      namedRes <- rwwActor.get(request, request.path)
+      namedRes <- rwwActor.get(request, uri)
     } yield {
       val link = namedRes.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
 
@@ -141,6 +147,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
     val correctedPath = if (!request.path.endsWith("/")) request.path else request.path.substring(0, request.path.length - 1)
     val pathUri = new java.net.URI(correctedPath)
     val coll = pathUri.resolve(".")
+    implicit val uri = request.getAbsoluteURI
+
     def mk(graph: Option[Rdf#Graph]): Future[SimpleResult] = {
       val path = correctedPath.toString.substring(coll.toString.length)
       for (answer <- rwwActor.makeCollection(request, coll.toString, Some(path), graph))
@@ -164,6 +172,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
   }
 
   def put(path: String) = Action.async(rwwBodyParser) { request =>
+    implicit val uri = request.getAbsoluteURI
     val future = for {
       answer <- rwwActor.put(request, request.body)
     } yield {
@@ -176,6 +185,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
   }
 
   def patch(path: String) = Action.async(rwwBodyParser) { request =>
+    implicit val uri = request.getAbsoluteURI
     val future = for {
       _ <- rwwActor.patch(request, request.body)
     } yield {
@@ -189,6 +199,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
 
   def post(path: String) = Action.async(rwwBodyParser) { request =>
+    implicit val uri = request.getAbsoluteURI
 
     def postGraph(request: PlayApi.mvc.Request[RwwContent], rwwGraph: Option[Rdf#Graph]): Future[SimpleResult] = {
       for {
@@ -207,7 +218,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
       }
       case rwwQuery: QueryRwwContent[Rdf] => {
         for {
-          answer <- rwwActor.postQuery(request, request.path, rwwQuery)
+          answer <- rwwActor.postQuery(request, request.path, rwwQuery, uri)
         } yield {
           answer.fold(
             graph =>
@@ -253,7 +264,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def delete(path: String) = Action.async { request =>
+  def delete(path: String) = Action.async { implicit request =>
+    implicit  val uri = buildRootURI
     val future = for {
       _ <- rwwActor.delete(request)
     } yield {
