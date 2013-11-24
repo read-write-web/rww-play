@@ -22,7 +22,6 @@ object RWWebActor {
   def cleanDots(path: String) = {
     val split = path.split('/').toIndexedSeq
 
-    println(s"split($split).length="+split.length)
     val sections = if (split.length>0 && split(0).isEmpty) split.tail else split
     val fileName = sections.lastOption.getOrElse("")
     var idot = fileName.indexOf('.')

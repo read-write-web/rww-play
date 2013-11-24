@@ -95,8 +95,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
       namedRes match {
         case ldpr: LDPR[Rdf] =>  {
           if (isStupidBrowser(request)) {
-            //SeeOther(controllers.routes.RDFViewer.htmlFor(request.path).toString())
-            SeeOther("https://localhost:8443/srv/rdfViewer?url="+URLEncoder.encode(uri.toString))
+            SeeOther(controllers.routes.RDFViewer.htmlFor(uri.toString).toString())
+//            SeeOther("https://localhost:8443/srv/rdfViewer?url="+URLEncoder.encode(uri.toString))
           } else {
             writerFor[Rdf#Graph](request).map { wr =>
               result(200, wr, Map("Access-Control-Allow-Origin"-> "*") ++ link)(ldpr.relativeGraph)
@@ -144,15 +144,14 @@ trait ReadWriteWeb[Rdf <: RDF] {
    * @param path
    * @return
    */
-  def mkcol(path: String) = Action.async(rwwBodyParser) { request =>
+  def mkcol(path: String) = Action.async(rwwBodyParser) { implicit request =>
     val correctedPath = if (!request.path.endsWith("/")) request.path else request.path.substring(0, request.path.length - 1)
     val pathUri = new java.net.URI(correctedPath)
     val coll = pathUri.resolve(".")
-    implicit val uri = request.getAbsoluteURI
 
     def mk(graph: Option[Rdf#Graph]): Future[SimpleResult] = {
       val path = correctedPath.toString.substring(coll.toString.length)
-      for (answer <- rwwActor.makeCollection(request, coll.toString, Some(path), graph))
+      for (answer <- rwwActor.makeCollection(coll.toString, Some(path), graph))
       yield {
         val res = Created("Created Collection at " + answer)
         if (request.path == correctedPath) res
@@ -172,10 +171,10 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def put(path: String) = Action.async(rwwBodyParser) { request =>
-    implicit val uri = request.getAbsoluteURI
+  def put(path: String) = Action.async(rwwBodyParser) { implicit request =>
+
     val future = for {
-      answer <- rwwActor.put(request, request.body)
+      answer <- rwwActor.put(request.body)
     } yield {
       Ok("Succeeded")
     }
@@ -185,10 +184,9 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def patch(path: String) = Action.async(rwwBodyParser) { request =>
-    implicit val uri = request.getAbsoluteURI
+  def patch(path: String) = Action.async(rwwBodyParser) {implicit request =>
     val future = for {
-      _ <- rwwActor.patch(request, request.body)
+      _ <- rwwActor.patch( request.body)
     } yield {
       Ok("Succeeded")
     }
@@ -199,12 +197,11 @@ trait ReadWriteWeb[Rdf <: RDF] {
   }
 
 
-  def post(path: String) = Action.async(rwwBodyParser) { request =>
-    implicit val uri = request.getAbsoluteURI
+  def post(path: String) = Action.async(rwwBodyParser) { implicit request =>
 
-    def postGraph(request: PlayApi.mvc.Request[RwwContent], rwwGraph: Option[Rdf#Graph]): Future[SimpleResult] = {
+    def postGraph(rwwGraph: Option[Rdf#Graph])(implicit request: PlayApi.mvc.Request[RwwContent]): Future[SimpleResult] = {
       for {
-        location <- rwwActor.postGraph(request,
+        location <- rwwActor.postGraph(
           request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
           rwwGraph
         )
@@ -215,11 +212,11 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
     val future = request.body match {
       case rwwGraph: GraphRwwContent[Rdf] => {
-        postGraph(request, Some(rwwGraph.graph))
+        postGraph(Some(rwwGraph.graph))
       }
       case rwwQuery: QueryRwwContent[Rdf] => {
         for {
-          answer <- rwwActor.postQuery(request, request.path, rwwQuery, uri)
+          answer <- rwwActor.postQuery(request.path, rwwQuery)
         } yield {
           answer.fold(
             graph =>
@@ -240,7 +237,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
       }
       case BinaryRwwContent(file: TemporaryFile, mime: String) => {
         for {
-          location <- rwwActor.postBinary(request, request.path,
+          location <- rwwActor.postBinary(request.path,
             request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
             file,
             MimeType(mime))
@@ -249,7 +246,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
         }
       }
       case emptyContent => {
-        postGraph(request, None)
+        postGraph(None)
       }
       //        case _ => Ok("received content")
     }
@@ -266,7 +263,6 @@ trait ReadWriteWeb[Rdf <: RDF] {
   }
 
   def delete(path: String) = Action.async { implicit request =>
-    implicit  val uri = request.getAbsoluteURI
     val future = for {
       _ <- rwwActor.delete(request)
     } yield {

@@ -42,5 +42,6 @@ class RWWActorSubdomainsTest extends WordSpec with Matchers {
     local(new URI("https://james.localhost:8443"),localBase) should be (Some(Switch(Some("james"),"")))
     local(new URI("https://james.localhost:8443/.acl"),localBase) should be (Some(Switch(Some("james"),"")))
     local(new URI("https://james.localhost:8443/2013/.acl"),localBase) should be (Some(Switch(Some("james"),"2013")))
+    local(new URI("https://slim.localhost:8443/"),localBase) should be (Some(Switch(Some("slim"),"")))
   }
 }

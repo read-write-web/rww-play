@@ -1,5 +1,5 @@
 console.log("File view");
-var templateURI = "https://localhost:8443/assets/ldp/templates/fileTemplate.html";
+var templateURI = "/assets/ldp/templates/fileTemplate.html";
 var tab = {"fileContent":"Empty File !"};
 $.get(templateURI, function(data) {
 	var $lines = $('.lines');

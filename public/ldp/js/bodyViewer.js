@@ -1,12 +1,12 @@
-var templateURI = "https://localhost:8443/assets/ldp/templates/bodyTemplate.html";
+var templateURI = "/assets/ldp/templates/bodyTemplate.html";
 var tab = {};
 $.get(templateURI, function(data) {
     // Load related CSS.
-	loadCSS("css/blueprint.css");
-    loadCSS("css/common.css");
-    loadCSS("css/font-awesome.min.css");
-    loadCSS("css/buttons.css");
-	loadCSS("css/style.css");
+	loadCSS("/assets/ldp/css/blueprint.css");
+    loadCSS("/assets/ldp/css/common.css");
+    loadCSS("/assets/ldp/css/font-awesome.min.css");
+    loadCSS("/assets/ldp/css/buttons.css");
+	loadCSS("/assets/ldp/css/style.css");
 
     // Load Html.
     var template = _.template(data, tab);
@@ -15,8 +15,8 @@ $.get(templateURI, function(data) {
 	$('body').append(template);
 
 	// Load the menu.
-	loadScript("https://localhost:8443/assets/ldp/js/menuViewer.js", null);
+	loadScript("/assets/ldp/js/menuViewer.js", null);
 	// Load utils js.
-	loadScript("https://localhost:8443/assets/ldp/js/utils.js", null);
+	loadScript("/assets/ldp/js/utils.js", null);
 
 }, 'html');

@@ -1,4 +1,5 @@
 @prefix ldp: <http://www.w3.org/ns/ldp#> .
 @prefix stample: <http://ont.stample.co/2013/display#> .
-ldp:Container stample:view <js/containerViewer.js> .
-ldp:Ressource stample:view <js/fileViewer.js> .
+
+ldp:Container stample:view </assets/ldp/js/containerViewer.js> .
+ldp:Ressource stample:view </assets/ldp/js/fileViewer.js> .
