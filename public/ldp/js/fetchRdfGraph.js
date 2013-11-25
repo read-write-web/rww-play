@@ -69,7 +69,7 @@ var formatTime = function(mtime) {
 // On document ready, use current Uri to load RDF graph from.
 $(document).ready( function() {
     // Bootstrap with remote dirUri.
-    var dirUri = 'https://localhost:8443/2013/';
+    var dirUri = '/2013/';
 //    if ( basename(window.location.href) !== "test.html" ) {
 //        dirUri = 'http://stample.rww.io/' + basename(window.location.href) + "/";
 //    }

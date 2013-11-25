@@ -1,4 +1,4 @@
-var templateURI = "https://localhost:8443/assets/ldp/templates/aclEditorTemplate.html";
+var templateURI = "/assets/ldp/templates/aclEditorTemplate.html";
 
 // For quick access to those namespaces Todo: make this global!
 var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
