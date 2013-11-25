@@ -48,6 +48,7 @@ class RWWActorSubdomainsTest extends WordSpec with Matchers {
   val stampleBase = new URI("https://stample.io:443/2013/")
 
   s"base=$stampleBase tests with subdomains on stample" in {
+    local(new URI("https://stample.io/2013/"),stampleBase) should be (Some(Switch(None,"")))
     local(new URI("https://joe.stample.io/2013/"),stampleBase) should be (Some(Switch(Some("joe"),"2013")))
     local(new URI("https://james.stample.io/2013"),stampleBase) should be (Some(Switch(Some("james"),"2013")))
     local(new URI("https://james.stample.io"),stampleBase) should be (Some(Switch(Some("james"),"")))
@@ -59,6 +60,7 @@ class RWWActorSubdomainsTest extends WordSpec with Matchers {
   val stampleBase2 = new URI("https://stample.io/2013/")
 
   s"base=$stampleBase2 tests with subdomains on stample inversing ports" in {
+    local(new URI("https://stample.io:443/2013/"),stampleBase2) should be (Some(Switch(None,"")))
     local(new URI("https://joe.stample.io:443/2013/"),stampleBase2) should be (Some(Switch(Some("joe"),"2013")))
     local(new URI("https://james.stample.io:443/2013"),stampleBase2) should be (Some(Switch(Some("james"),"2013")))
     local(new URI("https://james.stample.io:443"),stampleBase2) should be (Some(Switch(Some("james"),"")))

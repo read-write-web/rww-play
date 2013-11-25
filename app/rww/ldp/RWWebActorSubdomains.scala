@@ -10,12 +10,16 @@ object RWWebActorSubdomains {
   case class Switch(subhost: Option[String], path: String)
 
   def local(u: jURI, base: jURI): Option[Switch] = {
-
+    println(s"local($u,$base)->")
     if (!u.isAbsolute ) {
       RWWebActor.local(u,base).map(path=>Switch(None,path))
     } else {
       val url = u.toURL
       val baseUrl = base.toURL
+      println(s"""u.getScheme=${url.getProtocol} == base.getScheme=${baseUrl.getProtocol}
+     u.getHost = ${url.getHost} base.getHost=${baseUrl.getHost}
+     u.getPort = ${url.getDefaultPort} base.getPort=${baseUrl.getDefaultPort}
+    """)
       if (url.getProtocol == baseUrl.getProtocol &&
         url.getHost.endsWith(baseUrl.getHost) &&
         url.getDefaultPort == baseUrl.getDefaultPort) {

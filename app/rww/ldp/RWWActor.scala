@@ -7,15 +7,29 @@ import scalaz.{\/-, -\/}
 import java.net.{URI=>jURI}
 
 object RWWebActor {
-  def local(u: jURI, base: jURI): Option[String] = {
-    val res = if ((!u.isAbsolute ) || (u.getScheme == base.getScheme && u.getHost == base.getHost && u.getPort == base.getPort)) {
-      if (u.getPath.startsWith(base.getPath)) {
-        val res = u.getPath.substring(base.getPath.size)
-        val treated = cleanDots(res)
-        Option(treated.mkString("/"))
-      } else None
+
+  def path(uPath: String, basePath: String) =
+    if (uPath.startsWith(basePath)) {
+      val res = uPath.substring(basePath.size)
+      val treated = cleanDots(res)
+      Option(treated.mkString("/"))
     } else None
-    res
+
+
+  def local(u: jURI, base: jURI): Option[String] = {
+    if (!u.isAbsolute) {
+      path(u.getPath,base.getPath)
+    } else {
+      val url = u.toURL
+      val baseUrl = base.toURL
+
+      val res = if (url.getProtocol == baseUrl.getProtocol &&
+        url.getHost.endsWith(baseUrl.getHost) &&
+        url.getDefaultPort == baseUrl.getDefaultPort) {
+         path(url.getPath,base.getPath)
+      } else None
+      res
+    }
   }
 
 
