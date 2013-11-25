@@ -10,20 +10,27 @@ object RWWebActorSubdomains {
   case class Switch(subhost: Option[String], path: String)
 
   def local(u: jURI, base: jURI): Option[Switch] = {
+
     if (!u.isAbsolute ) {
       RWWebActor.local(u,base).map(path=>Switch(None,path))
-    } else if (u.getScheme == base.getScheme && u.getHost.endsWith(base.getHost) && u.getPort == base.getPort) {
-      val subhost = if (u.getHost == base.getHost)
-        None
-      else
-        Some(u.getHost.substring(0,u.getHost.length - base.getHost.length-1) )
+    } else {
+      val url = u.toURL
+      val baseUrl = base.toURL
+      if (url.getProtocol == baseUrl.getProtocol &&
+        url.getHost.endsWith(baseUrl.getHost) &&
+        url.getDefaultPort == baseUrl.getDefaultPort) {
+        val subhost = if (url.getHost == baseUrl.getHost)
+          None
+        else
+          Some(url.getHost.substring(0,url.getHost.length - baseUrl.getHost.length-1) )
 
-      if (subhost == None) RWWebActor.local(u, base).map(p=>Switch(None,p))
-      else {
-        val path = RWWebActor.cleanDots(u.getPath)
-        Option(Switch(subhost,path.mkString("/")))
-      }
-    } else None
+        if (subhost == None) RWWebActor.local(u, base).map(p=>Switch(None,p))
+        else {
+          val path = RWWebActor.cleanDots(u.getPath)
+          Option(Switch(subhost,path.mkString("/")))
+        }
+      } else None
+    }
   }
 
 }
