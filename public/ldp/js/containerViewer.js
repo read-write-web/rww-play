@@ -45,11 +45,6 @@ $.get(templateURI, function(data) {
 			informations.type = "-";
 		}
 
-		// Get the name from uri.
-		informations.name = basename(result['?m'].uri);
-		if (isDirectory(informations.uri))
-			informations.name = informations.name + "/";
-
 		// Get the size.
 		try {
 			informations.size = result['?size'].value;

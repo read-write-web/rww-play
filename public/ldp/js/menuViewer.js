@@ -16,7 +16,7 @@ $.get(templateURI, function(data) {
 	$('.cloudactions').append(template);
 
 	// Get the config file : viewer.ttl
-	var viewerUri = '/assets/ldp/viewer.ttl';
+	var viewerUri = window.location.origin + '/assets/ldp/viewer.ttl';
 	var graph2 = graphsCache[viewerUri] =  new $rdf.IndexedFormula();
 	var fetch2 = $rdf.fetcher(graph2);
 	fetch2.nowOrWhenFetched(viewerUri, undefined, function () {

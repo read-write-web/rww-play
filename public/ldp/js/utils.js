@@ -24,8 +24,6 @@ var formatTime = function(mtime) {
 
 
 // Check if uri point to a directory.
-var isDirectory = function(uri) {
-	var res;
-	res = (uri.substring(uri.length - 1) == '/')? true: false;
-	return res;
+var isDirectory = function(graph, uri) {
+	return graph.holds(uri,RDF("type"),uri)
 };
