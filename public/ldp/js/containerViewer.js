@@ -19,12 +19,12 @@ $.get(templateURI, function(data) {
 		"PREFIX ldp: <http://www.w3.org/ns/ldp#> \n"+
 			"PREFIX stat:  <http://www.w3.org/ns/posix/stat#> \n" +
 			"PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> \n" +
-			"SELECT ?type ?size ?mt \n" +
+			"SELECT ?m ?type ?size ?mt \n" +
 			"WHERE {\n" +
-			"<" + baseUri + "> ldp:created ?m . \n" +
-			"OPTIONAL { ?m stat:size ?size . } \n" +
-			"OPTIONAL { ?m a ?type . } \n" +
-			"OPTIONAL { ?m stat:mtime ?mt .} \n" +
+			" <" + baseUri + "> ldp:created ?m . \n" +
+			" OPTIONAL { ?m stat:size ?size . } \n" +
+			" OPTIONAL { ?m a ?type . } \n" +
+			" OPTIONAL { ?m stat:mtime ?mt .} \n" +
 			"}"
 
 	// Bind the query to the graph.
@@ -37,6 +37,12 @@ $.get(templateURI, function(data) {
 		// Save ressource informations.
 		var informations = {};
 		informations.uri = result['?m'].uri;
+
+        try {
+           informations.name = basename(result['?m'].uri.toString())
+        } catch (error) {
+            informations.name = "!!**JS ERROR**!!"
+        }
 
 		// Get the type.
 		try {
