@@ -28,6 +28,7 @@ trait Setup {
   val httpHostnameKey = "http.hostname"
   val RdfViewerHtmlTemplatePathKey = "rww.rdf.html.viewer.template.path"
   val RootContainerPathKey = "rww.root.container.path"
+  val rwwSubDomainsEnabledKey = "rww.subdomains"
   val baseHostnameKey = "http.hostname"
 
   //Play setup: needed for WebID info
@@ -49,6 +50,8 @@ trait Setup {
     val path = controllers.routes.ReadWriteWebApp.about.url+"/"
     new URL(hostRoot,path)
   }
+
+  lazy val rwwSubdomainsEnabled: Boolean = Play.current.configuration.getBoolean(rwwSubDomainsEnabledKey).getOrElse(false)
 
   /**
    * we check the existence of the file because Resource.fromFile creates the file if it doesn't exist
