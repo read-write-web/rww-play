@@ -87,6 +87,7 @@ trait Setup {
     rwwRoot = $rwwRoot
     rdfViewerHtmlTemplate = $rdfViewerHtmlTemplate
     rww root LDPC path = $rootContainerPath
+    with subdomain support = $rwwSubdomainsEnabled
     """)
 }
 
