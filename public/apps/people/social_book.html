@@ -1,0 +1,90 @@
+<!--
+  ~ Copyright (c) 2011 Denis Duvauchelle (denisduvauchelle.com)
+  ~ under the MIT licence defined at
+  ~    http://www.opensource.org/licenses/mit-license.html
+  -->
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+	<title>Distributed address book</title>
+
+	<link rel="stylesheet" type="text/css" href="a_css/general.css">
+	<link href='http://fonts.googleapis.com/css?family=Monda:400,700' rel='stylesheet' type='text/css'>
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.js"></script>
+	<script type="text/javascript" src="../../ldp/lib/rdflib.js"></script>
+	<script type="text/javascript" src="../../ldp/lib/spin.min.js"></script>
+    <script type="text/javascript" src="social_book.js"></script>
+
+</head>
+
+<body>
+<!-- TODO remove hardcoded URI here -->
+<script type="text/javascript">
+    $(document).ready(function() {
+        loadUser('http://bblfish.net/people/henry/card#me');
+    });
+</script>
+
+<div id="topbar">
+	<div class="wrapper">
+		<h1 id="logo">Distributed address book</h1>
+		<div>
+			<a href="">Henry Story <img src="a_img/avatar.png" height="20" align="absmiddle" /></a>
+		</div>
+	</div>
+</div>
+
+<div id="site_wrapper">
+	<div id="friends_panels">
+		<div class="panel listing" id="panel1">
+		</div>
+
+		<div class="panel listing" id="panel2">
+		</div>
+
+		<div class="panel listing" id="panel3">
+		</div>
+	</div>
+
+	<div class="panel user">
+		<div id="user_wrapper">
+			<img class="depiction" src="a_img/avatar.png" alt="User avatar">
+			<div class="name"></div>
+			<div class="nickname"></div>
+
+			<div class="clear"></div>
+			<br>
+			<ul>
+				<li class="phone">
+					<label>Phone</label>
+					<a class="user_info_input" href=""></a>
+				</li>
+				<li class="address">
+					<label>Address</label>
+					<div class="user_info_input"></div>
+				</li>
+				<li class="email">
+					<label>Email</label>
+					<a class="user_info_input" href=""></a>
+				</li>
+				<li class="website">
+					<label>Website</label>
+					<div class="user_info_input"><a href=""></a></div>
+				</li>
+				<li class="birthday">
+					<label>Birthday</label>
+					<div class="user_info_input"></div>
+				</li>
+
+			</ul>
+
+		</div>
+	</div>
+
+</div>  <!-- END OF SITE_WRAPPER -->
+
+</body>
+</html>
