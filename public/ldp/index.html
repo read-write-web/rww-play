@@ -15,9 +15,8 @@
 		var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
 
 		// Get the graph related to Base Uri.
-		graphsCache = {};
 		var baseUri = window.location.href;
-		var viewerUri = '/assets/ldp/viewer.ttl';
+		var graphsCache = {};
 		var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
 		var fetch = $rdf.fetcher(graph);
 		fetch.nowOrWhenFetched(baseUri, undefined, function () {
