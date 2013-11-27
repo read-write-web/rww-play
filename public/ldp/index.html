@@ -8,7 +8,7 @@
 	<script type="text/javascript" src="/assets/ldp/lib/underscore.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/rdflib.js"></script>
     <script type="text/javascript" src="/assets/ldp/js/loadScript.js"></script>
-    <script type="text/javascript" src="/assets/ldp/js/rdflib.js"></script>
+    <script type="text/javascript" src="/assets/ldp/js/loadCSS.js"></script>
 	<script type="text/javascript">
 		var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
 		var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
@@ -33,30 +33,10 @@
 		});
 
 
-		function initialLoad() {
-			// Load CSS.
-			loadScript();
-
-			// Load CSS.
-			loadCSS();
-		}
-
-		function loadScript () {
-			var scriptLoad = document.createElement("script");
-			scriptLoad.src = "/assets/ldp/js/loadScript.js";
-			document.head.appendChild(scriptLoad);
-		}
-
-		function loadCSS () {
-			var cssLoad = document.createElement("script");
-			cssLoad.src = "/assets/ldp/js/loadCSS.js";
-			document.head.appendChild(cssLoad);
-		}
-
 	</script>
 </head>
 
-<body onload="initialLoad()">
+<body>
 *
 </body>
 
