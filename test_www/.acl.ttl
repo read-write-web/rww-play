@@ -3,5 +3,5 @@
 
 [] acl:accessToClass [ acl:regex "https://(\\w+\\.)?localhost:8443/.*" ];  
    acl:mode acl:Read, acl:Write; 
-   acl:agent <card#me> .  
+   acl:agentClass foaf:Agent .
 
