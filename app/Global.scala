@@ -24,6 +24,7 @@ object Global extends GlobalSettings {
         case "PATCH" => Some(controllers.ReadWriteWebApp.patch(req.path))
         case "MKCOL" => Some(controllers.ReadWriteWebApp.mkcol(req.path))
         case "HEAD" => Some(controllers.ReadWriteWebApp.head(req.path))
+        case "PUT" =>  Some(controllers.ReadWriteWebApp.put(req.path))
         case "DELETE" => Some(controllers.ReadWriteWebApp.delete(req.path))
       }
     } else  super.onRouteRequest(req)
