@@ -83,6 +83,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
+  private def userHeader(res: Result[_]) =  "User"->res.id.toString
 
   def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
      val uri = request.getAbsoluteURI
@@ -90,16 +91,15 @@ trait ReadWriteWeb[Rdf <: RDF] {
     val res = for {
       namedRes <- rwwActor.get(request, uri)
     } yield {
-      val link = namedRes.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
-
-      namedRes match {
+      val link = namedRes.result.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
+      namedRes.result match {
         case ldpr: LDPR[Rdf] =>  {
           if (isStupidBrowser(request)) {
-            SeeOther(controllers.routes.RDFViewer.htmlFor(uri.toString).toString())
+            SeeOther(controllers.routes.RDFViewer.htmlFor(uri.toString).toString()).withHeaders(userHeader(namedRes))
 //            SeeOther("https://localhost:8443/srv/rdfViewer?url="+URLEncoder.encode(uri.toString))
           } else {
             writerFor[Rdf#Graph](request).map { wr =>
-              result(200, wr, Map("Access-Control-Allow-Origin"-> "*") ++ link)(ldpr.relativeGraph)
+              result(200, wr, Map("Access-Control-Allow-Origin"-> "*",userHeader(namedRes)) ++ link)(ldpr.relativeGraph)
             } getOrElse {
               PlayApi.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
                 request.headers.get(PlayApi.http.HeaderNames.ACCEPT))
@@ -108,7 +108,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
         }
         case bin: BinaryResource[Rdf] => {
           SimpleResult(
-            header = ResponseHeader(200, Map("Content-Type" -> "todo") ++ link),
+            header = ResponseHeader(200, Map("Content-Type" -> "todo", userHeader(namedRes)) ++ link),
             body = bin.reader(1024 * 8)
           )
         }
@@ -153,9 +153,9 @@ trait ReadWriteWeb[Rdf <: RDF] {
       val path = correctedPath.toString.substring(coll.toString.length)
       for (answer <- rwwActor.makeCollection(coll.toString, Some(path), graph))
       yield {
-        val res = Created("Created Collection at " + answer)
+        val res = Created("Created Collection at " + answer).withHeaders(userHeader(answer))
         if (request.path == correctedPath) res
-        else res.withHeaders(("Location" -> answer.toString))
+        else res.withHeaders(("Location" -> answer.toString),userHeader(answer))
       }
     }
     val resultFuture = request.body match {
@@ -176,7 +176,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
     val future = for {
       answer <- rwwActor.put(request.body)
     } yield {
-      Ok("Succeeded")
+      Ok("Succeeded").withHeaders(userHeader(answer))
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
@@ -186,9 +186,9 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
   def patch(path: String) = Action.async(rwwBodyParser) {implicit request =>
     val future = for {
-      _ <- rwwActor.patch( request.body)
+      answer <- rwwActor.patch( request.body)
     } yield {
-      Ok("Succeeded")
+      Ok("Succeeded").withHeaders(userHeader(answer))
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
@@ -206,7 +206,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
           rwwGraph
         )
       } yield {
-        Created.withHeaders("Location" -> location.toString)
+        Created.withHeaders("Location" -> location.result.toString,userHeader(location))
       }
     }
 
@@ -218,18 +218,18 @@ trait ReadWriteWeb[Rdf <: RDF] {
         for {
           answer <- rwwActor.postQuery(request.path, rwwQuery)
         } yield {
-          answer.fold(
+          answer.result.fold(
             graph =>
               writerFor[Rdf#Graph](request).map {
-                wr => result(200, wr)(graph)
+                wr => result(200, wr,Map(userHeader(answer)))(graph)
               },
             sol =>
               writerFor[Rdf#Solutions](request).map {
-                wr => result(200, wr)(sol)
+                wr => result(200, wr,Map(userHeader(answer)))(sol)
               },
             bool =>
               writerFor[Boolean](request).map {
-                wr => result(200, wr)(bool)
+                wr => result(200, wr,Map(userHeader(answer)))(bool)
               }
           ).getOrElse(PlayApi.mvc.Results.UnsupportedMediaType(s"Cannot publish answer of type ${answer.getClass} as" +
             s"one of the mime types given ${request.headers.get("Accept")}"))
@@ -237,12 +237,12 @@ trait ReadWriteWeb[Rdf <: RDF] {
       }
       case BinaryRwwContent(file: TemporaryFile, mime: String) => {
         for {
-          location <- rwwActor.postBinary(request.path,
+          answer <- rwwActor.postBinary(request.path,
             request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
             file,
             MimeType(mime))
         } yield {
-          Created.withHeaders("Location" -> location.toString)
+          Created.withHeaders("Location" -> answer.result.toString,userHeader(answer))
         }
       }
       case emptyContent => {
@@ -264,9 +264,9 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
   def delete(path: String) = Action.async { implicit request =>
     val future = for {
-      _ <- rwwActor.delete(request)
+      answer <- rwwActor.delete(request)
     } yield {
-      Ok
+      Ok.withHeaders(userHeader(answer))
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))

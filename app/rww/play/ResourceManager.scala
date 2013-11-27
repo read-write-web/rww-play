@@ -27,15 +27,16 @@ import rww.play.auth.AuthN
 import rww.ldp._
 import scala.Some
 import rww.ldp.auth.WACAuthZ
-import java.net.URL
+import java.net.{URI=>jURI, URL=>jURL}
 
+case class Result[R](id: jURI, result: R)
 
 //the idea of this class was to not be reliant on Play! We need RequestHeader in order to do authentication
 //todo: find a way of abstracting this
 import _root_.play.api.mvc.{Request=>PlayRequest, RequestHeader=>PlayRequestHeader}
 
 
-class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
+class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
                              (implicit ops: RDFOps[Rdf], sparqlOps: SparqlOps[Rdf],
                               ec: ExecutionContext) {
 
@@ -49,6 +50,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
   val rdfs = RDFSPrefix[Rdf]
   val wac = WebACLPrefix[Rdf]
 
+
   /**
    * @param path of the resource
    * @return the pair consisting of the collection and the name of the resource to make a request on
@@ -59,24 +61,24 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
     else (path.substring(0, i + 1), path.substring(i + 1, path.length))
   }
 
-  def patch(content: RwwContent)(implicit request: PlayRequestHeader): Future[Boolean] = {
+  def patch(content: RwwContent)(implicit request: PlayRequestHeader): Future[Result[Boolean]] = {
     val path = request.path
     content match {
       case updatedQuery: PatchRwwContent[Rdf] => for {
-        _ <- auth(request, request.getAbsoluteURI.toString, Method.write)
+        id <- auth(request, request.getAbsoluteURI.toString, Method.write)
         x <- rww.execute(patchLDPR(URI(path), updatedQuery.query, Map()))
-      } yield x
+      } yield Result(id,x)
       case _ => Future.failed(new Exception("PATCH requires application/sparql-update message content"))
     }
   }
 
 
-  def put(content: RwwContent)(implicit request: PlayRequestHeader) : Future[Rdf#URI] = {
+  def put(content: RwwContent)(implicit request: PlayRequestHeader) : Future[Result[Rdf#URI]] = {
     val path = request.path
     val (collection, file) = split(path)
     if ("" == file) Future.failed(new Exception("Cannot do a PUT on a collection"))
     else for {
-      _ <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
       f <- content match {
         //todo: arbitrarily for the moment we only allow a PUT of same type things graphs on graphs, and other on other
         case grc: GraphRwwContent[Rdf] => {
@@ -86,7 +88,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
               case ldpr: LDPR[Rdf] => updateLDPR(ldpr.location,remove=Seq((ANY,ANY,ANY)),add=grc.graph.toIterable)
               case _ => throw new Error("yoyo")
             }
-          } yield resrc.location)
+          } yield Result[Rdf#URI](id,resrc.location))
         }
         case BinaryRwwContent(tmpFile, mime) => {
           rww.execute(
@@ -98,7 +100,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
               //todo: very BAD. This will block the agent, and so on long files break the collection.
               //this needs to be sent to another agent, or it needs to be rethought
               Enumerator.fromFile(tmpFile.file)(ec)(b.write)
-              resrc.location
+              Result(id,resrc.location)
             })
         }
         case _ => Future.failed(new Exception("cannot apply method - improve bug report"))
@@ -124,45 +126,40 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
    * @param mode
    * @return
    */
-  def auth(request: PlayRequestHeader, path: String, mode: Method.Value): Future[Unit] = {
+  def auth(request: PlayRequestHeader, path: String, mode: Method.Value): Future[jURI] = {
     getAuthFor(URI(path), wacIt(mode)).flatMap { agents =>
-      if (agents.contains(foaf.Agent)) Future.successful(())
+      if (agents.contains(foaf.Agent)) Future.successful(foaf.Agent.underlying)
       else if (agents.isEmpty) {
         Future.failed(AccessDenied(s"no agents allowed access with $mode on ${request.path}"))
       }
       else {
-        authn(request).flatMap {
-          subject =>
-            val a = subject.webIds.exists {
-              wid =>
-                agents.contains(URI(wid.toString))
-            }
-            if (a) {
-              Future.successful(())
-            }
-            else {
-              Future.failed(AccessDenied(s"no access for $mode on ${request.path}"))
-            }
+        authn(request).flatMap { subject =>
+          subject.webIds.find{ wid =>
+            agents.contains(URI(wid.toString))
+          } match {
+            case Some(id) => Future.successful(id)
+            case None => Future.failed(AccessDenied(s"no access for $mode on ${request.path}"))
+          }
         }
       }
     }
   }
 
 
-  def get(request: PlayRequestHeader, uri: java.net.URI): Future[NamedResource[Rdf]] = {
+  def get(request: PlayRequestHeader, uri: java.net.URI): Future[Result[NamedResource[Rdf]]] = {
    for {
-      _ <- auth(request, uri.toString, Method.read)
+      id <- auth(request, uri.toString, Method.read)
       x <- rww.execute {
         getResource(URI(uri.toString), None)
       }
-    } yield x
+    } yield Result(id,x)
   }
 
   def makeLDPR( collectionPath: String, content: Rdf#Graph, slug: Option[String])
-              (implicit request: PlayRequestHeader): Future[Rdf#URI] = {
+              (implicit request: PlayRequestHeader): Future[Result[Rdf#URI]] = {
     val uric: Rdf#URI = URI(request.getAbsoluteURI.toString)
     for {
-      _ <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
       x <- rww.execute(
         for {
           r <- createLDPR(uric, slug, content)
@@ -177,7 +174,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
           r
         }
       )
-    } yield x
+    } yield Result(id,x)
   }
 
 
@@ -188,7 +185,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
    * @param content
    * @return
    */
-  def postGraph(slug: Option[String], content: Option[Rdf#Graph])(implicit request: PlayRequestHeader): Future[Rdf#URI] = {
+  def postGraph(slug: Option[String], content: Option[Rdf#Graph])(implicit request: PlayRequestHeader): Future[Result[Rdf#URI]] = {
 
     // just on RWWPlay we can adopt the convention that if the object ends in a "/"
     // then it is a collection, anything else is not a collection
@@ -204,9 +201,10 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
     }
   }
 
-  def makeCollection(coll: String, slug: Option[String], content: Option[Rdf#Graph])(implicit request: PlayRequestHeader): Future[Rdf#URI] = {
+  def makeCollection(coll: String, slug: Option[String], content: Option[Rdf#Graph])
+                    (implicit request: PlayRequestHeader): Future[Result[Rdf#URI]] = {
     for {
-      _ <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
       x <- rww.execute {
         for {
           c <- createContainer(URI(request.getAbsoluteURI.toString), slug,
@@ -221,17 +219,16 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
           _ <- updateLDPR(meta.acl.get, add = aclg.toIterable)
         } yield c
       }
-    } yield x
+    } yield Result(id,x)
   }
 
   def postBinary(path: String, slug: Option[String], tmpFile: TemporaryFile, mime: MimeType)
-                ( implicit request: PlayRequestHeader ): Future[Rdf#URI] = {
+                ( implicit request: PlayRequestHeader ): Future[Result[Rdf#URI]] = {
     val (collection, file) = split(path)
-    val ldpc = URI(collection)
     if ("" != file) Future.failed(WrongTypeException("Can only POST binary on a Collection"))
     else
       for {
-        _ <- auth(request, request.getAbsoluteURI.toString, Method.write)
+        id <- auth(request, request.getAbsoluteURI.toString, Method.write)
         x <- rww.execute {
           for {
             b <- createBinary(URI(request.getAbsoluteURI.toString), slug, mime)
@@ -240,16 +237,15 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
             b.location
           }
         }
-      } yield x
-
+      } yield Result(id, x)
   }
 
 
-  def delete(implicit request: PlayRequestHeader): Future[Unit] = {
+  def delete(implicit request: PlayRequestHeader): Future[Result[Unit]] = {
     for {
-      _ <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
       e <- rww.execute(deleteResource(URI(request.getAbsoluteURI.toString)))
-    } yield e
+    } yield Result(id,e)
     //    rww.execute{
     //        for {
     //          x <- deleteResource(URI(file))
@@ -260,13 +256,13 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
     //    } yield { Unit }
   }
 
-  def postQuery( path: String, query: QueryRwwContent[Rdf])(implicit request: PlayRequestHeader): Future[Either3[Rdf#Graph, Rdf#Solutions, Boolean]] = {
+  def postQuery( path: String, query: QueryRwwContent[Rdf])(implicit request: PlayRequestHeader): Future[Result[Either3[Rdf#Graph, Rdf#Solutions, Boolean]]] = {
     val (collection, file) = split(path)
 
     import sparqlOps._
     //clearly the queries could be simplified here.
     for {
-      _ <- auth(request,request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request,request.getAbsoluteURI.toString, Method.write)
       e <-rww.execute {
         if ("" != file)
           fold(query.query)(
@@ -281,7 +277,7 @@ class ResourceMgr[Rdf <: RDF](base: URL, rww: RWW[Rdf], authn: AuthN, authz: WAC
             ask => askLDPC(URI(path), ask, Map.empty).map(right3[Rdf#Graph, Rdf#Solutions, Boolean] _)
           )
       }
-    } yield e
+    } yield Result(id,e)
 
   }
 
