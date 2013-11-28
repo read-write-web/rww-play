@@ -1,0 +1,13 @@
+@(form: Form[_])
+
+
+<!-- TODO it seems it doesn't work well, errors are not displayed even when there are global errors (don't know why) -->
+@if(form.hasGlobalErrors) {
+    <div>
+        <ul>
+        @form.globalErrors.foreach { error =>
+            <li class="error">@error.message</li>
+        }
+        </ul>
+    </div>
+}

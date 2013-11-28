@@ -50,6 +50,11 @@ trait Setup {
     new URL(protocol,host,port,"")
   }
 
+  def hostRootSubdomain(subdomain: String): URL = {
+    val subdomainHost = subdomain + "." + hostRoot.getHost
+    new URL(hostRoot.getProtocol,subdomainHost,hostRoot.getPort,hostRoot.getFile)
+  }
+
   lazy val rwwRoot: URL =  {
     val path = controllers.routes.ReadWriteWebApp.about.url+"/"
     new URL(hostRoot,path)
