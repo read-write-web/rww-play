@@ -25,6 +25,7 @@ var personUris = getSubjectsOfType(baseGraph,FOAF("Person"));
 console.log("Persons found = " + personUris);
 
 var personToDisplay = personUris[0]['value'];
+console.log("Persons to display:" + personUris);
 console.log("Person to display:" + personToDisplay);
 
 

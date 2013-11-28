@@ -5,6 +5,8 @@
 <head>
 	<title>Primary Html file.</title>
  	<script type="text/javascript" src="/assets/ldp/lib/jquery-1.7.1.min.js"></script>
+	<script type="text/javascript" src="/assets/apps/ld-cal/contrib/jquery-ui.custom.min.js"></script>
+	<script type="text/javascript" src="/assets/apps/ld-cal/contrib/sha1.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/underscore.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/rdflib.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/spin.min.js"></script>
@@ -14,6 +16,8 @@
 		var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
 		var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
 		var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
+		var WEBAPP = $rdf.Namespace("http://ns.rww.io/wapp#");
+		var FOAF = $rdf.Namespace("http://xmlns.com/foaf/0.1/");
 
 		// Get the graph related to Base Uri.
 		graphsCache = {};
@@ -22,8 +26,9 @@
 		var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
 		var fetch = $rdf.fetcher(graph);
 		fetch.nowOrWhenFetched(baseUri, undefined, function () {
-			// Load the main view.
+			// Load the main view and utils.
 			loadScript("/assets/ldp/js/bodyViewer.js", null);
+			loadScript("/assets/ldp/js/utils.js", null);
 
 			// Get ressource type.
 			$rdf.types = graph.each( $rdf.sym(baseUri), RDF("type"));
@@ -32,8 +37,6 @@
 			$rdf.graphsCache = graphsCache;
 			$rdf.baseUri = baseUri;
 		});
-
-
 	</script>
 </head>
 

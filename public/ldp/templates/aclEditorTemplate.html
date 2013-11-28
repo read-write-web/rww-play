@@ -1,12 +1,12 @@
 <div id="wac-editor" class="wac-editor">
 	<span id="wac-reqpath" name="wac-reqpath" style="display: none;"></span>
-	<h3>Resource name: <b><span id="wac-path" name="wac-path"><%= name %></span></b></h3>
+	<h3><b><span id="wac-path" name="wac-path">Ressource name : <%= name %></span></b></h3>
 	<input type="hidden" id="wac-exists" value="0" />
 	<input type="hidden" id="wac-owner" value="dns:90.24.245.239" />
-	<div>
-		<div class="left"><input type="checkbox" id="wac-read" name="Read"> Read </div>
+	<div style="display:none;">
+		<div class="left" ><input type="checkbox" id="wac-read" name="Read"> Read </div>
 		<div class="left"><input type="checkbox" id="wac-write" name="Write"> Write </div>
-		<div class="left" style="display:none;"><input type="checkbox" id="wac-append" name="Append"> Append </div>
+		<div class="left" ><input type="checkbox" id="wac-append" name="Append"> Append </div>
 		<br/>
 		<p>
 		<div id="recursive" class="left">
@@ -14,13 +14,13 @@
 		</div>
 		</p>
 	</div>
-	<br />
-	<br />
 	<div>
-		Allow access for:<br />
-		<small>(comma separated WebID addresses OR leave blank for everyone)</small>
+		Allow access to : <br />
+		<small >(Check box per contact)</small>
 	</div>
-	<textarea id="wac-users" name="users" cols="5" rows="5"></textarea>
+	<div>
+		<ul id="wac-users" name="users"></ul>
+	</div>
 	<br/>
 	<div class="right actions"><a class="cancel button button-rounded button-flat-caution"><i class="icon-remove"></i> Cancel</a></div>
 	<div class="right"><a class="save button button-rounded button-flat-primary"><i class="icon-save"></i> Save</a></div>

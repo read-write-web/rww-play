@@ -2,7 +2,7 @@
 @prefix stample: <http://ont.stample.co/2013/display#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
-
 ldp:Container stample:view </assets/ldp/js/containerViewer.js> .
 ldp:Ressource stample:view </assets/ldp/js/fileViewer.js> .
 foaf:PersonalProfileDocument stample:view </assets/ldp/js/personalProfileDocumentViewer.js> .
+stample:EventsDocument stample:view </assets/ldp/js/ldcalViewer.js> .
