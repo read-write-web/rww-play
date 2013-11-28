@@ -7,6 +7,7 @@
  	<script type="text/javascript" src="/assets/ldp/lib/jquery-1.7.1.min.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/underscore.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/rdflib.js"></script>
+	<script type="text/javascript" src="/assets/ldp/lib/spin.min.js"></script>
     <script type="text/javascript" src="/assets/ldp/js/loadScript.js"></script>
     <script type="text/javascript" src="/assets/ldp/js/loadCSS.js"></script>
 	<script type="text/javascript">
@@ -15,8 +16,9 @@
 		var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
 
 		// Get the graph related to Base Uri.
+		graphsCache = {};
 		var baseUri = window.location.href;
-		var graphsCache = {};
+		var viewerUri = '/assets/ldp/viewer.ttl';
 		var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
 		var fetch = $rdf.fetcher(graph);
 		fetch.nowOrWhenFetched(baseUri, undefined, function () {
