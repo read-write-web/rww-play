@@ -27,6 +27,7 @@ HEAD          /2013/$file<.*>        controllers.ReadWriteWebApp.head(file)
 
 POST          /srv/certgen           controllers.ClientCertificateApp.generate
 GET           /srv/certgen           controllers.ClientCertificateApp.get
+POST          /srv/subdomain         controllers.Subdomains.create()
 
 GET           /srv/cors              controllers.CORSProxy.action(url: Option[String])
 GET           /srv/rdfViewer         controllers.RDFViewer.htmlFor(url: String)
