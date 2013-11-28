@@ -83,7 +83,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  private def userHeader(res: Result[_]) =  "User"->res.id.toString
+  private def userHeader(res: IdResult[_]) =  "User"->res.id.toString
 
   def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
      val uri = request.getAbsoluteURI
