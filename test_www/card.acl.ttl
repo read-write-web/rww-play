@@ -3,6 +3,6 @@ _:node18aab557px2 <http://www.w3.org/ns/auth/acl#mode> <http://www.w3.org/ns/aut
 	<http://www.w3.org/ns/auth/acl#accessTo> <card> ;
 	<http://www.w3.org/ns/auth/acl#agentClass> <http://xmlns.com/foaf/0.1/Agent> .
 
-_:node18aab557px1 <http://www.w3.org/ns/auth/acl#accessTo> <> ;
+_:node18aab557px1 <http://www.w3.org/ns/auth/acl#accessTo> <card> ;
 	<http://www.w3.org/ns/auth/acl#mode> <http://www.w3.org/ns/auth/acl#Write> ;
 	<http://www.w3.org/ns/auth/acl#agent> <card#me> .
