@@ -1,5 +1,5 @@
-@(createSubdomainForm: Form[controllers.Application.CreateUserSoaceForm])
-
+@(createSubdomainForm: Form[controllers.Application.CreateUserSpaceForm])
+@import helper.twitterBootstrap._
 
     @title = {
         Welcome to Stample.io
@@ -10,6 +10,9 @@
 
     <br>
     <p>Create a WebId and a subdomain:</p>
+
+    @globalErrors(createSubdomainForm)
+
     <p>
     @helper.form(action = routes.Application.createUserSpace) {
 

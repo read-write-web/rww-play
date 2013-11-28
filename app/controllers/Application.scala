@@ -8,15 +8,15 @@ import play.api.data.Forms._
 
 object Application extends Controller {
 
-  case class CreateUserSoaceForm(subdomain: String,certificate: String,email: String)
+  case class CreateUserSpaceForm(subdomain: String,certificate: String,email: String)
 
 
-  val createUserSpaceForm : Form[CreateUserSoaceForm] = Form(
+  val createUserSpaceForm : Form[CreateUserSpaceForm] = Form(
     mapping(
       "subdomain" -> nonEmptyText(minLength = 3),
       "certificate" -> nonEmptyText,
       "email" -> email
-    )(CreateUserSoaceForm.apply)(CreateUserSoaceForm.unapply)
+    )(CreateUserSpaceForm.apply)(CreateUserSpaceForm.unapply)
   )
 
   def index = Action {
@@ -24,24 +24,17 @@ object Application extends Controller {
   }
 
 
-
   def createUserSpace = Action { implicit request =>
     createUserSpaceForm.bindFromRequest.fold(
-      formWithErrors => {
-        Logger.warn("Form errors: " + formWithErrors)
-        BadRequest(views.html.index(createUserSpaceForm))
-      },
-      value => doCreateUserSpace(value)
+      formWithErrors => BadRequest(views.html.index(formWithErrors)),
+      form => {
+        Logger.info("Will try to create new subdomain: " + form)
+        // TODO handle userspace creation
+        val subdomainURL = plantain.hostRootSubdomain(form.subdomain)
+        Redirect(subdomainURL.toString)
+      }
     )
   }
-
-  def doCreateUserSpace(form: CreateUserSoaceForm): Result = {
-    Logger.info("Will try to create new subdomain: " + form)
-    // TODO handle userspace creation
-    Redirect(s"https://${form.subdomain}.stample.io")
-  }
-
-
 
 }
 
