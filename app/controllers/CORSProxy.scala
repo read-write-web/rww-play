@@ -4,7 +4,7 @@ import play.api.mvc.Action
 import org.w3.banana.plantain.Plantain
 import controllers.plantain._
 
-object CORSProxy extends rww.play.CORSProxy[Plantain](webClient) {
+object CORSProxy extends _root_.rww.play.CORSProxy[Plantain](webClient) {
 
   def action(url: Option[String]) = url match {
     case Some(url) => get(url)

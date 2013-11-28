@@ -2,26 +2,22 @@ package controllers
 
 import rww.ldp.RWWeb
 import org.w3.banana._
-import java.nio.file.Path
 import play.api.mvc.Action
 import play.api.mvc.Results._
 import java.security.cert.X509Certificate
-import java.net.{URI=>jURI}
+import java.net.{URI=>jURI,URL=>jURL}
 import rww.ldp.LDPCommand._
 import scala.concurrent.Future
-import rww.play.IdResult
-import java.security.PublicKey
-import rww.play.IdResult
 import scala.Some
-import org.w3.banana.syntax
 import java.security.interfaces.RSAPublicKey
 import org.w3.banana.plantain.Plantain
+import java.util.Date
 
 
 /**
  *
  */
-class Subdomains[Rdf<:RDF](subdomainContainer: jURI, rww: RWWeb[Rdf])
+class Subdomains[Rdf<:RDF](subdomainContainer: jURL, rww: RWWeb[Rdf])
                          (implicit ops: RDFOps[Rdf]) {
 
 
@@ -45,23 +41,27 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURI, rww: RWWeb[Rdf])
   private
   def cardGraph(key: RSAPublicKey, email: jURI): Rdf#Graph = {
     val certNode = bnode()
-    Graph(Triple(URI(""),foaf.primaryTopic,URI("#i")),
-    Triple(URI("#i"),cert.key,certNode),
-    Triple(certNode,cert.exponent,TypedLiteral(key.getPublicExponent.toString(10),xsd.integer)),
-    Triple(certNode,cert.modulus,TypedLiteral(key.getModulus.toString(16),xsd.hexBinary))
+    Graph(Triple(URI(""), foaf.primaryTopic, URI("#i")),
+      Triple(URI("#i"), cert.key, certNode),
+      Triple(certNode, cert.exponent, TypedLiteral(key.getPublicExponent.toString(10), xsd.integer)),
+      Triple(certNode, cert.modulus, TypedLiteral(key.getModulus.toString(16), xsd.hexBinary))
     )
   }
 
   private
-  def deploy(rsaKey: RSAPublicKey, email: jURI, subdomain: String): Future[IdResult[X509Certificate]] = {
+  def deploy(name: String, rsaKey: RSAPublicKey, email: jURI,
+             subdomain: String,
+             validFrom: Date, validTo: Date): Future[X509Certificate] = {
 
     //1. create subdomain
-    val futureDomain = rww.execute{
+    rww.execute{
       for {
         subdomain <- createContainer(subDomainContainerUri, Some(subdomain), container)
         card  <-     createLDPR(subdomain, Some("card"), cardGraph(rsaKey,email))
       } yield {
-        (subdomain,card,card.fragment("#i"))
+        val webid=card.fragment("#i")
+        val certreq = CertReq(name+"@"+subdomain,List(webid.underlying.toURL),rsaKey, validFrom,validTo)
+        certreq.certificate
       }
     }
 
@@ -77,10 +77,10 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURI, rww: RWWeb[Rdf])
     //    //todo: collection to specify how to build up the acls.
     //    aclg = (meta.acl.get -- wac.include ->- URI("../.acl")).graph
     //    _ <- updateLDPR(meta.acl.get, add = aclg.toIterable)
-    null
+
 
   }
 
 }
 
-object Subdomains extends Subdomains[Plantain](null,null)(null)
+object Subdomains extends Subdomains[Plantain](plantain.rwwRoot,plantain.rww)

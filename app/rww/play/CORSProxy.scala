@@ -43,7 +43,6 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
   private implicit def sequentialise(headers: Map[String,Seq[String]]) = headers.toSeq.flatMap(pair=>pair._2.map(v=>(pair._1,v)))
 
   def get(url: String) = Action.async { request =>
-    System.out.println("in CORSProxy.get(" + url + ")")
     val iri = URI(url)
     implicit val timeout = Timeout(10 * 1000)
     import PlayWriterBuilder.writerFor
