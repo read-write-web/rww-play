@@ -34,6 +34,8 @@ $.get(templateURI, function(data) {
 	loadCSS("/assets/apps/ld-cal/css/style.css");
 	loadCSS("/assets/apps/ld-cal/css/classic.css");
 	loadCSS("/assets/apps/ld-cal/css/classic.date.css");
+	loadScript("/assets/apps/ld-cal/contrib/jquery-ui.custom.min.js", null);
+	loadScript("/assets/apps/ld-cal/contrib/sha1.js", null);
 	loadScript("/assets/apps/ld-cal/contrib/picker.js", function(){
 		loadScript("/assets/apps/ld-cal/contrib/picker.date.js", null);
 	});
