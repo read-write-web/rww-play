@@ -3,6 +3,7 @@ function main () {
 		function() {
 			// Load necessary scripts.
 			loadScript("/assets/profiles/js/backbone/views/personView.js", null);
+			loadScript("/assets/profiles/js/backbone/views/ownerView.js", null);
 
 			// Register namespaces.
 			var BL = Backbone.Linked;
@@ -10,52 +11,54 @@ function main () {
 				STAMPLE: "http://ont.stample.co/2013/display#",
 				WEBAPP: "http://ns.rww.io/wapp#"
 			});
-			BL.LDPResource.proxy = "http://data.fm/proxy?uri={uri}";
+
+			// Use this proxy to deal with CO requests
+			//BL.LDPResource.proxy = "http://data.fm/proxy?uri={uri}";
+			BL.LDPResource.proxy = "http://localhost:9000/srv/cors?url={uri}";
 
 			// Bootstrap with a WebId
-			//var defaultWebId = 'https://my-profile.eu/people/deiu/card#me';
-			//var defaultWebId = 'http://bblfish.net/people/henry/card#me';
-			var defaultWebId = 'https://localhost:8443/2013/card#me';
-			console.log('main loaded !');
+			var defaultWebId = 'https://localhost:8443/2013/backbone#me';
 
 			// Create person model.
-			//var Person =  BL.Model.extend();
-			People = BL.Collection.extend({
-				generator: {
-					subject: 'http://bblfish.net/people/henry/card#me',
-					predicate: 'foaf:knows',
-					object: 'ldp:MemberSubject'
+			var Person = BL.Model.extend({
+				label: function() {
+					if(this.get('foaf:name') !== undefined) {
+						return this.get('foaf:name');
+					} else {
+						return "Contact with URI: "+this.uri;
+					}
 				}
 			});
 
-			window.peopleCollection = new People({'uri': defaultWebId});
-			window.person = new BL.Model({'@id': "https://my-profile.eu/people/deiu/card#me"});
+			// Define the people collection (read only)
+			People = BL.Collection.extend({
+				model: Person,
+				generator: "{ <"+defaultWebId+"> foaf:knows ?id }"
+			});
 
+			// Build the domain objects
+			//var peopleCollection = new People();
+			window.peopleCollection = new People();
+			var profile = new Person({'@id': defaultWebId});
 			Backbone.Linked.setLogLevel('debug');
-			peopleCollection.fetch({
+			profile.fetch({
 				headers: {'accept': 'text/turtle'},
 				success:function (response) {
-					console.log("success");
-					peopleCollection.each(function(model) {
-						console.log(model);
-						var personView = new PersonView({model:  model});
-						model.fetch({
-							success: function(r){
-								debugger
-								console.log('success');
-								console.log(r);
-							},
-							error: function(r){
-								console.log(r);
+					var ownerView = new OwnerView({model: profile});
+					$('#ownerContainer').append(ownerView.$el);
+
+					peopleCollection.each(function(contact) {
+						var personView = new PersonView({model: contact});
+						$('#container').append(personView.$el);
+						contact.fetch({
+							success: function() {
+								contact.trigger('change');
 							}
 						});
-						$('#container').append(personView.$el);
 					});
-
-					debugger;
 				},
 				error:function () {
-					console.log('error');
+					alert("Sorry, cannot retrieve the requested profile.");
 				}
 			});
 		}

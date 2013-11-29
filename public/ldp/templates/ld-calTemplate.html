@@ -1,0 +1,41 @@
+<div class="content">
+	<div id="calendar"></div>
+	<!-- Event editor -->
+	<div id="editevent" class="editevent grey-border" style="display: none;">
+		<input type="hidden" name="id" id="id" value="" />
+		<div>
+			<span class="span-left cell inline-block"><strong>Event name</strong></span>
+			<div class="left cell inline-block"> <input type="text" name="title" id="title" class="text left" autofocus /></div>
+		</div>
+		<div>
+			<span class="span-left cell inline-block">Starts</span>
+			<div id="startDay" class="left cell inline-block"><input type="text" id="pickerStart" class="text left" /></div>
+		</div>
+		<div>
+			<span class="span-left cell inline-block">Ends</span>
+			<div id="endDay" class="left cell inline-block"><input type="text" id="pickerEnd" class="text left" /></div>
+		</div>
+		<div id="duration" class="duration">
+			<div id="timepicker" class="timepicker"></div>
+			<div class="right"><span class="span-right cell inline-block">All day?</span><input type="checkbox" name="allday" id="allDay" class="right" onclick="toggleHours()" /></div>
+		</div>
+		<div class="editor-buttons force-left">
+			<div class="left"><a href="#" class="button button-rounded button-flat-primary" onclick="saveEvent()">Save</a></div>
+			<div class="left actions"><a href="#" class="button button-rounded button-flat-highlight" onclick="$('#editevent').hide()">Cancel</a></div>
+		</div>
+		<div class="editor-buttons-right">
+			<div class="right actions"><a href="#" class="button button-rounded button-flat-caution" onclick="deleteEvent()">Delete</a></div>
+		</div>
+
+		<div id="colorpicker" class="colorpicker">
+			<span class="span-left cell inline-block">Pick a color</span>
+			<div class="right inline-block">
+				<div id="Blue" class="Blue" onclick="setColor('#5484ed')"></div>
+				<div id="Red" class="Red" onclick="setColor('#e52127')"></div>
+				<div id="Green" class="Green" onclick="setColor('#51b749')"></div>
+				<div id="Yellow" class="Yellow" onclick="setColor('#fbd75b')"></div>
+				<div id="Purple" class="Purple" onclick="setColor('#dbadff')"></div>
+			</div>
+		</div>
+	</div>
+</div>

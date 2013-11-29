@@ -1,4 +1,4 @@
-var templateURI = "/assets/apps/ld-cal/ld-calTemplate.html";
+var templateURI = "/assets/ldp/templates/ld-calTemplate.html";
 var tab = {};
 
 // ----- Modify if needed ------
@@ -21,7 +21,7 @@ var eventsHeader =
 	'<> a stample:EventsDocument .' +
 	'<#ld-cal>' +
 	'wapp:description "Simple Linked Data calendar with agenda." ;' +
-	'wapp:endpoint <https://apps.localhost:8443/Agenda> ;' +
+	'wapp:endpoint <https://apps.localhost:8443/Agenda_2> ;' +
 	'wapp:name "LD-Cal" ;' +
 	'wapp:serviceId <https://ld-cal.rww.io> ;' +
 	'	a wapp:app .';

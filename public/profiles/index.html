@@ -20,12 +20,20 @@
 <body>
 
 <div id="main">
-	<div id="container"></div>
+	<div id="ownerContainer"></div>
 
+	<h3>Contacts:</h3>
+	<div id="container"></div>
 </div>
 
 <script>
-$(document).ready(main)
+$(document).ready(main);
+</script>
+
+<script type="text/template" id="person_template">
+	<div class="personContainer" id="<%= uri %>">
+		<span><%= label() %></span>
+	</div>
 </script>
 
 </body>
