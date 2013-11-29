@@ -18,13 +18,7 @@ var mygraph;
 var eventsHeader =
 	'@prefix stample: <http://ont.stample.co/2013/display#> .' +
 	'@prefix wapp: <http://ns.rww.io/wapp#> .' +
-	'<> a stample:EventsDocument .' +
-	'<#ld-cal>' +
-	'wapp:description "Simple Linked Data calendar with agenda." ;' +
-	'wapp:endpoint <https://apps.localhost:8443/Agenda_2> ;' +
-	'wapp:name "LD-Cal" ;' +
-	'wapp:serviceId <https://ld-cal.rww.io> ;' +
-	'	a wapp:app .';
+	'<> a stample:EventsDocument .';
 
 $.get(templateURI, function(data) {
 	// Load related CSS.
@@ -54,9 +48,9 @@ $.get(templateURI, function(data) {
 				$('#viewerContent').append(template);
 
 				// Render Calendar
-				var user = "https://localhost:8443/2013/card#me";
-				mywebid = user;
-				once_authenticated(user);
+				authenticate("/")
+//				mywebid = user;
+//				once_authenticated(user);
 
 			});
 		});
