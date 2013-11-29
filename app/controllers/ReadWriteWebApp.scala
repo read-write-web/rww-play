@@ -31,7 +31,7 @@ import rww.ldp.auth.{WACAuthZ, WebIDVerifier}
 import java.net.URL
 
 
-class ReadWriteWebApp(base: URL, path: Path)(implicit val ops: RDFOps[Plantain],
+class ReadWriteWebApp(base: URL, path: Path, rww: RWWeb[Plantain])(implicit val ops: RDFOps[Plantain],
             sparqlOps: SparqlOps[Plantain],
             graphIterateeSelector: IterateeSelector[Plantain#Graph],
             sparqlIterateeSelector: IterateeSelector[Plantain#Query],
@@ -45,20 +45,6 @@ class ReadWriteWebApp(base: URL, path: Path)(implicit val ops: RDFOps[Plantain],
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain](base)(ops,sparqlOps,graphIterateeSelector,
     sparqlIterateeSelector,sparqlUpdateSelector,ec)
-  val baseUri = ops.URI(base.toString)
-
-  val rww: RWWeb[Plantain] = {
-    val w = new RWWeb[Plantain](baseUri)(ops,Timeout(30,TimeUnit.SECONDS))
-    val rootActor = if (plantain.rwwSubdomainsEnabled)
-      Props(new PlantainLDPCSubdomainActor(w.baseUri, path))
-    else Props(new PlantainLDPCActor(w.baseUri, path))
-    //, path,Some(Props(new PlantainWebProxy(base,Plantain.readerSelector))))
-    val localActor = w.system.actorOf(rootActor,"rootContainer")
-    w.setLDPSActor(localActor)
-    val webActor = w.system.actorOf(Props(new LDPWebActor[Plantain](baseUri,wsClient)),"webActor")
-    w.setWebActor(webActor)
-    w
-  }
 
   lazy val rwwActor =  new ResourceMgr[Plantain](base,rww, new WebIDAuthN(new WebIDVerifier(rww)),
     new WACAuthZ[Plantain](new WebResource[Plantain](rww))(ops))
@@ -67,4 +53,4 @@ class ReadWriteWebApp(base: URL, path: Path)(implicit val ops: RDFOps[Plantain],
 
 import plantain._
 
-object ReadWriteWebApp extends ReadWriteWebApp(plantain.rwwRoot, plantain.rootContainerPath)
+object ReadWriteWebApp extends ReadWriteWebApp(plantain.rwwRoot, plantain.rootContainerPath,rww)

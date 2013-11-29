@@ -1,4 +1,4 @@
-@(createSubdomainForm: Form[controllers.Application.CreateUserSpaceForm])
+@(createSubdomainForm: Form[controllers.CreateUserSpaceForm])
 @import helper.twitterBootstrap._
 
     @title = {
@@ -14,7 +14,7 @@
     @globalErrors(createSubdomainForm)
 
     <p>
-    @helper.form(action = routes.Application.createUserSpace) {
+    @helper.form(action = routes.Subdomains.createUserSpace) {
 
         @helper.inputText(
             createSubdomainForm("subdomain"),
@@ -24,19 +24,17 @@
         )
 
         @helper.inputText(
-            createSubdomainForm("certificate"),
-            '_showErrors -> true,
-            '_showConstraints -> false,
-            '_label -> "Certificate"
-        )
-
-        @helper.inputText(
             createSubdomainForm("email"),
             '_showErrors -> true,
             '_showConstraints -> false,
             '_label -> "Email"
         )
-
+        <div class="clearfix" id="keygen">
+            <label for="keygenerator">Key Strength</label>
+            <div class="input">
+                <keygen id="keygenerator" keytype="rsa" name="spkac" challenge="@ClientCertificateApp.challenge"/>
+            </div>
+        </div>
         <button type="submit" name="action" value="edit">Create</button>
     }
     </p>

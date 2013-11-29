@@ -7,7 +7,6 @@ var RDF = $rdf.Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#');
 // Get base graph and uri.
 var baseUri = $rdf.baseUri;
 var baseGraph = $rdf.graphsCache[baseUri];
-console.log("baseGraphString: " + baseGraph.toNT())
 
 
 
@@ -19,13 +18,27 @@ function getSubjectsOfType(g,subjectType) {
     return _.map(triples,function(triple) { return triple['subject']; })
 }
 
+function getFoafPrimaryTopic(g) {
+    return g.any($rdf.sym(baseUri),FOAF('primaryTopic'),undefined)
+}
+
+function getPersonToDisplay(g) {
+    var foafPrimaryTopic = getFoafPrimaryTopic(g)
+    if ( foafPrimaryTopic ) {
+        return foafPrimaryTopic;
+    } else {
+        var personUris = getSubjectsOfType(baseGraph,FOAF("Person"));
+        if ( personUris.length === 0 ) {
+            throw "No person to display in this card: " + baseUri;
+        } else {
+            return personUris[0];
+        }
+    }
+}
 
 
-var personUris = getSubjectsOfType(baseGraph,FOAF("Person"));
-console.log("Persons found = " + personUris);
 
-var personToDisplay = personUris[0]['value'];
-console.log("Persons to display:" + personUris);
+var personToDisplay = getPersonToDisplay(baseGraph).value;
 console.log("Person to display:" + personToDisplay);
 
 
@@ -37,7 +50,6 @@ $.get(socialBookTemplateURI, function(socialBookTemplate) {
 
 
 loadScript("/assets/apps/people/social_book.js",function() {
-    //loadUser('http://bblfish.net/people/henry/card#me');
     loadUser(personToDisplay);
 });
 

@@ -1,13 +1,17 @@
 package controllers
 
-import akka.actor.ActorSystem
+import _root_.play.api.Logger
+import _root_.play.api.Play
+import akka.actor.{Props, ActorSystem}
 import concurrent.ExecutionContext
 import rww.play.rdf.IterateeSelector
-import rww.ldp.{WSClient, WebClient}
+import rww.ldp._
 import org.w3.banana._
 import scala.Some
 import java.io.File
 import java.nio.file.Path
+import akka.util.Timeout
+import java.util.concurrent.TimeUnit
 
 //import rww.play.{IterateeLDCache, LinkedDataCache}
 //import rww.play.auth.WebAccessControl
@@ -144,6 +148,21 @@ object plantain extends Setup {
   implicit val sparqlSelector:  IterateeSelector[Plantain#Query] =  PlantainSparqlQueryIteratee.sparqlSelector
   implicit val sparqlupdateSelector:  IterateeSelector[Plantain#UpdateQuery] =  PlantainSparqlUpdateIteratee.sparqlSelector
   implicit val webClient: WebClient[Plantain] = new WSClient(Plantain.readerSelector,Plantain.turtleWriter)
+
+  val rww: RWWeb[Plantain] = {
+    val w = new RWWeb[Plantain](ops.URI(rwwRoot.toString))(ops,Timeout(30,TimeUnit.SECONDS))
+    val rootActor = if (plantain.rwwSubdomainsEnabled)
+      Props(new PlantainLDPCSubdomainActor(w.baseUri, rootContainerPath))
+    else Props(new PlantainLDPCActor(w.baseUri, rootContainerPath))
+    //, path,Some(Props(new PlantainWebProxy(base,Plantain.readerSelector))))
+    val localActor = w.system.actorOf(rootActor,"rootContainer")
+    w.setLDPSActor(localActor)
+    val baseUri = ops.URI(rwwRoot.toString)
+
+    val webActor = w.system.actorOf(Props(new LDPWebActor[Plantain](baseUri,webClient)),"webActor")
+    w.setWebActor(webActor)
+    w
+  }
 
 
 }
