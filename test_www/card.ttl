@@ -12,8 +12,6 @@
 @prefix pingback: <http://purl.org/net/pingback/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
-<card>
-    a foaf:PersonalProfileDocument .
 
 <http://axel.deri.ie/~axepol/foaf.rdf#me>
     a :Person ;
@@ -23,14 +21,14 @@
     a :Person ;
     :name "Christoph  Görn" .
 
-<http://bblfish.net/people/henry/card>
+<card>
     iana:alternate <http://bblfish.net/people/henry/card.n3>, <http://bblfish.net/people/henry/card.rdf> ;
     a :PersonalProfileDocument ;
-    :maker <http://bblfish.net/people/henry/card#me> ;
-    :primaryTopic <http://bblfish.net/people/henry/card#me> ;
+    :maker <card#me> ;
+    :primaryTopic <card#me> ;
     :title "Henry Story's FOAF file" .
 
-<http://bblfish.net/people/henry/card#me>
+<card#me>
     pingback:to <https://my-profile.eu/pingback.php> ;
     a :Person ;
     contact:home [
