@@ -39,8 +39,8 @@ var FOAF = $rdf.Namespace("http://xmlns.com/foaf/0.1/"),
 	};
 
 
-$rdf.Fetcher.crossSiteProxyTemplate = "http://data.fm/proxy?uri={uri}";
-//$rdf.Fetcher.crossSiteProxyTemplate = "http://localhost:9000/srv/cors?url={uri}";
+//$rdf.Fetcher.crossSiteProxyTemplate = "http://data.fm/proxy?uri={uri}";
+$rdf.Fetcher.crossSiteProxyTemplate = "http://localhost:9000/srv/cors?url={uri}";
 
 
 

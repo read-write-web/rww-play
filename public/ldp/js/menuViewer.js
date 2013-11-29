@@ -13,7 +13,8 @@ $.get(templateURI, function(data) {
 	var template = _.template(data, tab);
 
 	// Append in the DOM.
-	$('.cloudactions').append(template);
+	$('#viewerContent').append(template);
+
 
 	// Get the config file : viewer.ttl
 	var viewerUri = window.location.origin + '/assets/ldp/viewer.ttl';
