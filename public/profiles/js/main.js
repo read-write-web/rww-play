@@ -1,6 +1,9 @@
 function main () {
 	Backbone.Linked.bootstrap(
 		function() {
+			var events = {};
+			_.extend(events,  Backbone.Linked.Events);
+
 			// Load necessary scripts.
 			loadScript("/assets/profiles/js/backbone/views/personView.js", null);
 			loadScript("/assets/profiles/js/backbone/views/ownerView.js", null);
@@ -52,7 +55,7 @@ function main () {
 						$('#container').append(personView.$el);
 						contact.fetch({
 							success: function() {
-								contact.trigger('change');
+								contact.trigger('change', contact);
 							}
 						});
 					});
