@@ -7,6 +7,26 @@
 
 @main(title) {
 
+    <script style="javascript">
+    function redirectToSubdomain() {
+        setTimeout(function(){
+            var subdomain = $("#subdomain" ).val();
+            var subdomainURL = "https://"+subdomain+".localhost:8443/";
+            $('#subdomainURL')
+            $("#dialog").dialog({
+                close: function(event, ui) { window.location.href = subdomainURL; }
+            });
+        },1500);
+    }
+    </script>
+
+
+    <div id="dialog" style="display:none;">
+        <p>
+            Your subdomain has been created. Close this window to visit your subdomain:
+            <span id="subdomainURL"></span>
+        </p>
+    </div>
 
     <br>
     <p>Create a WebId and a subdomain:</p>
@@ -32,10 +52,10 @@
         <div class="clearfix" id="keygen">
             <label for="keygenerator">Key Strength</label>
             <div class="input">
-                <keygen id="keygenerator" keytype="rsa" name="spkac" challenge="@ClientCertificateApp.challenge"/>
+                <keygen  id="keygenerator" keytype="rsa" name="spkac" challenge="@ClientCertificateApp.challenge"/>
             </div>
         </div>
-        <button type="submit" name="action" value="edit">Create</button>
+        <button type="submit" name="action" value="edit" onclick="this.form.submit(); redirectToSubdomain();">Create</button>
     }
     </p>
 
