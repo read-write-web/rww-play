@@ -18,6 +18,14 @@ import play.api.Logger
 import java.security.PublicKey
 import play.api.libs.iteratee.Enumerator
 import play.Play
+import scala.Some
+import play.api.mvc.SimpleResult
+import play.api.mvc.ResponseHeader
+import controllers.CreateUserSpaceForm
+import scala.Some
+import play.api.mvc.SimpleResult
+import play.api.mvc.ResponseHeader
+import controllers.CreateUserSpaceForm
 
 
 case class CreateUserSpaceForm(subdomain: String, key: PublicKey, email: String)
@@ -36,6 +44,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, rww: RWWeb[Rdf])
   val cert = CertPrefix[Rdf]
   val foaf = FOAFPrefix[Rdf]
   val wac = WebACLPrefix[Rdf]
+  val calendar = "calendar"
 
 
 
@@ -50,26 +59,41 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, rww: RWWeb[Rdf])
   private
   def cardGraph(key: RSAPublicKey, email: String): Rdf#Graph = {
     val certNode = bnode()
-    Graph(
-      Triple(URI(""), rdf.typ, foaf.PersonalProfileDocument),
-      Triple(URI(""), foaf.primaryTopic, URI("#i")),
-      Triple(URI("#i"), cert.key, certNode),
-      Triple(certNode, cert.exponent, TypedLiteral(key.getPublicExponent.toString(10), xsd.integer)),
-      Triple(certNode, cert.modulus, TypedLiteral(key.getModulus.toString(16), xsd.hexBinary)),
-      Triple(URI("#i"),foaf.mbox,URI("mailto:"+email))
-    )
+    import diesel._
+    val pg: PointedGraph[Rdf] = (
+      URI("") -- rdf.typ ->- foaf.PersonalProfileDocument
+        -- foaf.primaryTopic ->- (
+        URI("#i") -- cert.key ->- (
+          bnode() -- cert.exponent ->- TypedLiteral(key.getPublicExponent.toString(10), xsd.integer)
+            -- cert.modulus ->- TypedLiteral(key.getModulus.toString(16), xsd.hexBinary)
+          )
+          -- foaf.mbox ->- URI("mailto:" + email)
+        )
+      )
+    import syntax.GraphSyntax._
+
+    val ldcal = bnode("#ld-cal")
+    def webapp(name: String): Rdf#URI = URI("http://ns.rww.io/wapp#"+name)
+
+    pg.graph.union(Graph(
+      Triple(ldcal,webapp("description"),TypedLiteral("Simple Linked Data calendar with agenda.")),
+      Triple(ldcal,webapp("endpoint"),URI(calendar)),
+      Triple(ldcal,webapp("name"),TypedLiteral("LD-Cal")),
+      Triple(ldcal,webapp("serviceId"),URI("https://ld-cal.rww.io")),
+      Triple(ldcal,rdf.typ,webapp("App"))
+    ))
   }
 
   private def domainAcl(domain: String): Rdf#Graph = {
-    val acl = BNode()
-    val regex = BNode()
-    Graph(
-      Triple(acl, wac.accessToClass, regex),
-      Triple(regex, wac.regex, TypedLiteral(domain + ".*")),
-      Triple(acl, wac.mode, wac.Read),
-      Triple(acl, wac.mode, wac.Write),
-      Triple(acl, wac.agent, URI("card#i"))
-    )
+    import diesel._
+    val pg: PointedGraph[Rdf] = ( bnode() -- wac.accessToClass ->- (
+        bnode() -- wac.regex ->- TypedLiteral(domain + ".*"))
+       -- wac.mode ->- wac.Read
+       -- wac.mode ->- wac.Write
+       -- wac.agent ->- URI("card#i")
+      )
+
+    pg.graph
   }
 
 
@@ -121,10 +145,9 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, rww: RWWeb[Rdf])
       for {
         subdomain <- createContainer(subDomainContainerUri, Some(subdomain), container)
         subDomainMeta <- getMeta(subdomain)
-        card  <- createLDPR(subdomain, Some("card"), cardGraph(rsaKey,email))
         _     <- updateLDPR(subDomainMeta.acl.get,add=domainAcl(subdomain.toString).toIterable)
-        cardMeta <- getMeta(card)
-        _     <- updateLDPR(cardMeta.acl.get,add=Graph(Triple(URI(""),wac.include,URI(".acl"))).toIterable)
+        card  <- createAndSetAcl(subdomain, "card", cardGraph(rsaKey,email))
+        calendar <- createAndSetAcl(subdomain,calendar,Graph(Triple(URI(""),rdf.typ, URI("http://ont.stample.co/2013/display#EventsDocument"))))
       } yield {
         val webid=card.fragment("i")
         val certreq = CertReq(name+"@"+subdomain.underlying.getHost,List(webid.underlying.toURL),rsaKey, validFrom,validTo)
@@ -146,6 +169,15 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, rww: RWWeb[Rdf])
     //    _ <- updateLDPR(meta.acl.get, add = aclg.toIterable)
 
 
+  }
+
+  def createAndSetAcl(container: Rdf#URI, slug: String, graph: Rdf#Graph) = {
+    import syntax.GraphSyntax._
+    for {
+      ldpr <- createLDPR(container, Some(slug), graph)
+      meta <- getMeta(ldpr)
+      _ <- updateLDPR(meta.acl.get,add=Graph(Triple(URI(""),wac.include,URI(".acl"))).toIterable)
+    } yield ldpr
   }
 
 }
