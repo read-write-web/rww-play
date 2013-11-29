@@ -308,7 +308,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
     }
     Files.createFile(path.resolve(ext))
     Files.createFile(path.resolve(acl+ext))
-    val uri = uriW[Plantain](ldpcUri) / path.getFileName.toString
+    val uri = absoluteUri(path.getFileName.toString+"/")
     (uri, path)
 
   }

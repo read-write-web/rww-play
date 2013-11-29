@@ -11,8 +11,8 @@
 #GET     /test/webid/:rg             controllers.BasicApp.webId(rg)
 
 #Home page with doc
-GET           /                      controllers.Application.index
-POST           /createUserSpace      controllers.Application.createUserSpace
+GET           /                      controllers.Subdomains.index
+POST          /createUserSpace       controllers.Subdomains.createUserSpace
 
 # Map static resources from the /public folder to the /assets URL path
 GET           /assets/*file          controllers.Assets.at(path="/public", file)
