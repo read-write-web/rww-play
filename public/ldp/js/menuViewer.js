@@ -28,8 +28,11 @@ $.get(templateURI, function(data) {
 			if (vjs) viewerJsUri = vjs.uri
 		});
 
-		// Load related viewer.
-		loadScript(viewerJsUri, null);
+        if ( viewerJsUri != undefined ) {
+            loadScript(viewerJsUri, null);
+        } else {
+            throw 'no viewer can render any of the RDF document types: ' + $rdf.types
+        }
 	});
 
 	// Bind events to Menu Dom elements.
