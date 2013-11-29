@@ -50,7 +50,9 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, rww: RWWeb[Rdf])
   private
   def cardGraph(key: RSAPublicKey, email: String): Rdf#Graph = {
     val certNode = bnode()
-    Graph(Triple(URI(""), foaf.primaryTopic, URI("#i")),
+    Graph(
+      Triple(URI(""), rdf.typ, foaf.PersonalProfileDocument),
+      Triple(URI(""), foaf.primaryTopic, URI("#i")),
       Triple(URI("#i"), cert.key, certNode),
       Triple(certNode, cert.exponent, TypedLiteral(key.getPublicExponent.toString(10), xsd.integer)),
       Triple(certNode, cert.modulus, TypedLiteral(key.getModulus.toString(16), xsd.hexBinary)),
