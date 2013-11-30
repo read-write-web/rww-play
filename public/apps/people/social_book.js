@@ -40,7 +40,7 @@ var FOAF = $rdf.Namespace("http://xmlns.com/foaf/0.1/"),
 
 
 //$rdf.Fetcher.crossSiteProxyTemplate = "http://data.fm/proxy?uri={uri}";
-$rdf.Fetcher.crossSiteProxyTemplate = "http://localhost:9000/srv/cors?url={uri}";
+$rdf.Fetcher.crossSiteProxyTemplate = window.location.origin+"/srv/cors?url={uri}";
 
 
 
@@ -77,7 +77,7 @@ function renderFetchedUserCard(fetchedUserUrl, fetchedUserGraph) {
 			"  OPTIONAL { ?addr contact:country ?country . } \n" +
 			"  OPTIONAL { ?addr contact:postalCode ?postcode . } \n" +
 			"  OPTIONAL { ?addr contact:street ?street . } \n" +
-			"}",
+			"}";
 
 	// Build the address query JS object
 	addressQuery = $rdf.SPARQLToQuery(sparqlQuery, false, fetchedUserGraph);
@@ -325,7 +325,7 @@ function loadUser(webId, col, depth) {
 		docURI = webId.slice(0, indexOf);
 	else  docURI = webId;
 
-	// If the knowledge base was not initialised fetch info from the web (if need CORS go through CORS proxy)
+    // If the knowledge base was not initialised fetch info from the web (if need CORS go through CORS proxy)
 	var graph = graphsCache[docURI];
 	if (!graph) {
 		graph = graphsCache[docURI] = new $rdf.IndexedFormula();

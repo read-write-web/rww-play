@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit
 
 //import rww.play.{IterateeLDCache, LinkedDataCache}
 //import rww.play.auth.WebAccessControl
-import play.api.{Play, Logger}
 import java.net.URL
 import org.w3.banana.plantain.Plantain
 import rww.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
