@@ -1,7 +1,0 @@
-@prefix acl: <http://www.w3.org/ns/auth/acl#> . 
-@prefix foaf: <http://xmlns.com/foaf/0.1/> . 
-
-[] acl:accessToClass [ acl:regex "https://test.localhost:8443/.*" ];  
-   acl:mode acl:Read, acl:Write; 
-   acl:agent <https://localhost:8443/2013/card#me> .  
-
