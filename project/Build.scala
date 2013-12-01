@@ -1,3 +1,4 @@
+import java.util.regex.Pattern
 import sbt._
 import sbt.Keys._
 import play.Project._
@@ -48,6 +49,11 @@ object ApplicationBuild extends Build {
     finally you may need to rebuild your IDE files ( clearing the previous ones perhaps )
     */
     ideaExcludeFolders := Seq(".idea",".idea_modules","Play20","play-2.2-TLS.*" ),
+//    excludeFilter in (Compile, unmanagedSources) ~= { _ || new FileFilter {
+//      def accept(f: File) = f.getPath.containsSlice("rww/rdf/jena/")
+//      }
+//    },
+//    unmanagedSources in Compile <<= unmanagedSources in Compile map {files => files.foreach(f=>print("~~"+f));files},
     resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
     scalaVersion := "2.10.2",
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
