@@ -9,22 +9,30 @@
 
     <script style="javascript">
     function redirectToSubdomain() {
-        setTimeout(function(){
-            var subdomain = $("#subdomain" ).val();
-            var subdomainURL = "https://"+subdomain+".localhost:8443/";
-            $('#subdomainURL')
-            $("#dialog").dialog({
-                close: function(event, ui) { window.location.href = subdomainURL; }
-            });
-        },1500);
+        setTimeout(showSubdomainDialog,0);
+    }
+
+    function showSubdomainDialog() {
+        var subdomain = $("#subdomain" ).val();
+        var subdomainURL = "https://"+subdomain+".localhost:8443/";
+        var subdomainLink = "<a href=\""+subdomainURL+"\">"+subdomainURL+"</a\\>";
+        $('#dialogSubdomainLink').html(subdomainLink);
+        $("#dialog").dialog({
+            buttons : {
+                "Visit" :
+                    function() {
+                        window.location.href = window.location.href = subdomainURL;
+                    }
+            }
+        });
     }
     </script>
 
 
     <div id="dialog" style="display:none;">
         <p>
-            Your subdomain has been created. Close this window to visit your subdomain:
-            <span id="subdomainURL"></span>
+            Your subdomain has been created.<br/>
+            <span id="dialogSubdomainLink"></span>
         </p>
     </div>
 
