@@ -53,7 +53,7 @@ object ApplicationBuild extends Build {
 //      def accept(f: File) = f.getPath.containsSlice("rww/rdf/jena/")
 //      }
 //    },
-//    unmanagedSources in Compile <<= unmanagedSources in Compile map {files => files.foreach(f=>print("~~"+f));files},
+    unmanagedSources in Compile <<= unmanagedSources in Compile map {files => files.foreach(f=>print("~~"+f));files},
     resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
     scalaVersion := "2.10.2",
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
