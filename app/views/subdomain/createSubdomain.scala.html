@@ -1,0 +1,38 @@
+@(createUserSpaceRequestForm: Form[controllers.CreateUserSpaceRequest])
+@import helper.twitterBootstrap._
+
+    @title = {
+        Create your Stample.IO subdomain
+    }
+
+@main(title,NavigationBar.CreateSubdomain) {
+
+
+    <p>
+        Create your user space. This will create both a WebId and a subdomain.
+    </p>
+
+    @globalErrors(createUserSpaceRequestForm)
+
+    <p>
+    @helper.form(action = routes.Subdomains.createUserSpaceRequest) {
+
+        @helper.inputText(
+            createUserSpaceRequestForm("subdomain"),
+            '_showErrors -> true,
+            '_showConstraints -> false,
+            '_label -> "Subdomain"
+        )
+
+        @helper.inputText(
+            createUserSpaceRequestForm("email"),
+            '_showErrors -> true,
+            '_showConstraints -> false,
+            '_label -> "Email"
+        )
+
+        <button type="submit">Create</button>
+    }
+    </p>
+
+}

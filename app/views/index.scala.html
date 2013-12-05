@@ -1,70 +1,13 @@
-@(createSubdomainForm: Form[controllers.CreateUserSpaceForm])
-@import helper.twitterBootstrap._
+@()
 
     @title = {
-        Welcome to Stample.io
+        Welcome to Stample.IO
     }
 
-@main(title) {
-
-    <script style="javascript">
-    function redirectToSubdomain() {
-        setTimeout(showSubdomainDialog,0);
-    }
-
-    function showSubdomainDialog() {
-        var subdomain = $("#subdomain" ).val();
-        var subdomainURL = "https://"+subdomain+".localhost:8443/";
-        var subdomainLink = "<a href=\""+subdomainURL+"\">"+subdomainURL+"</a\\>";
-        $('#dialogSubdomainLink').html(subdomainLink);
-        $("#dialog").dialog({
-            buttons : {
-                "Visit" :
-                    function() {
-                        window.location.href = window.location.href = subdomainURL;
-                    }
-            }
-        });
-    }
-    </script>
+@main(title,NavigationBar.Home) {
 
 
-    <div id="dialog" style="display:none;">
-        <p>
-            Your subdomain has been created.<br/>
-            <span id="dialogSubdomainLink"></span>
-        </p>
-    </div>
+    <p>Add welcome message</p>
 
-    <br>
-    <p>Create a WebId and a subdomain:</p>
-
-    @globalErrors(createSubdomainForm)
-
-    <p>
-    @helper.form(action = routes.Subdomains.createUserSpace) {
-
-        @helper.inputText(
-            createSubdomainForm("subdomain"),
-            '_showErrors -> true,
-            '_showConstraints -> false,
-            '_label -> "Subdomain"
-        )
-
-        @helper.inputText(
-            createSubdomainForm("email"),
-            '_showErrors -> true,
-            '_showConstraints -> false,
-            '_label -> "Email"
-        )
-        <div class="clearfix" id="keygen">
-            <label for="keygenerator">Key Strength</label>
-            <div class="input">
-                <keygen  id="keygenerator" keytype="rsa" name="spkac" challenge="@ClientCertificateApp.challenge"/>
-            </div>
-        </div>
-        <button type="submit" name="action" value="edit" onclick="this.form.submit(); redirectToSubdomain();">Create</button>
-    }
-    </p>
 
 }

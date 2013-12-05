@@ -22,6 +22,7 @@ import rww.ldp.WrongTypeException
 import net.sf.uadetector.UserAgentType
 import rww.play.auth.AuthenticationError
 import controllers.routes
+import com.google.common.base.Throwables
 
 object Method extends Enumeration {
   val read = Value
@@ -51,11 +52,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
     Ok(views.html.rww.ldp())
   }
 
-  def stackTrace(e: Throwable) = {
-    val sw = new StringWriter(1024)
-    e.printStackTrace(new PrintWriter(sw))
-    sw.getBuffer.toString
-  }
+  def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
 
   //    JenaRDFBlockingWriter.WriterSelector()
   //    req.accept.collectFirst {

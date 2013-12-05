@@ -32,7 +32,8 @@ object ApplicationBuild extends Build {
     "org.scalatest" %% "scalatest" % "2.0.RC1-SNAP4",
     "org.scala-lang" % "scala-actors" % "2.10.2",
     "com.google.guava" % "guava" % "15.0",
-    "com.google.code.findbugs" % "jsr305" % "2.0.2"
+    "com.google.code.findbugs" % "jsr305" % "2.0.2",
+    "com.typesafe" %% "play-plugins-mailer" % "2.2.0"
 
     //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
   )
