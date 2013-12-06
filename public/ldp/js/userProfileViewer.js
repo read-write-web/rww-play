@@ -13,7 +13,7 @@ var formTemplate =
 
 // Default attributes of the user.
 var tab = {
-	"name":"test",
+	"name":"This information does not exist !",
 	"imgUrl":"/assets/ldp/images/user_background.png",
 	"nickname":"-",
 	"email":"-",
@@ -262,35 +262,35 @@ function getUserAttributes(graph, uriSym, callback) {
 
 	// Add image if available
 	var img = findFirst(FOAF('img'), FOAF('depiction'));
-	tab.imgUrl=img.uri;
+	if (img && img.uri) tab.imgUrl=img.uri;
 
 	// Add name
 	var nam = findFirst(FOAF('name'));
-	tab.name=nam.value;
+	if (nam && nam.value) tab.name=nam.value;
 
 	// Add nickname
 	var nick = findFirst(FOAF('nick'));
-	tab.nickname=nick.value;
+	if (nick && nick.value) tab.nickname=nick.value;
 
 	// Add email if available
 	var email = graph.any(uriSym, FOAF('mbox'));
-	tab.email=email.value;
+	if (email && email.value) tab.email=email.value;
 
 	// Add phone if available
 	var phone = graph.any(uriSym, FOAF('phone'));
-	tab.phone=phone.value;
+	if (phone && phone.value) tab.phone=phone.value;
 
 	// Add website if available
 	var website = graph.any(uriSym, FOAF('homepage'));
-	tab.website=website.value;
+	if (website && website.value) tab.website=website.value;
 
 	// Add bday if available
 	var gender = graph.any(uriSym, FOAF('gender'));
-	tab.gender=gender.value;
+	if (gender && gender) tab.gender=gender.value;
 
 	// Add bday if available
 	var bday = graph.any(uriSym, FOAF('birthday'));
-	tab.birthday=bday.value;
+	if(bday && bday.value) tab.birthday=bday.value;
 
 	/*
 	* Get Contact.
