@@ -8,23 +8,25 @@
 @main(title,NavigationBar.CreateSubdomain) {
 
     <script>
+    // TODO perhaps not the best way to import an url to the javascript?
+    var subdomainURL = '@subdomainAddress'
+
     // it seems it doesn't work well with non async on this special kind of form
     // feel free to change this if you know a better solution
     function showSubdomainDialogAsync() {
-    setTimeout(showSubdomainDialog,0);
+    setTimeout(showSubdomainDialog,500);
     }
 
     function showSubdomainDialog() {
     var subdomain = $("#subdomain" ).val();
-    var subdomainURL = '@subdomainAddress'
     console.debug("Subdomain url is " + subdomainURL)
     var subdomainLink = "<a href=\""+subdomainURL+"\">"+subdomainURL+"</a\\>";
     $('#dialogSubdomainLink').html(subdomainLink);
     $("#dialog").dialog({
     width: 600,
-    height: 300,
+    height: 200,
     buttons : {
-    "Go to your subdomain" :
+    "Visit your subdomain" :
     function() {
     window.location.href = window.location.href = subdomainURL;
     }
@@ -57,9 +59,12 @@
             <label for="keygenerator">Key Strength</label>
             <div class="input">
                 <keygen  id="keygenerator" keytype="rsa" name="spkac" challenge="@ClientCertificateApp.challenge"/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;
+                <button type="submit" onclick="this.form.submit(); showSubdomainDialogAsync();">Create your certificate</button>
             </div>
+
         </div>
-        <button type="submit" onclick="this.form.submit(); showSubdomainDialogAsync();">Create</button>
+
     }
     </p>
 

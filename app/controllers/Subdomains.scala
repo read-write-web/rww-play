@@ -17,10 +17,12 @@ import play.api.libs.iteratee.Enumerator
 import play.api.mvc.SimpleResult
 import play.api.mvc.ResponseHeader
 import scala.Some
-import utils.SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
+import utils.subdomain.{SubdomainConfirmationMailUtils, SubdomainGraphUtils}
+import SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
 import java.nio.file.Path
 import play.api.templates.{Html, Txt}
-import utils.SubdomainGraphUtils
+import utils.subdomain.SubdomainGraphUtils
+import utils.ActionUtils.SignedQueryStringAction
 
 case class CreateUserSpaceForm(subdomain: String, key: PublicKey, email: String)
 
@@ -124,7 +126,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
   }
 
   def sendSubdomainConfirmationEmail(subdomain: String, email: String,confirmationPassword: SubdominConfirmationPassword): Unit = {
-    import utils.SubdomainConfirmationMailUtils._
+    import SubdomainConfirmationMailUtils._
     import utils.Mailer._
     val linkData = SubdomainConfirmationLinkData(subdomain,email,confirmationPassword)
     val link = createSignedSubdomainConfirmationLink(routes.Subdomains.confirmSubdomain.url,linkData)
@@ -141,9 +143,8 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     )
   }
 
-  def confirmSubdomain() = Action.async { implicit request =>
-  // TODO add querystring signature verification
-    import utils.SubdomainConfirmationMailUtils._
+  def confirmSubdomain() = SignedQueryStringAction.async { implicit request =>
+    import SubdomainConfirmationMailUtils._
     getSubdomainConfirmationLinkData(request) map { linkData =>
       doConfirmSubdomain(linkData) map { subdomainCreated =>
         Logger.info(s"Subdomain has been created: $subdomainCreated")
