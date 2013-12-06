@@ -164,7 +164,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         //consuming ( such as serialising a graph )
         getResource(localName(uri)) match {
           case Success(res) => rwwRouterActor.tell(Scrpt(k(res)),context.sender)
-          case Failure(fail) =>  context.sender ! fail
+          case Failure(fail) =>  context.sender ! akka.actor.Status.Failure(fail)
         }
 
       }
@@ -194,7 +194,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
             rwwRouterActor.tell(Scrpt(a),context.sender)
           }
           case Success(_) => throw RequestNotAcceptable(s"$uri does not contain a GRAPH, cannot Update")
-          case Failure(fail) => context.sender ! fail
+          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
         }
       }
       case PatchLDPR(uri, update, bindings, k) => {
@@ -210,7 +210,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
             }
           }
           case Success(_) =>  context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - PATCH is not possible")
-          case Failure(fail) => context.sender ! fail
+          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
         }
       }
       case SelectLDPR(uri, query, bindings, k) => {
@@ -220,7 +220,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
             rwwRouterActor.tell(Scrpt(k(solutions)),context.sender)
           }
           case Success(_) => context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
-          case Failure(fail) => context.sender ! fail
+          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
         }
       }
       case ConstructLDPR(uri, query, bindings, k) => {
