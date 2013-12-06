@@ -15,10 +15,6 @@ $.get(templateURI, function(data) {
 	// Load utils js.
 	loadScript("/assets/ldp/js/utils.js", null);
 	loadScript("/assets/ldp/js/utils/appUtils.js", null);
-	loadScript("/assets/ldp/js/createContainerFromString.js", null);
-	loadScript("/assets/ldp/js/createFileFromString.js", null);
-	loadScript("/assets/ldp/js/deleteRessource.js", null);
-	loadScript("/assets/ldp/js/sparqlPatch.js", null);
 
     // Load Html template.
     var template = _.template(data, tab);
@@ -41,15 +37,18 @@ $.get(templateURI, function(data) {
 			if (vjs && cpt < 1) {viewerJsUri = vjs.uri; cpt++;}
 		});
 
-		if (viewerJsUri != undefined)
-			loadScript(viewerJsUri, null);
+		if (viewerJsUri != undefined) {
+			// Load the menu.
+			loadScript("/assets/ldp/js/menuViewer.js", function() {
+				loadScript(viewerJsUri, null);
+			});
+		}
 		else
 			throw new Error('no viewer can render any of the RDF document types: ' + $rdf.types);
 
 	});
 
 
-	// Load the menu.
-	loadScript("/assets/ldp/js/menuViewer.js", null);
+
 
 }, 'html');

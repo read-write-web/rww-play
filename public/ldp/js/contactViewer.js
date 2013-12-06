@@ -48,9 +48,6 @@ var ContactViewer = {
 
 	bindEventsToView: function() {
 		var self = this;
-
-		//
-		console.log($("#"+this.attr.id).find('.userContainer'));
 		$("#"+this.attr.id).find('.userContainer').on("click", function() {
 			console.log('Click : ' + self.attr.id);
 			console.log(self.uri);

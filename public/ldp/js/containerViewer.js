@@ -1,12 +1,8 @@
 var templateURI = "/assets/ldp/templates/containersTemplate.html";
 var template2URI = "/assets/ldp/templates/containerTemplate.html";
 $.get(templateURI, function (data) {
-
 	// Load Html.
 	var template = _.template(data, tab);
-
-	// Show menu.
-	$(".cloudactions").show();
 
 	// Append in the DOM.
 	$("#viewerContent").append(template);
