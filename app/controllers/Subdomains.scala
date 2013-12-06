@@ -2,138 +2,282 @@ package controllers
 
 import rww.ldp.RWWeb
 import org.w3.banana._
-import play.api.mvc.{ResponseHeader, SimpleResult, Action}
+import play.api.mvc.Action
 import play.api.mvc.Results._
 import java.security.cert.X509Certificate
-import java.net.{URI=>jURI,URL=>jURL}
+import java.net.{URL=>jURL}
 import rww.ldp.LDPCommand._
-import scala.concurrent.{ExecutionContext, Future}
-import java.security.interfaces.RSAPublicKey
+import scala.concurrent.Future
 import org.w3.banana.plantain.Plantain
-import java.util.Date
 import play.api.data.Form
 import play.api.data.Forms._
-import scala.Some
 import play.api.Logger
 import java.security.PublicKey
 import play.api.libs.iteratee.Enumerator
-import play.Play
-import scala.Some
 import play.api.mvc.SimpleResult
 import play.api.mvc.ResponseHeader
-import controllers.CreateUserSpaceForm
 import scala.Some
-import play.api.mvc.SimpleResult
-import play.api.mvc.ResponseHeader
-import controllers.CreateUserSpaceForm
-
+import utils.SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
+import java.nio.file.Path
+import play.api.templates.{Html, Txt}
+import utils.SubdomainGraphUtils
 
 case class CreateUserSpaceForm(subdomain: String, key: PublicKey, email: String)
+
+
+case class CreateCertificateRequest(key: PublicKey)
+
+case class CreateUserSpaceRequest(subdomain: String, email: String)
 
 /**
  *
  */
-class Subdomains[Rdf<:RDF](subdomainContainer: jURL, rww: RWWeb[Rdf])
-                         (implicit ops: RDFOps[Rdf]) {
+class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Path, rww: RWWeb[Rdf])
+                          (implicit ops: RDFOps[Rdf]) {
+
+  import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 
-  import ops._
-  import org.w3.banana.syntax.URISyntax._
+  val SessionGenerateCertificateForSubdomain = "generateCertificateForSubdomain"
 
-  val ldp = LDPPrefix[Rdf]
-  val cert = CertPrefix[Rdf]
-  val foaf = FOAFPrefix[Rdf]
-  val wac = WebACLPrefix[Rdf]
+
   val calendar = "calendar"
 
+  val subdomainGraphUtils = new SubdomainGraphUtils
 
 
+  // TODO try to avoid these global imports on controller which rather not manipulate any graph but delegate this to other classes like SubdomainGraphUtils
+  import ops._
+  import ops.Graph
+  val ldp = LDPPrefix[Rdf]
   val container = Graph(Triple(URI(""), rdf.typ, ldp.Container))
-
   val subDomainContainerUri = URI(subdomainContainer.toString)
 
-  def create() = Action{ request =>
-    Ok("something")
+
+
+
+
+  // TODO to move: not specially related to subdomains
+  def index = Action {
+    Ok(views.html.index())
   }
 
-  private
-  def cardGraph(key: RSAPublicKey, email: String): Rdf#Graph = {
-    val certNode = bnode()
-    import diesel._
-    val pg: PointedGraph[Rdf] = (
-      URI("") -- rdf.typ ->- foaf.PersonalProfileDocument
-        -- foaf.primaryTopic ->- (
-        URI("#i") -- cert.key ->- (
-          bnode() -- cert.exponent ->- TypedLiteral(key.getPublicExponent.toString(10), xsd.integer)
-            -- cert.modulus ->- TypedLiteral(key.getModulus.toString(16), xsd.hexBinary)
-          )
-          -- foaf.mbox ->- URI("mailto:" + email)
-        )
-      )
-    import syntax.GraphSyntax._
-
-    val ldcal = bnode("#ld-cal")
-    def webapp(name: String): Rdf#URI = URI("http://ns.rww.io/wapp#"+name)
-
-    pg.graph.union(Graph(
-      Triple(ldcal,webapp("description"),TypedLiteral("Simple Linked Data calendar with agenda.")),
-      Triple(ldcal,webapp("endpoint"),URI(calendar)),
-      Triple(ldcal,webapp("name"),TypedLiteral("LD-Cal")),
-      Triple(ldcal,webapp("serviceId"),URI("https://ld-cal.rww.io")),
-      Triple(ldcal,rdf.typ,webapp("App"))
-    ))
+  def createSubdomain = Action {
+    Ok(views.html.subdomain.createSubdomain(createUserSpaceRequestForm))
   }
 
-  private def domainAcl(domain: String): Rdf#Graph = {
-    import diesel._
-    val pg: PointedGraph[Rdf] = ( bnode() -- wac.accessToClass ->- (
-        bnode() -- wac.regex ->- TypedLiteral(domain + ".*"))
-       -- wac.mode ->- wac.Read
-       -- wac.mode ->- wac.Write
-       -- wac.agent ->- URI("card#i")
-      )
-
-    pg.graph
-  }
-
-
-
-  import ClientCertificateApp._
-  val createUserSpaceForm : Form[CreateUserSpaceForm] = Form(
+  val createUserSpaceRequestForm : Form[CreateUserSpaceRequest] = Form(
     mapping(
       "subdomain" -> nonEmptyText(minLength = 3),
-      "spkac" -> of(spkacFormatter),
       "email" -> email
-    )(CreateUserSpaceForm.apply)(CreateUserSpaceForm.unapply)
+    )(CreateUserSpaceRequest.apply)(CreateUserSpaceRequest.unapply)
   )
 
-  def index = Action {
-    Ok(views.html.index(createUserSpaceForm))
-  }
-
-
-  def createUserSpace = Action.async { implicit request =>
-    import ExecutionContext.Implicits.global  //todo import Play execution context
-    createUserSpaceForm.bindFromRequest.fold(
-      formWithErrors => Future.successful(BadRequest(views.html.index(formWithErrors))),
+  def createUserSpaceRequest = Action.async { implicit request =>
+    createUserSpaceRequestForm.bindFromRequest.fold(
+      formWithErrors => Future.successful(BadRequest(views.html.subdomain.createSubdomain(formWithErrors))),
       form => {
-        Logger.info("Will try to create new subdomain: " + form)
-        // TODO handle userspace creation
-//        val subdomainURL = plantain.hostRootSubdomain(form.subdomain)
-        val res = deploy(form.subdomain.toLowerCase,form.key.asInstanceOf[RSAPublicKey],form.email,tenMinutesAgo,yearsFromNow(2))
-        res.map { case (domain,cert) =>
-          SimpleResult(
-            //https://developer.mozilla.org/en-US/docs/NSS_Certificate_Download_Specification
-            header = ResponseHeader(200, Map("Content-Type" -> "application/x-x509-user-cert")),
-            body = Enumerator(cert.getEncoded)
+        Logger.info("Will handle new subdomain creation request: " + form)
+        val confirmationPassword = generateSubdomainConfirmationPassword
+        createSubdomainAdminResource(form.subdomain,form.email,confirmationPassword) map { adminResourceURI =>
+          sendSubdomainConfirmationEmail(form.subdomain,form.email,confirmationPassword)
+          Redirect(routes.Subdomains.subdomainWaitingConfirmation).flashing(
+            "subdomain" -> form.subdomain,
+            "email" -> form.email
           )
         }
       }
     )
   }
 
-  val mail = """([\w\.]*)@.*""".r
+  private
+  def createSubdomainAdminResourceName(subdomain: String): String = subdomain+"_admin"
 
+  type SubdominConfirmationPassword = String
+
+  private
+  def generateSubdomainConfirmationPassword: SubdominConfirmationPassword = java.util.UUID.randomUUID().toString.substring(0,8)
+
+  private
+  def createSubdomainAdminResource(subdomain: String, email: String, confirmationPassword: SubdominConfirmationPassword): Future[(Rdf#URI)] = {
+    val graph = subdomainGraphUtils.createSubdomainAdminGraph(subdomain,email): Rdf#Graph
+    // TODO how to check the admin resource does not already exist?
+    // TODO we don't want to "override" an existing subdomain neither create
+    // TODO Should we use a "script" do to that?
+    // TODO How to we know the URI of this resource ????
+    val slug = Some(createSubdomainAdminResourceName(subdomain)) // TODO this should perhaps not be a slug but we may need to force the name of this resource...
+    rww.execute {
+      for {
+        adminResource <- createLDPR(subDomainContainerUri,slug, graph)
+      } yield adminResource
+    }
+  }
+
+
+  def subdomainWaitingConfirmation() = Action { implicit request =>
+    (for {
+      subdomain <- request.flash.get("subdomain")
+      email <- request.flash.get("email")
+    } yield {
+      Ok( views.html.subdomain.subdomainWaitingConfirmation(subdomain,email) )
+    }).getOrElse(BadRequest("Bad request, maybe your subdomain has already been created and you will receive a confirmation link"))
+  }
+
+  def sendSubdomainConfirmationEmail(subdomain: String, email: String,confirmationPassword: SubdominConfirmationPassword): Unit = {
+    import utils.SubdomainConfirmationMailUtils._
+    import utils.Mailer._
+    val linkData = SubdomainConfirmationLinkData(subdomain,email,confirmationPassword)
+    val link = createSignedSubdomainConfirmationLink(routes.Subdomains.confirmSubdomain.url,linkData)
+    // TODO remove hardcoded domain
+    val temporaryHardcodedDomain = "https://localhost:8443"
+    val linkWithDomain = temporaryHardcodedDomain + link
+    // TODO email templating
+    val txt = Txt("Click here: " + linkWithDomain)
+    val html = Html("Click here: <a href=\"" + linkWithDomain + "\"> VALIDATE </a>")
+    sendEmail(
+      to = email,
+      subject = "Subdomain Confirmation email: "+subdomain,
+      body = (txt,html)
+    )
+  }
+
+  def confirmSubdomain() = Action.async { implicit request =>
+  // TODO add querystring signature verification
+    import utils.SubdomainConfirmationMailUtils._
+    getSubdomainConfirmationLinkData(request) map { linkData =>
+      doConfirmSubdomain(linkData) map { subdomainCreated =>
+        Logger.info(s"Subdomain has been created: $subdomainCreated")
+        val subdomainURL = "https://"+linkData.subdomain+".localhost:8443/" // TODO url of subdomain non hardcoded
+        // TODO maybe the session is not the best way to transmit the domain info to the next request???
+        Ok(views.html.subdomain.subdomainConfirmation(linkData.subdomain,subdomainURL))
+          .withSession(SessionGenerateCertificateForSubdomain -> linkData.subdomain)
+      }
+    } recover {
+      case e => {
+        Logger.error("Error during subdomain confirmation request",e)
+        // TODO add a more user friendly error
+        Future.successful(BadRequest("This confirmation link seems unusable. Maybe it has already been used"))
+      }
+    } get
+  }
+
+  case class SubdomainCreated(subdomain: Rdf#URI,card: Rdf#URI)
+
+  private
+  def doConfirmSubdomain(linkData: SubdomainConfirmationLinkData): Future[SubdomainCreated] = {
+    Logger.warn("TODO Confirming domain with data " + linkData)
+    // TODO check the one time password
+    // TODO check subdomain doesn't already exist
+    createSubdomain(linkData.subdomain,linkData.email)
+  }
+
+  private
+  def createSubdomain(subdomain: String, email: String): Future[SubdomainCreated] = {
+    import syntax.GraphSyntax._
+    // TODO this should not be a slug normally because it may create another domain if the asked domain is already taken or invalid domain name etc...
+    val subdomainSlug = Some(subdomain)
+    rww.execute {
+      for {
+        subdomain <- createContainer(subDomainContainerUri, subdomainSlug, container)
+        subdomainMeta <- getMeta(subdomain)
+        _ <- updateLDPR(subdomainMeta.acl.get, add = subdomainGraphUtils.domainAcl(subdomain.toString).toIterable )
+        card <- subdomainGraphUtils.createAndSetAcl(subdomain, "card", subdomainGraphUtils.createSubdomainWebIdCardGraph(email))
+        calendar <- subdomainGraphUtils.createAndSetAcl(subdomain,calendar, subdomainGraphUtils.calendarEventEmptyGraph)
+      } yield SubdomainCreated(subdomain,card)
+    }
+  }
+
+  val createCertificateRequestForm : Form[CreateCertificateRequest] = Form(
+    mapping(
+      "spkac" -> of(ClientCertificateApp.spkacFormatter)
+    )(CreateCertificateRequest.apply)(CreateCertificateRequest.unapply)
+  )
+
+  def createCertificate = Action.async { implicit request =>
+    import play.api.libs.concurrent.Execution.Implicits.defaultContext
+    createCertificateRequestForm.bindFromRequest.fold(
+      formWithErrors => Future.successful(BadRequest("No certificate found in this request")),
+      form => {
+        request.session.get(SessionGenerateCertificateForSubdomain) match {
+          case None => Future.successful(BadRequest("Can't find the subdomain for which you want to create a certificate")) // TODO redirect to appropriate page
+          case Some(subdomain) => {
+            appendCertificateToSubdomainOwnerCard(subdomain,form.key) map { certificate =>
+              SimpleResult(
+                //https://developer.mozilla.org/en-US/docs/NSS_Certificate_Download_Specification
+                header = ResponseHeader(200, Map("Content-Type" -> "application/x-x509-user-cert")),
+                body = Enumerator(certificate.getEncoded)
+              ).withSession(request.session - SessionGenerateCertificateForSubdomain)
+            }
+          }
+        }
+      }
+    )
+  }
+
+  def appendCertificateToSubdomainOwnerCard(subdomain: String, key: PublicKey): Future[X509Certificate] = {
+    // TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    Logger.info(s"Adding new certificate for owner of domain $subdomain")
+    val name = "todo"
+    val webIdUrl = "https://www.toto.webid"
+    val certReq = CertReq(name+"@"+subdomain,List(new jURL(webIdUrl)),key,ClientCertificateApp.tenMinutesAgo,ClientCertificateApp.yearsFromNow(2))
+    Future.successful(certReq.certificate)
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  //
+  //  def createUserSpace = Action.async { implicit request =>
+  //    import ExecutionContext.Implicits.global  //todo import Play execution context
+  //    import ExecutionContext.Implicits.global  //todo import Play execution context
+  //    createUserSpaceForm.bindFromRequest.fold(
+  //      formWithErrors => Future.successful(BadRequest(views.html.createSubdomain(formWithErrors))),
+  //      form => {
+  //        Logger.info("Will try to create new subdomain: " + form)
+  //        // TODO handle userspace creation
+  ////        val subdomainURL = plantain.hostRootSubdomain(form.subdomain)
+  //        val res = deploy(form.subdomain.toLowerCase,form.key.asInstanceOf[RSAPublicKey],form.email,tenMinutesAgo,yearsFromNow(2))
+  //        res.map { case (domain,cert) =>
+  //          SimpleResult(
+  //            //https://developer.mozilla.org/en-US/docs/NSS_Certificate_Download_Specification
+  //            header = ResponseHeader(200, Map("Content-Type" -> "application/x-x509-user-cert")),
+  //            body = Enumerator(cert.getEncoded)
+  //          )
+  //        }
+  //      }
+  //    )
+  //  }
+
+
+
+
+
+
+
+
+
+  /*
   private
   def deploy(subdomain: String, rsaKey: RSAPublicKey, email: String,
              validFrom: Date, validTo: Date): Future[(Rdf#URI,X509Certificate)] = {
@@ -145,9 +289,9 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, rww: RWWeb[Rdf])
       for {
         subdomain <- createContainer(subDomainContainerUri, Some(subdomain), container)
         subDomainMeta <- getMeta(subdomain)
-        _     <- updateLDPR(subDomainMeta.acl.get,add=domainAcl(subdomain.toString).toIterable)
-        card  <- createAndSetAcl(subdomain, "card", cardGraph(rsaKey,email))
-        calendar <- createAndSetAcl(subdomain,calendar,Graph(Triple(URI(""),rdf.typ, URI("http://ont.stample.co/2013/display#EventsDocument"))))
+        _     <- updateLDPR(subDomainMeta.acl.get,add=subdomainGraphUtils.domainAcl(subdomain.toString).toIterable)
+        card  <- createAndSetAcl(subdomain, "card", subdomainGraphUtils.createSubdomainWebIdCardGraph(rsaKey,email))
+        calendar <- createAndSetAcl(subdomain,calendar,Graph(Triple(URI(""),rdf.typ, stampleDisplay.EventsDocument)))
       } yield {
         val webid=card.fragment("i")
         val certreq = CertReq(name+"@"+subdomain.underlying.getHost,List(webid.underlying.toURL),rsaKey, validFrom,validTo)
@@ -170,18 +314,11 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, rww: RWWeb[Rdf])
 
 
   }
+  */
 
-  def createAndSetAcl(container: Rdf#URI, slug: String, graph: Rdf#Graph) = {
-    import syntax.GraphSyntax._
-    for {
-      ldpr <- createLDPR(container, Some(slug), graph)
-      meta <- getMeta(ldpr)
-      _ <- updateLDPR(meta.acl.get,add=Graph(Triple(URI(""),wac.include,URI(".acl"))).toIterable)
-    } yield ldpr
-  }
 
 }
 
-object Subdomains extends Subdomains[Plantain](plantain.rwwRoot,plantain.rww) {
+object Subdomains extends Subdomains[Plantain](plantain.rwwRoot,plantain.rootContainerPath,plantain.rww) {
 
 }

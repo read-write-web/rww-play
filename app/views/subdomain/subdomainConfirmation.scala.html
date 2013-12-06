@@ -1,0 +1,66 @@
+@(subdomain: String,subdomainAddress: String)
+@import helper.twitterBootstrap._
+
+    @title = {
+        Welcome to Stample.io
+    }
+
+@main(title,NavigationBar.CreateSubdomain) {
+
+    <script>
+    // it seems it doesn't work well with non async on this special kind of form
+    // feel free to change this if you know a better solution
+    function showSubdomainDialogAsync() {
+    setTimeout(showSubdomainDialog,0);
+    }
+
+    function showSubdomainDialog() {
+    var subdomain = $("#subdomain" ).val();
+    var subdomainURL = '@subdomainAddress'
+    console.debug("Subdomain url is " + subdomainURL)
+    var subdomainLink = "<a href=\""+subdomainURL+"\">"+subdomainURL+"</a\\>";
+    $('#dialogSubdomainLink').html(subdomainLink);
+    $("#dialog").dialog({
+    width: 600,
+    height: 300,
+    buttons : {
+    "Go to your subdomain" :
+    function() {
+    window.location.href = window.location.href = subdomainURL;
+    }
+    }
+    });
+    }
+    </script>
+
+    <div id="dialog" style="display:none;">
+        <p>
+            You have created a certificate for your subdomain <b>@subdomain</b>.<br/>
+            Your browser normally tells you that the certificate has been successfully stored.<br/>
+            <br/>
+            Your domain is accessible at <b><span id="dialogSubdomainLink"/></b><br/>
+        </p>
+    </div>
+
+    <p>
+        Your subdomain <b>@subdomain</b> has been created.
+    </p>
+
+    <p>
+        Before visiting your subdomain, you need to create a certificate that will be installed in your browser.
+        This will permit you to log in your subdomain.
+    </p>
+
+    <p>
+    @helper.form(action = routes.Subdomains.createCertificate) {
+        <div class="clearfix" id="keygen">
+            <label for="keygenerator">Key Strength</label>
+            <div class="input">
+                <keygen  id="keygenerator" keytype="rsa" name="spkac" challenge="@ClientCertificateApp.challenge"/>
+            </div>
+        </div>
+        <button type="submit" onclick="this.form.submit(); showSubdomainDialogAsync();">Create</button>
+    }
+    </p>
+
+}

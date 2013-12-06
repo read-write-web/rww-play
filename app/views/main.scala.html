@@ -1,6 +1,7 @@
-@(title: Html, nav: String = "")(content: Html)
+@(title: Html, nav: NavigationBar.Value = NavigationBar.NoFocus)(content: Html)
 
 @import controllers._
+@import controllers.NavigationBar
 
 <!DOCTYPE html>
 
@@ -20,7 +21,13 @@
             <div class="fill">
                 <div class="container">
                     <ul class="nav">
-                        <li class="@("active".when(nav == "signup"))">
+                        <li class="@("active".when(nav == NavigationBar.Home))">
+                            <a href="@routes.Subdomains.index">Home</a>
+                        </li>
+                        <li class="@("active".when(nav == NavigationBar.CreateSubdomain))">
+                            <a href="@routes.Subdomains.createSubdomain">Create Subdomain</a>
+                        </li>
+                        <li class="@("active".when(nav == NavigationBar.CreateCertificate))">
                             <a href="@routes.ClientCertificateApp.get">Create Certificate</a>
                         </li>
                     </ul>
@@ -46,7 +53,7 @@
 
             <footer>
                 <p>
-                    <a href="http://www.playframework.org">www.playframework.org</a>
+                    <a href="https://stample.io/">Stample.IO</a>
                 </p>
             </footer>
 

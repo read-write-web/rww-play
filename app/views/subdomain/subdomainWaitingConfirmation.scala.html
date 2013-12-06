@@ -1,0 +1,16 @@
+@(subdomain: String, email: String)
+@import helper.twitterBootstrap._
+
+    @title = {
+        Welcome to Stample.io
+    }
+
+@main(title,NavigationBar.CreateSubdomain) {
+
+
+    <p>
+        Your subdomain @subdomain will be created soon.<br/>
+        A confirmation email has been sent to you at @email
+    </p>
+
+}
