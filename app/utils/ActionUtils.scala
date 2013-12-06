@@ -6,27 +6,27 @@ import play.api.Logger
 import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
+import scala.concurrent.Future
 
 /**
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)
  */
 object ActionUtils {
 
-  def LoggedAction(f: Request[AnyContent] => Result): Action[AnyContent] = {
-    Action { request =>
+  object LoggingAction extends ActionBuilder[Request] {
+    override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[SimpleResult]): Future[SimpleResult] = {
       Logger.info("Calling action")
-      f(request)
+      block(request)
     }
   }
 
-
-  def SignedQueryStringAction(f: Request[AnyContent] => Result): Action[AnyContent] = {
-    Action { request =>
+  object SignedQueryStringAction extends ActionBuilder[Request] {
+    override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[SimpleResult]): Future[SimpleResult] = {
       tryUnsignRequest(request) match {
-        case Success(newReq) =>  f(newReq)
+        case Success(newReq) =>  block(newReq)
         case Failure(e) => {
           Logger.error("Exception during check of QueryString signature",e)
-          BadRequest("Bad QueryString signature")
+          Future.successful(BadRequest("Bad QueryString signature"))
         }
       }
     }

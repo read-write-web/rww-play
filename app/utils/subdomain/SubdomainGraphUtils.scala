@@ -1,4 +1,4 @@
-package utils
+package utils.subdomain
 
 import org.w3.banana._
 import java.net.URL
@@ -38,7 +38,7 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
     import diesel._
     val oneTimePassword = java.util.UUID.randomUUID().toString.substring(0,8)
     val pg: PointedGraph[Rdf] = (
-      URI("") -- rdf.typ ->- foaf.OnlineAccount
+      URI("").a(foaf.OnlineAccount)
         -- stampleAdmin.claimedInbox ->- TypedLiteral(email, xsd.string)
         -- stampleAdmin.claimedInboxConfirmationPassword ->- TypedLiteral(oneTimePassword, xsd.string)
       )
@@ -78,7 +78,7 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
     import syntax.GraphSyntax._
 
     val pg: PointedGraph[Rdf] = (
-      URI("") -- rdf.typ ->- foaf.PersonalProfileDocument
+      URI("").a(foaf.PersonalProfileDocument)
         -- foaf.primaryTopic ->- (
         URI("#i") -- foaf.mbox ->- URI("mailto:" + email)
         )
