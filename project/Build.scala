@@ -35,7 +35,6 @@ object ApplicationBuild extends Build {
     "com.google.guava" % "guava" % "15.0",
     "com.google.code.findbugs" % "jsr305" % "2.0.2",
     "com.typesafe" %% "play-plugins-mailer" % "2.2.0"
-
     //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
   )
 

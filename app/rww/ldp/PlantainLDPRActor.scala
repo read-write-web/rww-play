@@ -79,7 +79,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   }
 
   override def preStart() {
-    println(s"~~~~~> creating PlantainLDPRActor($baseUri,$path) ~~~")
+    log.info(s"creating PlantainLDPRActor($baseUri,$path)")
   }
 
   def fileName = path.getFileName.toString

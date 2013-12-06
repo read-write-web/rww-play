@@ -18,7 +18,7 @@ class PlantainLDPCSubdomainActor (ldpcUri: Plantain#URI, root: Path)
                                   sparqlGraph: SparqlGraph[Plantain],
                                   adviceSelector: AdviceSelector[Plantain]=new EmptyAdviceSelector) extends PlantainLDPCActor(ldpcUri,root) {
 
-  println(s"Creating PlantainLDPCSubdomainActor($ldpcUri,$root)")
+  log.info(s"Creating PlantainLDPCSubdomainActor($ldpcUri,$root)")
 
   override def preStart {
     //start all agents for all files and subdirectories
@@ -59,7 +59,6 @@ class PlantainLDPCSubdomainActor (ldpcUri: Plantain#URI, root: Path)
     val path = if (pathSegment.endsWith("/")) "/" else u.getPath + pathSegment
     val url = new jURL(u.getScheme, host, u.getPort, path)
     val res = URI(url.toURI)
-    println(s"~~~<$ldpcUri>.absoluteUri($pathSegment)=$res ")
     res
   }
 }

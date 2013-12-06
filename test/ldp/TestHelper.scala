@@ -12,7 +12,6 @@ object TestHelper {
     val start = System.currentTimeMillis
     val r = body
     val time = System.currentTimeMillis - start
-    println("$$$ " + time)
     r
   }
 
