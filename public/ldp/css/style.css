@@ -1,5 +1,22 @@
 
-/* File viewer */
+html{
+	height: 101%;
+}
+
+body {
+	background:#F5F5FF;
+	background-image:url();
+}
+
+/*
+* Category viewer
+*/
+
+
+
+/*
+* File viewer
+* */
 .fileViewer {
 	padding: 10px;
 	background: #607891;
@@ -22,7 +39,6 @@
 }
 
 .emptyFile {
-
 }
 
 #viewerType {
@@ -58,4 +74,460 @@
 
 .cloudactions {
 	display: none;
+}
+
+
+/*
+* User profile
+*/
+.userProfile {
+	width:100%;
+	height: auto;
+	z-index: 1;
+}
+
+.userProfile label {
+	color: #89919c;
+	font-family: 'HelveticaNeue-Light', 'Helvetica Neue', 'Arial', sans-serif;
+	font-size: 16px;
+	font-stretch: normal;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: 300;
+	letter-spacing: 0;
+	line-height: 25px;
+	margin: 0;
+	opacity: 1.00;
+	padding-top: 0;
+	text-align: justify;
+	text-decoration: none;
+	text-indent: 0;
+	text-transform: none;
+}
+
+.userProfile .labelContainer {
+	width: 100px;
+	float: left;
+}
+
+.userProfile .labelText {
+	line-height:25px;
+	font-size: 14px;
+}
+
+.userProfile #input {
+	display:none;
+	width: 70%;
+	height: 23px;
+	float: left;
+	border: 0;
+	background-color: #f7f7f7;
+}
+
+.userProfile .editLink {
+	float: right;
+	color: #999;
+	line-height: 25px;
+	font-size: 11px !important;
+	height: 15px;
+	width: 15px;
+	z-index: 10000;
+	padding: 5px;
+}
+
+.userProfile .editLink img {
+	border: none;
+	height: 10px;
+	width: 10px;
+}
+
+.userProfile .editLink img:hover{
+	height: 12px;
+	width: 12px;
+}
+
+.userProfile .savePrompt {
+	width: 140px;
+	float: left;
+	height: 20px;
+	line-height: 15px;
+	font-size: 0.8em;
+	margin-bottom: 1em;
+	padding: 5px;
+}
+
+.userProfile .yesSave {
+	color: white;
+	background-color: red;
+	margin-left: 3%;
+	cursor: pointer;
+	padding: 0.2em 0.4em;
+	border-radius: 0.6em;
+}
+
+.userProfile .noCancel {
+	color: white;
+	background-color: green;
+	margin-left: 3%;
+	cursor: pointer;
+	padding: 0.2em 0.4em;
+	border-radius: 0.6em;
+}
+
+.editButton {
+	color: black;
+	font-family: Stample;
+	font-size: 1em;
+	opacity: 0;
+	line-height: 17px;
+	padding-right: 5px;
+	cursor: pointer;
+}
+
+.userProfile #imgWrapper {
+	margin-bottom:10px;
+}
+
+.userProfile #imgWrapper img {
+	width: auto;
+	height: 250px;
+}
+
+.userProfile #imgWrapper #nameText {
+	float:right;
+}
+
+.userProfile #contact,
+.userProfile #address,
+.userProfile #basics,
+.userProfile #education{
+	margin-bottom:15px;
+	padding: 10px;
+	background: #F5F5FF;
+	height: auto;
+}
+
+.userProfile #contact div:first-child,
+.userProfile #address div:first-child,
+.userProfile #basics div:first-child,
+.userProfile #education div:first-child{
+	margin-top: 0 !important;
+}
+
+.userProfile #contact div:last-child,
+.userProfile #address div:last-child,
+.userProfile #basics div:last-child,
+.userProfile #education div:last-child{
+	margin-bottom: 0 !important;
+}
+
+.userProfile .info {
+	height: 25px;
+	padding: 5px;
+	margin-bottom: 10px;
+	margin-top: 10px;
+	border-color: white;
+	background: white;
+}
+
+
+.userProfile #friends  {
+	text-align: center;
+	color: white;
+	background-color: rgb(194, 221, 240);
+	cursor: pointer;
+	margin: 10px;
+	border-radius: 0.6em;
+}
+
+.userProfile #friends:hover {
+	background:rgb(147, 181, 209)
+}
+
+.userProfile #friends label  {
+	color:white;
+	cursor: pointer;
+}
+
+
+/*
+* Contacts bar.
+*/
+#userbar {
+	/*background: url("../images/fond/escheresque.png");*/
+	background:mintcream;
+	position: fixed;
+	height: 100%;
+	top: 0;
+	right: 0;
+	z-index: 100000;
+	list-style-type: none;
+	display: none;
+}
+
+#userbarContainer {
+	display: none;
+	height: 100%;
+	width: 180px;
+}
+
+#userBarHead {
+	height: 46px;
+	line-height: 46px;
+	overflow: hidden;
+	text-align: center;
+}
+
+#userBarHead .userBarGripper {
+	height: 4px;
+	border-bottom: 1px solid #e9eaee;
+	border-top: 1px solid #cad0db;
+	cursor: ns-resize;
+	width: 100%;
+}
+
+.userBarGripper div {
+	background: white;
+	border-bottom: 1px solid #bdc5d2;
+	border-top: 1px solid #f0f1f6;
+	height: 6px;
+	position: relative;
+}
+
+.userBarGripper div span {
+	background: white;
+	border-top: 1px solid #cad0db;
+	display: block;
+	height: 1px;
+	left: 50%;
+	margin-left: -6px;
+	margin-top: 1px;
+	position: absolute;
+	width: 30px;
+}
+
+.userBarGripper div span:last-child {
+	margin-top: 3px;
+}
+
+#userBarHead .userBarType {
+	font-size: 15px;
+	font-family: "DIN Next W02 Medium";
+	background-color: #93B5D1;
+	height: 40px;
+	width: 100%;
+	line-height: 42px;
+}
+
+.userBarType .userBarTypeRelationships {
+	cursor: pointer;
+}
+
+.userBarType .userBarHeadOpenMenu {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin: 0 0 0 5px;
+	background: 0 0 no-repeat url(../images/fond/flecheright.png);
+	background-size:100% 100%;
+	-webkit-transform: rotate(90deg);
+	-moz-transform: rotate(90deg);
+	-o-transform: rotate(90deg);
+	transform: rotate(90deg);
+}
+
+#userBarInner {
+	top: 90px;
+}
+
+#userBarInner .usersCategory {
+	display:none;
+	text-align: center;
+	font-size: 12px;
+	font-family: "DIN Next W02 Medium";
+	background-color: #C2DDF0;
+	height: 22px;
+	width: 100%;
+	line-height: 22px;
+}
+
+#userBarInner .userCatAll {
+	display: block;
+}
+
+#usersBar {
+	width: 100%;
+	margin: 0;
+	overflow: hidden;
+	background: white;
+	padding-left: 0;
+}
+
+.userContainer {
+	line-height: 50px;
+}
+
+.userInBar:hover {
+	background: #eef6ff;
+}
+
+#usersBar .userInBar {
+	width: 100%;
+	height: 41px;
+}
+
+#usersBar li:first-child {
+	padding-top: 3px;
+}
+
+#usersBar li:last-child {
+	border-bottom: 1px solid #c2c2c2;
+	padding-bottom: 3px;
+}
+
+#usersBar .userTemplate {
+	/*padding: 0 0 0 5px;*/
+	display: inline-block;
+	width: 30px;
+	height: 30px;
+	margin: 3px 3px 0 6px;
+	border-radius: 15px;
+	background: url(/assets/ldp/images/avatar.png) no-repeat 0 0 #fcfcfc;
+	background-size: 100% 100%;
+	float: left;
+}
+
+#usersBar .userTemplate img {
+	width: 30px;
+	height: 30px;
+	border-radius: 15px;
+}
+
+#usersBar .userName {
+	font: 13px "DIN Next W01 Regular";
+	color: black;
+	text-transform: capitalize;
+	margin-left: 5px;
+	margin-top: 5px;
+	line-height: 30px !important;
+	white-space:nowrap !important;
+	text-align: left;
+	height: 36px;
+	float: left;
+}
+
+#usersBar .userContainer:hover {
+	cursor: pointer;
+}
+
+/*
+* Pre-defined font styles
+*/
+
+.style {
+	font-family: 'HelveticaNeue-Italic', 'Helvetica Neue', 'Arial', sans-serif;
+	font-size: 12px;
+	font-stretch: normal;
+	font-style: italic;
+	font-weight: 400;
+	line-height: 17px;
+}
+.p3 {
+	color: rgb(0, 0, 0);
+	font-family: 'HelveticaNeue', 'Helvetica Neue', 'Arial', sans-serif;
+	font-size: 12px;
+	font-stretch: normal;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: 400;
+	letter-spacing: 0;
+	line-height: 17px;
+	margin: 0;
+	opacity: 1.00;
+	padding-bottom: 10px;
+	padding-top: 0;
+	text-align: justify;
+	text-decoration: none;
+	text-indent: 0;
+	text-transform: none;
+}
+
+.p4 {
+	color: rgb(0, 0, 0);
+	font-family: 'HelveticaNeue-Light', 'Helvetica Neue', 'Arial', sans-serif;
+	font-size: 16px;
+	font-stretch: normal;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: 300;
+	letter-spacing: 0;
+	line-height: 20px;
+	margin: 0;
+	opacity: 1.00;
+	padding-bottom: 15px;
+	padding-top: 0;
+	text-align: justify;
+	text-decoration: none;
+	text-indent: 0;
+	text-transform: none;
+}
+
+.p5 {
+	color: rgb(0, 0, 0);
+	font-family: 'HelveticaNeue-UltraLight', 'Helvetica Neue', 'Arial', sans-serif;
+	font-size: 36px;
+	font-stretch: normal;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: 100;
+	letter-spacing: 0;
+	line-height: 51px;
+	margin: 0;
+	opacity: 1.00;
+	padding-bottom: 20px;
+	padding-top: 0px;
+	text-align: justify;
+	text-decoration: none;
+	text-indent: 0px;
+	text-transform: none;
+}
+.p6 {
+	color: rgb(0, 0, 0);
+	font-family: 'HelveticaNeue-Bold', 'Helvetica Neue', 'Arial', sans-serif;
+	font-size: 14px;
+	font-stretch: normal;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: 700;
+	letter-spacing: 0;
+	line-height: 20px;
+	margin: 0;
+	opacity: 1.00;
+	padding-bottom: 10px;
+	padding-top: 0px;
+	text-align: justify;
+	text-decoration: none;
+	text-indent: 0px;
+	text-transform: none;
+}
+
+
+/*
+* Pre-defined width
+*/
+
+
+.width-200 {
+	width: 200px !important;
+	min-width: 200px;
+}
+
+.width-800 {
+	width: 800px !important;
+	min-width: 800px !important;;
+}
+
+.width-900 {
+	width: 900px !important;
+	min-width: 900px;
 }

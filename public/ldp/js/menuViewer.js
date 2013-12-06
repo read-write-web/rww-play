@@ -1,39 +1,11 @@
 var templateURI = "/assets/ldp/templates/menuTemplate.html";
 var tab = {};
 $.get(templateURI, function(data) {
-	var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
-	var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
-	var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
-
-	// Load useful js.
-	loadScript("/assets/ldp/js/createContainerFromString.js", null);
-	loadScript("/assets/ldp/js/createFileFromString.js", null);
-
 	// Load Html.
 	var template = _.template(data, tab);
 
 	// Append in the DOM.
 	$('#viewerContent').append(template);
-
-
-	// Get the config file : viewer.ttl
-	var viewerUri = window.location.origin + '/assets/ldp/viewer.ttl';
-	var graph2 = graphsCache[viewerUri] =  new $rdf.IndexedFormula();
-	var fetch2 = $rdf.fetcher(graph2);
-	fetch2.nowOrWhenFetched(viewerUri, undefined, function () {
-		// Check ressource type.
-		var viewerJsUri;
-		_.each($rdf.types,  function(type) {
-			var vjs = graph2.any(type, STAMPLE("view"));
-			if (vjs) viewerJsUri = vjs.uri
-		});
-
-        if ( viewerJsUri != undefined ) {
-            loadScript(viewerJsUri, null);
-        } else {
-            throw 'no viewer can render any of the RDF document types: ' + $rdf.types
-        }
-	});
 
 	// Bind events to Menu Dom elements.
 	$(".newCategory").on("click", function(e) {

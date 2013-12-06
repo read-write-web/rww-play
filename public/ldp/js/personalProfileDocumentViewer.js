@@ -28,6 +28,7 @@ function getPersonToDisplay(g) {
         return foafPrimaryTopic;
     } else {
         var personUris = getSubjectsOfType(baseGraph,FOAF("Person"));
+		console.log(personUris);
         if ( personUris.length === 0 ) {
             throw "No person to display in this card: " + baseUri;
         } else {

@@ -16,20 +16,23 @@
 		var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
 		var WEBAPP = $rdf.Namespace("http://ns.rww.io/wapp#");
 		var FOAF = $rdf.Namespace("http://xmlns.com/foaf/0.1/");
+		var CONTACT = $rdf.Namespace("http://www.w3.org/2000/10/swap/pim/contact#");
 
-		// Get the graph related to Base Uri.
+		// Global variables.
 		graphsCache = {};
-		var baseUri = window.location.href;
-		var viewerUri = '/assets/ldp/viewer.ttl';
+		baseUri = window.location.href;
+		baseUriSym = $rdf.sym(baseUri);
+		viewerUri = '/assets/ldp/viewer.ttl';
+
 		var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
 		var fetch = $rdf.fetcher(graph);
 		fetch.nowOrWhenFetched(baseUri, undefined, function () {
 			// Load the main view and utils.
 			loadScript("/assets/ldp/js/bodyViewer.js", null);
-			loadScript("/assets/ldp/js/utils.js", null);
 
 			// Get ressource type.
-			$rdf.types = graph.each( $rdf.sym(baseUri), RDF("type"));
+			$rdf.types = graph.each( baseUriSym, RDF("type"));
+			rdfDocTypes = graph.each( baseUriSym, RDF("type"));
 
 			// Make the graph cache global.
 			$rdf.graphsCache = graphsCache;
@@ -39,7 +42,7 @@
 </head>
 
 <body>
-*
+
 </body>
 
 </html>
