@@ -24,6 +24,7 @@ object ApplicationBuild extends Build {
   val appDependencies = Seq("banana-sesame", "banana-jena", "banana-rdf", "plantain").map(banana) ++ Seq(
     "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
     "nu.validator.htmlparser" % "htmlparser" % "1.2.1",
+    "io.spray" % "spray-http" % "1.0-M8.1",
     "org.scalaz" % "scalaz-core_2.10" % "7.0.0-RC1", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"
     "org.bouncycastle" % "bcprov-jdk15on" % "1.47",
     "org.scala-lang" % "scala-actors" % "2.10.0", //for tests because of sbt for some reason
@@ -41,6 +42,7 @@ object ApplicationBuild extends Build {
   val main = play.Project(appName, appVersion, appDependencies).settings(
     resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
     resolvers += "sesame-repo-releases" at "http://repo.aduna-software.org/maven2/releases",
+    resolvers += "spray repo" at "http://repo.spray.io",
     /*
     if you want to compile banana-* yourself then you need to remove the following resolver
     you may need to first remove the org.w3 directory from the Play/repository/cache directory
@@ -53,7 +55,7 @@ object ApplicationBuild extends Build {
 //      def accept(f: File) = f.getPath.containsSlice("rww/rdf/jena/")
 //      }
 //    },
-    unmanagedSources in Compile <<= unmanagedSources in Compile map {files => files.foreach(f=>print("~~"+f));files},
+//  unmanagedSources in Compile <<= unmanagedSources in Compile map {files => files.foreach(f=>print("~~"+f));files},
     resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
     scalaVersion := "2.10.2",
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),

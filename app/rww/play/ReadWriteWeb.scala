@@ -255,7 +255,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
       case e: WrongTypeException =>
         //todo: the Allow methods should not be hardcoded.
         SimpleResult(
-          ResponseHeader(METHOD_NOT_ALLOWED, Map("Allow" -> "GET, OPTIONS, HEAD, PUT, PATCH")),
+          ResponseHeader(METHOD_NOT_ALLOWED, Map("Allow" -> "GET, OPTIONS, HEAD, PUT, POST, PATCH")),
           Enumerator(e.msg.getBytes("UTF-8"))
         )
       case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
