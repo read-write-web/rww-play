@@ -1,17 +1,8 @@
-console.log("Container view");
-
-// Load useful js.
-loadScript("/assets/ldp/js/deleteRessource.js", null);
-
 var templateURI = "/assets/ldp/templates/containersTemplate.html";
 var template2URI = "/assets/ldp/templates/containerTemplate.html";
 $.get(templateURI, function (data) {
-
 	// Load Html.
 	var template = _.template(data, tab);
-
-	// Show menu.
-	$(".cloudactions").show();
 
 	// Append in the DOM.
 	$("#viewerContent").append(template);
@@ -95,6 +86,8 @@ $.get(templateURI, function (data) {
 			$lines.find("a[class = 'accessControl']").bind('click', function (e) {
 				var container = $(e.target).parent().parent().parent();
 				$rdf.ressourceUri = container.find('.filename a').attr("href");
+
+				// Open ACL Viewer.
 				loadScript("/assets/ldp/js/aclEditorViewer.js", null);
 			});
 

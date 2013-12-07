@@ -5421,7 +5421,7 @@ $rdf.sparqlUpdate = function() {
 
     sparql.prototype._fire = function(uri, query, callback) {
         if (!uri) throw "No URI given for remote editing operation: "+query;
-        tabulator.log.info("sparql: sending update to <"+uri+">\n   query="+query+"\n");
+		//tabulator.log.info("sparql: sending update to <"+uri+">\n   query="+query+"\n");
         var xhr = $rdf.Util.XMLHTTPFactory();
 
         xhr.onreadystatechange = function() {
@@ -5435,13 +5435,13 @@ $rdf.sparqlUpdate = function() {
             }
         }
 
-        if(!tabulator.isExtension) {
+        /*if(!tabulator.isExtension) {
             try {
                 $rdf.Util.enablePrivilege("UniversalBrowserRead")
             } catch(e) {
                 alert("Failed to get privileges: " + e)
             }
-        }
+        }*/
         
         xhr.open('POST', uri, true);  // async=true
         xhr.setRequestHeader('Content-type', 'application/sparql-query');
@@ -5453,11 +5453,13 @@ $rdf.sparqlUpdate = function() {
     //  function which can be used to change the object of the statement.
     //
     sparql.prototype.update_statement = function(statement) {
-        if (statement && statement.why == undefined) return;
+		console.log(statement);
 
+		if (statement && statement.why == undefined) return;
+		console.log('After !!!');
         var sparql = this;
         var context = this._statement_context(statement);
-
+		debugger
         return {
             statement: statement?[statement.subject, statement.predicate, statement.object, statement.why]:undefined,
             statementNT: statement?anonymizeNT(statement):undefined,

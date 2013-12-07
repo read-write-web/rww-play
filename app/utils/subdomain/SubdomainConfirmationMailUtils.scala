@@ -1,11 +1,11 @@
-package utils
+package utils.subdomain
 
 import play.api.mvc.Request
 import play.api.mvc.AnyContent
 import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
-import HttpUtils.QueryStrings
+import utils.HttpUtils.QueryStrings
 
 
 /**

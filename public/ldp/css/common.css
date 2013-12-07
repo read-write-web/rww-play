@@ -70,11 +70,10 @@ address { color: gray; }
 .topnav {
     margin-top: 10px;
     position: relative;
-    width: auto;
-    width: 1024px;
-    min-width: 1024px !important;
+    width: 900px;
+    min-width: 900px !important;
     height: 50px;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     background: #1d2124;
     color: #fff;
     z-index: 100;
