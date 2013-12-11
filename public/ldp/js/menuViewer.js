@@ -34,7 +34,7 @@ $.get(templateURI, function(data) {
 			var error = function() {
 				window.location.reload();
 			};
-			createFileFromString(res.value, $rdf.baseUri, success, error, null);
+			createFileFromString(res.value, baseUriGlobal, success, error, null);
 		}
 		else if (res.name === 'dir') {
 			var success = function() {
@@ -43,7 +43,7 @@ $.get(templateURI, function(data) {
 			var error = function() {
 				window.location.reload();
 			};
-			createContainerFromString(res.value, $rdf.baseUri, success, error, null);
+			createContainerFromString(res.value, baseUriGlobal, success, error, null);
 		}
 	}
 

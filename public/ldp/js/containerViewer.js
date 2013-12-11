@@ -15,8 +15,8 @@ $.get(templateURI, function (data) {
 		var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
 
 		// Get base graph and uri.
-		var baseUri = $rdf.baseUri;
-		var baseGraph = $rdf.graphsCache[baseUri];
+		var baseUri = baseUriGlobal;
+		var baseGraph = graphsCache[baseUri];
 
 		// Define Sparql query.
 		var sparqlQuery =

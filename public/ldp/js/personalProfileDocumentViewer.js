@@ -5,8 +5,8 @@ var FOAF = $rdf.Namespace('http://xmlns.com/foaf/0.1/');
 var RDF = $rdf.Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#');
 
 // Get base graph and uri.
-var baseUri = $rdf.baseUri;
-var baseGraph = $rdf.graphsCache[baseUri];
+var baseUri = baseUriGlobal;
+var baseGraph = graphsCache[baseUri];
 
 
 

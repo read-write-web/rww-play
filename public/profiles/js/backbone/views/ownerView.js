@@ -23,22 +23,26 @@ OwnerView = Backbone.View.extend({
 	},
 
 	submitName: function(e) {
-		var val = this.$("#inputName").val();
-		this.model.set('foaf:name', val);
 		debugger
-		this.model.sync({
-			success: function() {}
-		});
+
+		var val = this.$("#inputName").val();
+		//this.model.set('foaf:name', val);
 
 		/*
+		this.model.sync({
+			success: function() {}
+		});*/
+		console.log('Saving.');
+		console.log(this);
 		this.model.save({'foaf:name': val}, {
 			success: function() {
 				console.log('success !');
 			},
 			error: function(){
-
+				console.log('error !');
 			}
-		});*/
+		});
+
 		this.$("#inputName").hide();
 	},
 

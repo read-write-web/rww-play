@@ -14,12 +14,12 @@ $.get(templateUri, function(data) {
 	console.log(graphsCache);
 
 	// If user graph already fetched, get attributes and render, otherwise fetch it.
-	var graph = graphsCache[baseUri];
+	var graph = graphsCache[baseUriGlobal];
 	console.log(graph);
 	if (!graph) {
-		graph = graphsCache[baseUriSym] = new $rdf.IndexedFormula();
+		graph = graphsCache[baseUriGlobal] = new $rdf.IndexedFormula();
 		var fetch = $rdf.fetcher(graph);
-		fetch.nowOrWhenFetched(baseUriSym, undefined, function () {
+		fetch.nowOrWhenFetched(baseUriGlobal, undefined, function () {
 			getUserContacts(graph, $rdf.sym(currentUserGlobal),
 				function() {
 					if (callback) callback();
@@ -37,7 +37,9 @@ $.get(templateUri, function(data) {
 
 function getUserContacts(graph, uriSym, callback) {
 	console.log("getUserContacts");
+	console.log(uriSym);
 	var friends = graph.each(uriSym, FOAF('knows'));
+
 	$.get(templateUriContact, function(temp) {
 		// Render each contact.
 		var i = 0;

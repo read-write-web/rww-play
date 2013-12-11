@@ -7,6 +7,8 @@
  	<script type="text/javascript" src="/assets/ldp/lib/jquery-1.7.1.min.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/underscore.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/rdflib.js"></script>
+	<script type="text/javascript" src="/assets/ldp/lib/pointedGraph.js"></script>
+	<script type="text/javascript" src="/assets/ldp/lib/rx.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/spin.min.js"></script>
     <script type="text/javascript" src="/assets/ldp/js/loadScript.js"></script>
     <script type="text/javascript" src="/assets/ldp/js/loadCSS.js"></script>
@@ -20,24 +22,22 @@
 
 		// Global variables.
 		graphsCache = {};
-		baseUri = window.location.href;
-		baseUriSym = $rdf.sym(baseUri);
+		baseUriGlobal = window.location.href;
+		baseUriSymGlobal = $rdf.sym(baseUriGlobal);
+		baseUriSym = $rdf.sym(baseUriGlobal);
 		viewerUri = '/assets/ldp/viewer.ttl';
+		rdfTypesGlobals = null;
 
-		var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
+		var graph = graphsCache[baseUriGlobal]  = new $rdf.graph();
 		var fetch = $rdf.fetcher(graph);
-		fetch.nowOrWhenFetched(baseUri, undefined, function () {
+		fetch.nowOrWhenFetched(baseUriGlobal, undefined, function () {
 			// Load the main view and utils.
 			loadScript("/assets/ldp/js/bodyViewer.js", null);
 
 			// Get ressource type.
-			$rdf.types = graph.each( baseUriSym, RDF("type"));
-			rdfDocTypes = graph.each( baseUriSym, RDF("type"));
-
-			// Make the graph cache global.
-			$rdf.graphsCache = graphsCache;
-			$rdf.baseUri = baseUri;
+			rdfTypesGlobal = graph.each(baseUriSymGlobal, RDF("type"));
 		});
+
 	</script>
 </head>
 

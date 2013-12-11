@@ -28,7 +28,7 @@ var tab = {
 };
 
 // Get base graph and uri.
-var baseUri = baseUri;
+var baseUri = baseUriGlobal;
 var baseGraph = graphsCache[baseUri];
 
 // Get the template.
@@ -36,6 +36,12 @@ $.get(templateURI, function(data) {
 	// Get current user relative URI.
 	currentUserGlobal = getPersonToDisplay(baseGraph).value;
 	console.log("Person to display:" + currentUserGlobal);
+
+	// Create a PG.
+	pointedGraphGlobal = new $rdf.pointedGraph(baseGraph, $rdf.sym(currentUserGlobal), $rdf.sym(baseUri));
+
+	// Create a list of PGs for each FOAF knows results.
+	//pointedGraph.rel(FOAF('knows'));
 
 	// Load current user.
 	loadUser(currentUserGlobal, function() {
@@ -206,7 +212,7 @@ function cleanUri(uri) {
 * */
 function loadUser(webId, callback) {
 	console.log("loadUser");
-	console.log(webId);
+
 	// Turn Uri into symbol.
 	var uriSym = $rdf.sym(webId);
 
@@ -226,7 +232,7 @@ function loadUser(webId, callback) {
 		});
 	}
 	else {
-		getUserAttributes(graph, uriSym,
+		getUserAttributes(pointedGraphGlobal,
 			function() {
 				if (callback) callback();
 		});
@@ -248,7 +254,7 @@ function cleanUri(uri) {
 /**
  * Get attributes of given user by querrying the graph.
  */
-function getUserAttributes(graph, uriSym, callback) {
+function getUserAttributes2(graph, uriSym, callback) {
 	console.log("getUserAttributes");
 	// Helper to select the first existing element of a series of arguments
 	var findFirst = function () {
@@ -327,4 +333,45 @@ function getUserAttributes(graph, uriSym, callback) {
 
 	// Query the fetched graph
 	graph.query(addressQuery, onResult, undefined, onDone);
+}
+
+/**
+ *
+ * @param userPG pointed graph with pointer pointing on user
+ * @param callback
+ */
+function getUserAttributes(userPg, callback) {
+	console.log("getUserAttributes");
+
+	// add name
+	var namesPg = userPg.rel(FOAF('name'));
+	var names =
+		_.chain(namesPg)
+		.filter(function(pg) {return pg.pointer.termType == 'literal';})
+		.map(function(pg) {return pg.pointer})
+		.value();
+	tab.name = (names && names.length >0 )? names[0].value : "No value";
+	console.log(tab.name);
+
+
+	// Test Observables.
+	var source = userPg.observableRel(FOAF('knows'));
+	var subscription = source.subscribe(
+		function(value) {
+			console.log("onNext : " + value.isLocalPointer());
+			updateAttributesPg(value) ;
+		},
+		function(err) {
+			console.log("onError : " );
+			console.log( err.message);
+		},
+		function() {
+			console.log('Completed !!!')
+		}
+	)
+}
+
+
+function updateAttributesPg(value) {
+
 }

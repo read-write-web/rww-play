@@ -32,7 +32,7 @@ $.get(templateURI, function(data) {
 
 		// Check ressource type.
 		var viewerJsUri, cpt = 0;
-		_.each($rdf.types,  function(type) {
+		_.each(rdfTypesGlobal,  function(type) {
 			var vjs = graph.any(type, STAMPLE("view"));
 			if (vjs && cpt < 1) {viewerJsUri = vjs.uri; cpt++;}
 		});
@@ -44,7 +44,7 @@ $.get(templateURI, function(data) {
 			});
 		}
 		else
-			throw new Error('no viewer can render any of the RDF document types: ' + $rdf.types);
+			throw new Error('no viewer can render any of the RDF document types: ' + rdfTypesGlobal);
 
 	});
 
