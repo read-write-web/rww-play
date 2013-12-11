@@ -24,17 +24,13 @@ object Iteratees {
     }
   }
 
+
   /**
    * Transforms an Enumerator[T] into a Future[List[T]]
    * @param enumerator
    * @tparam T
    * @return
    */
-  def enumeratorAsList[T](enumerator: Enumerator[T])(implicit ec: ExecutionContext): Future[List[T]] = {
-    val iteratee = Iteratee.fold[T,List[T]](Nil) { (list,elem) =>
-      elem :: list
-    }
-    enumerator |>>> iteratee
-  }
+  def enumeratorAsList[T](enumerator: Enumerator[T]): Future[List[T]] = enumerator |>>> Iteratee.getChunks[T]
 
 }
