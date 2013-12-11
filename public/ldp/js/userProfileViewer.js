@@ -337,7 +337,7 @@ function getUserAttributes2(graph, uriSym, callback) {
 
 /**
  *
- * @param userPG pointed graph with pointer pointing on user
+ * @param userPG pointed graph with pointer pointing on user.
  * @param callback
  */
 function getUserAttributes(userPg, callback) {
