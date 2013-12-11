@@ -121,7 +121,7 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
 
   def domainAcl(domain: String): Rdf#Graph = {
     val pg: PointedGraph[Rdf] = ( bnode() -- wac.accessToClass ->- (
-      bnode() -- wac.regex ->- TypedLiteral(domain + ".*"))
+      bnode() -- wac.regex ->- TypedLiteral("https://"+domain + ".*"))
       -- wac.mode ->- wac.Read
       -- wac.mode ->- wac.Write
       -- wac.agent ->- URI("card"+personFragment)
