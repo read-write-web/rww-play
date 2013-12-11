@@ -12,10 +12,10 @@ import scala.Error
   * @tparam Rdf an RDF implementation
   * @tparam LR the kind of resources that can be linked
   */
-trait LinkedResource[Rdf <: RDF, LR] {
+trait LinkedResource[Rdf <: RDF] {
 
   /** retrieves a resource based on its URI */
-  def ~(uri: Rdf#URI): Enumerator[LR]
+  def ~(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]]
 
   /**
    * todo: could the fetchCond be better be done by an Enumeratee?
@@ -27,10 +27,10 @@ trait LinkedResource[Rdf <: RDF, LR] {
    * @param fetchCond
    * @return
    */
-  def ~> (lr: LR, predicate: Rdf#URI)(fetchCond: PointedGraph[Rdf] => Boolean): Enumerator[LR]
+  def ~> (lr: LinkedDataResource[Rdf], predicate: Rdf#URI)(fetchCond: PointedGraph[Rdf] => Boolean): Enumerator[LinkedDataResource[Rdf]]
 
   /** follow the predicate in reverse order  */
-  def <~ (lr: LR, predicate: Rdf#URI)(fetchCond: PointedGraph[Rdf] => Boolean): Enumerator[LR]
+  def <~ (lr: LinkedDataResource[Rdf], predicate: Rdf#URI)(fetchCond: PointedGraph[Rdf] => Boolean): Enumerator[LinkedDataResource[Rdf]]
 
 }
 
@@ -39,17 +39,16 @@ trait LinkedResource[Rdf <: RDF, LR] {
  * @tparam Rdf
  * @tparam LR
  */
-trait LinkedMeta[Rdf <: RDF, LR] {
+trait LinkedMeta[Rdf <: RDF] {
 
   /** follow the headers */
-  def ≈>(lr: LR, predicate: Rdf#URI): Enumerator[LR]
+  def ≈>(lr: LinkedDataResource[Rdf], predicate: Rdf#URI): Enumerator[LinkedDataResource[Rdf]]
 }
 
-trait LinkedWebResource[Rdf <: RDF, LR] extends LinkedResource[Rdf,LR] with LinkedMeta[Rdf,LR]
+trait LinkedWebResource[Rdf <: RDF] extends LinkedResource[Rdf] with LinkedMeta[Rdf]
 
 
-class WebResource[Rdf <:RDF](val rww: RWW[Rdf])(implicit ops: RDFOps[Rdf], ec: ExecutionContext)
-  extends LinkedResource[Rdf,LinkedDataResource[Rdf]] {
+class WebResource[Rdf <:RDF](val rww: RWW[Rdf])(implicit ops: RDFOps[Rdf], ec: ExecutionContext) extends LinkedResource[Rdf] {
   import LDPCommand._
   import ops._
   import diesel._
@@ -57,14 +56,13 @@ class WebResource[Rdf <:RDF](val rww: RWW[Rdf])(implicit ops: RDFOps[Rdf], ec: E
 
   /** retrieves a resource based on its URI */
   def ~(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]] = {
-    val futureLDR: Future[LinkedDataResource[Rdf]] = rww.execute{
-      //todo: this code could be moved somewhere else see: Command.GET
-      val docUri = uri.fragmentLess
-      getLDPR(docUri).map{graph=>
-        val pointed = PointedGraph(uri, graph)
-        LinkedDataResource(docUri, pointed)
-      }
+    //todo: this code could be moved somewhere else see: Command.GET
+    val docUri = uri.fragmentLess
+    val script = getLDPR(docUri).map{graph=>
+      val pointed = PointedGraph(uri, graph)
+      LinkedDataResource(docUri, pointed)
     }
+    val futureLDR: Future[LinkedDataResource[Rdf]] = rww.execute(script)
     new Enumerator[LinkedDataResource[Rdf]] {
       def apply[A](i: Iteratee[LinkedDataResource[Rdf], A]): Future[Iteratee[LinkedDataResource[Rdf], A]] =
         futureLDR.flatMap { ldr =>
@@ -160,7 +158,7 @@ class WebResource[Rdf <:RDF](val rww: RWW[Rdf])(implicit ops: RDFOps[Rdf], ec: E
 
 
 /** A [[org.w3.banana.LinkedDataResource]] is obviously a [[rww.ldp.LinkedResource]] */
-class LDRLinkedResource[Rdf <: RDF]()(implicit ops: RDFOps[Rdf]) extends LinkedResource[Rdf, LinkedDataResource[Rdf]] {
+class LDRLinkedResource[Rdf <: RDF]()(implicit ops: RDFOps[Rdf]) extends LinkedResource[Rdf] {
 
   def ~(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]] = ???
 
