@@ -1,10 +1,11 @@
 package rww.ldp
 
+import _root_.play.api.libs.iteratee._
 import org.w3.banana._
 import scala.concurrent._
-import play.api.libs.iteratee._
 import scala.util.{Failure, Success, Try}
 import scala.Error
+import utils.Iteratees
 
 /** A resource that can be found with its URI, and is linked to other
   * resources through links as URIs
@@ -63,12 +64,7 @@ class WebResource[Rdf <:RDF](val rww: RWW[Rdf])(implicit ops: RDFOps[Rdf], ec: E
       LinkedDataResource(docUri, pointed)
     }
     val futureLDR: Future[LinkedDataResource[Rdf]] = rww.execute(script)
-    new Enumerator[LinkedDataResource[Rdf]] {
-      def apply[A](i: Iteratee[LinkedDataResource[Rdf], A]): Future[Iteratee[LinkedDataResource[Rdf], A]] =
-        futureLDR.flatMap { ldr =>
-        i.feed(Input.El(ldr))
-      }
-    }
+    Iteratees.singleElementEnumerator(futureLDR)
   }
 
 
@@ -157,6 +153,7 @@ class WebResource[Rdf <:RDF](val rww: RWW[Rdf])(implicit ops: RDFOps[Rdf], ec: E
 
 
 
+// TODO is this used somewhere? or planed to be?
 /** A [[org.w3.banana.LinkedDataResource]] is obviously a [[rww.ldp.LinkedResource]] */
 class LDRLinkedResource[Rdf <: RDF]()(implicit ops: RDFOps[Rdf]) extends LinkedResource[Rdf] {
 

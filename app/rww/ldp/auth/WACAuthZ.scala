@@ -9,6 +9,7 @@ import play.api.libs.iteratee.{Enumeratee, Input, Iteratee, Enumerator}
 import scala.Some
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
+import utils.Iteratees
 
 /**
  * WACAuthZ groups methods to find the authorized WebIDs for a particular resource
@@ -56,21 +57,9 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) {
     val authzWebIds: Enumerator[Rdf#URI] = acls.flatMap { ldr =>
       authzWebIDs(ldr,on,method)
     }
-    enumeratorAsList(authzWebIds)
+    Iteratees.enumeratorAsList(authzWebIds)
   }
 
-  /**
-   * Transforms an Enumerator[T] into a Future[List[T]]
-   * @param enumerator
-   * @tparam T
-   * @return
-   */
-  private def enumeratorAsList[T](enumerator: Enumerator[T]): Future[List[T]] = {
-    val iteratee = Iteratee.fold[T,List[T]](Nil) { (list,elem) =>
-      elem :: list
-    }
-    enumerator |>>> iteratee
-  }
 
 
   /**
