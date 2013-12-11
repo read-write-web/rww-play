@@ -31,6 +31,7 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) {
   val foaf = FOAFPrefix[Rdf]
   val wac = WebACLPrefix[Rdf]
   val rdfs = RDFSPrefix[Rdf]
+
   /**
    * Returns a Script for authentication that looks in the metadata file for a resource
    * to see what agents have access to a given resource in a given manner, following
@@ -43,13 +44,34 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) {
    * @param on the resource to which access is requested
    * @return a Free based recursive structure that will return a list of agents ( identified by WebIDs. )
    * */
-  def getAuth(aclUri: Rdf#URI, method: Rdf#URI, on: Rdf#URI): Future[List[Rdf#URI]] =
-    getAuthEnum(web~(aclUri),method,on)
+  def getAuth(aclUri: Rdf#URI, method: Rdf#URI, on: Rdf#URI): Future[List[Rdf#URI]] = {
+    val acl: Enumerator[LinkedDataResource[Rdf]] = web~(aclUri)
+    getAuthEnum(acl,method,on)
+  }
+
 
 
   protected def getAuthEnum(acls: Enumerator[LinkedDataResource[Rdf]],
-                            method: Rdf#URI, on: Rdf#URI): Future[List[Rdf#URI]] =
-       acls.flatMap(ldr=>authzWebIDs(ldr,on,method)) |>>> Iteratee.fold[Rdf#URI,List[Rdf#URI]](Nil){case (list,uri)=>uri::list}
+                            method: Rdf#URI, on: Rdf#URI): Future[List[Rdf#URI]] = {
+    val authzWebIds: Enumerator[Rdf#URI] = acls.flatMap { ldr =>
+      authzWebIDs(ldr,on,method)
+    }
+    enumeratorAsList(authzWebIds)
+  }
+
+  /**
+   * Transforms an Enumerator[T] into a Future[List[T]]
+   * @param enumerator
+   * @tparam T
+   * @return
+   */
+  private def enumeratorAsList[T](enumerator: Enumerator[T]): Future[List[T]] = {
+    val iteratee = Iteratee.fold[T,List[T]](Nil) { (list,elem) =>
+      elem :: list
+    }
+    enumerator |>>> iteratee
+  }
+
 
   /**
    * getAuth for a resource ( fetch metadata for it )
