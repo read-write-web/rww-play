@@ -29,6 +29,12 @@ import scala.Some
 import rww.ldp.auth.WACAuthZ
 import java.net.{URI=>jURI, URL=>jURL}
 
+/**
+ * This permits to transmit a result and to add an User header in the request which contains the URI of the authenticated user's WebID
+ * @param id
+ * @param result
+ * @tparam R
+ */
 case class IdResult[R](id: jURI, result: R)
 
 //the idea of this class was to not be reliant on Play! We need RequestHeader in order to do authentication
@@ -65,7 +71,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     val path = request.path
     content match {
       case updatedQuery: PatchRwwContent[Rdf] => for {
-        id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+        id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
         x <- rww.execute(patchLDPR(URI(path), updatedQuery.query, Map()))
       } yield IdResult(id,x)
       case _ => Future.failed(new Exception("PATCH requires application/sparql-update message content"))
@@ -78,7 +84,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     val (collection, file) = split(path)
     if ("" == file) Future.failed(new Exception("Cannot do a PUT on a collection"))
     else for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       f <- content match {
         //todo: arbitrarily for the moment we only allow a PUT of same type things graphs on graphs, and other on other
         case grc: GraphRwwContent[Rdf] => {
@@ -113,8 +119,8 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
   //  }
 
   def wacIt(mode: Method.Value) = mode match {
-    case Method.read => wac.Read
-    case Method.write => wac.Write
+    case Method.Read => wac.Read
+    case Method.Write => wac.Write
   }
 
 
@@ -148,7 +154,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
 
   def get(request: PlayRequestHeader, uri: java.net.URI): Future[IdResult[NamedResource[Rdf]]] = {
    for {
-      id <- auth(request, uri.toString, Method.read)
+      id <- auth(request, uri.toString, Method.Read)
       x <- rww.execute {
         getResource(URI(uri.toString), None)
       }
@@ -159,7 +165,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
               (implicit request: PlayRequestHeader): Future[IdResult[Rdf#URI]] = {
     val uric: Rdf#URI = URI(request.getAbsoluteURI.toString)
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       x <- rww.execute(
         for {
           r <- createLDPR(uric, slug, content)
@@ -204,7 +210,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
   def makeCollection(coll: String, slug: Option[String], content: Option[Rdf#Graph])
                     (implicit request: PlayRequestHeader): Future[IdResult[Rdf#URI]] = {
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       x <- rww.execute {
         for {
           c <- createContainer(URI(request.getAbsoluteURI.toString), slug,
@@ -228,7 +234,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     if ("" != file) Future.failed(WrongTypeException("Can only POST binary on a Collection"))
     else
       for {
-        id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+        id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
         x <- rww.execute {
           for {
             b <- createBinary(URI(request.getAbsoluteURI.toString), slug, mime)
@@ -243,7 +249,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
 
   def delete(implicit request: PlayRequestHeader): Future[IdResult[Unit]] = {
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       e <- rww.execute(deleteResource(URI(request.getAbsoluteURI.toString)))
     } yield IdResult(id,e)
     //    rww.execute{
@@ -262,7 +268,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     import sparqlOps._
     //clearly the queries could be simplified here.
     for {
-      id <- auth(request,request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request,request.getAbsoluteURI.toString, Method.Write)
       e <-rww.execute {
         if ("" != file)
           fold(query.query)(

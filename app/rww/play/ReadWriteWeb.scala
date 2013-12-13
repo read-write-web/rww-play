@@ -23,10 +23,24 @@ import net.sf.uadetector.UserAgentType
 import rww.play.auth.AuthenticationError
 import controllers.routes
 import com.google.common.base.Throwables
+import scala.util.Try
+import scala.util.Success
+import scala.util.Failure
 
 object Method extends Enumeration {
-  val read = Value
-  val write = Value
+  val Read = Value
+  val Write = Value
+}
+
+/**
+ * These are the currently supported mime types that can be used to transmit the RDF data to clients
+ */
+object SupportedMimeType extends Enumeration {
+  val Turtle = Value("text/turtle")
+  val RdfXml = Value("application/rdf+xml")
+  val Html = Value("text/html")
+
+  val StringSet = SupportedMimeType.values.map(_.toString)
 }
 
 /**
@@ -44,8 +58,6 @@ trait ReadWriteWeb[Rdf <: RDF] {
   implicit val boolWriterSelector: WriterSelector[Boolean] = BooleanWriter.selector
   implicit val sparqlUpdateSelector: IterateeSelector[Plantain#UpdateQuery]
 
-  lazy val agentParser =  UADetectorServiceFactory.getResourceModuleParser
-
   import rww.play.PlayWriterBuilder._
 
   def about = Action {
@@ -54,78 +66,107 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
   def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
 
-  //    JenaRDFBlockingWriter.WriterSelector()
-  //    req.accept.collectFirst {
-  //      case "application/rdf+xml" =>  (writeable(JenaRdfXmlWriter),ContentTypeOf[Jena#Graph](Some("application/rdf+xml")))
-  //      case "text/turtle" => (writeable(JenaTurtleWriter), ContentTypeOf[Jena#Graph](Some("text/turtle")))
-  //      case m @ SparqlAnswerJson.mime => (writeable(JenaSparqlJSONWriter), ContentTypeOf[JenaSPARQL#Solutions](Some(m)))
-  //    }.get
-
-  //  meta <- getMeta(ldprUriFull)
-  //  athzd <- getAuth(meta.acl.get,wac.Read)
-  //  if athzd.contains()
-
 
   def get(path: String) = Action.async { request =>
     getAsync(request)
   }
 
 
-  def isStupidBrowser(request: PlayApi.mvc.Request[AnyContent]) = {
-    val isBrowser = (request.headers.get("User-Agent").map { ua =>
-      agentParser.parse(ua).getType eq UserAgentType.BROWSER
-    }).getOrElse(false)
-    isBrowser && !{
-      request.headers.getAll("Accept").exists(mime => mime.contains("application/rdf+xml") || mime.contains("text/turtle"))
+  /**
+   * Returns the content type to use to answer to the given request
+   * @param request
+   * @return
+   */
+  def findReplyContentType(request: PlayApi.mvc.Request[AnyContent]): Try[SupportedMimeType.Value] = {
+    import utils.HeaderUtils._
+    request.findReplyContentType(SupportedMimeType.StringSet).map( SupportedMimeType.withName(_) )
+  }
+
+
+  /**
+   * The user header is used to transmoit the WebId URI to the client, because he can't know it before
+   * the authentication takes place with the server.
+   * @param res
+   * @return
+   */
+  private def userHeader(res: IdResult[_]) =  "User"->res.id.toString
+
+
+  def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+    findReplyContentType(request) match {
+      case Failure(t) => {
+        Future.successful {
+          PlayApi.mvc.Results.UnsupportedMediaType(stackTrace(t))
+        }
+      }
+      case Success(replyContentType) => {
+        PlayApi.Logger.debug(s"It seems the best content type to produce for this client is: $replyContentType")
+        getAsync(replyContentType)
+      }
     }
   }
 
-  private def userHeader(res: IdResult[_]) =  "User"->res.id.toString
-
-  def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
-     val uri = request.getAbsoluteURI
-
-    val res = for {
-      namedRes <- rwwActor.get(request, uri)
-    } yield {
-      val link = namedRes.result.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
-      namedRes.result match {
-        case ldpr: LDPR[Rdf] =>  {
-          if (isStupidBrowser(request)) {
-            SeeOther(controllers.routes.RDFViewer.htmlFor(uri.toString).toString()).withHeaders(userHeader(namedRes))
-//            SeeOther("https://localhost:8443/srv/rdfViewer?url="+URLEncoder.encode(uri.toString))
-          } else {
-            writerFor[Rdf#Graph](request).map { wr =>
-              result(200, wr, Map("Access-Control-Allow-Origin"-> "*",userHeader(namedRes)) ++ link)(ldpr.relativeGraph)
-            } getOrElse {
-              PlayApi.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
-                request.headers.get(PlayApi.http.HeaderNames.ACCEPT))
-            }
-          }
-        }
-        case bin: BinaryResource[Rdf] => {
-          SimpleResult(
-            header = ResponseHeader(200, Map("Content-Type" -> "todo", userHeader(namedRes)) ++ link),
-            body = bin.reader(1024 * 8)
-          )
-        }
-      }
+  /**
+   * Will try to get the resource and return it to the client in the given mimeType
+   * Note that it does not apply to binary resources but only for RDF resources
+   * @param replyContentType
+   * @param request
+   * @return
+   */
+  def getAsync(replyContentType: SupportedMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+    val getResult = for {
+      namedRes <- rwwActor.get(request, request.getAbsoluteURI)
     }
-    res recover {
+    yield writeGetResult(replyContentType,namedRes)
+    getResult recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case rse: ResourceDoesNotExist => NotFound(rse.getMessage + stackTrace(rse))
       case auth: AccessDenied => {
-        if (isStupidBrowser(request)) {
-          SeeOther(controllers.routes.RDFViewer.htmlFor(request.path).toString())
-        } else {
-          Unauthorized(auth.message)
+        replyContentType match {
+          case SupportedMimeType.Html => {
+            Unauthorized(
+              views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(auth) )
+            )
+          }
+          case SupportedMimeType.Turtle | SupportedMimeType.RdfXml => {
+            Unauthorized(auth.message)
+          }
         }
       }
-        //todo: 401 Unauthorizes requires some WWW-Authenticate header. Can we really use it this way?
+      //todo: 401 Unauthorizes requires some WWW-Authenticate header. Can we really use it this way?
       case AuthenticationError(e) => Unauthorized("Could not authenticate user with TLS cert:"+stackTrace(e))
       case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
     }
   }
+
+
+
+  def writeGetResult(replyContentType: SupportedMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
+                    (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
+    val link = namedRes.result.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
+    namedRes.result match {
+      case ldpr: LDPR[Rdf] =>  {
+        replyContentType match {
+          case SupportedMimeType.Html => {
+            SeeOther(controllers.routes.RDFViewer.htmlFor(request.getAbsoluteURI.toString).toString()).withHeaders(userHeader(namedRes))
+          }
+          case SupportedMimeType.Turtle | SupportedMimeType.RdfXml => {
+            writerFor[Rdf#Graph](request).map { wr =>
+              result(200, wr, Map("Access-Control-Allow-Origin"-> "*",userHeader(namedRes)) ++ link)(ldpr.relativeGraph)
+            } getOrElse { throw new RuntimeException("Unexpected: no writer found")}
+          }
+        }
+      }
+      case bin: BinaryResource[Rdf] => {
+        SimpleResult(
+          header = ResponseHeader(200, Map("Content-Type" -> "todo", userHeader(namedRes)) ++ link),
+          body = bin.reader(1024 * 8)
+        )
+      }
+    }
+  }
+
+
 
   def head(path: String) = Action.async { request =>
     getAsync(request).transform(res =>

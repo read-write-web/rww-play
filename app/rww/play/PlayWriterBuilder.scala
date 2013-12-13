@@ -28,9 +28,7 @@ import scalax.io.Resource
 object PlayWriterBuilder {
 
   //return writer from request header
-  def writerFor[Obj](req: RequestHeader)
-                    (implicit writerSelector: WriterSelector[Obj])
-  :  Option[Writer[Obj, Any]] = {
+  def writerFor[Obj](req: RequestHeader)(implicit writerSelector: WriterSelector[Obj]): Option[Writer[Obj, Any]] = {
     //these two lines do more work than needed, optimise to get the first
     val ranges = req.accept.map{ range => MediaRange(range) }
     val writer = ranges.flatMap(range => writerSelector(range)).headOption
