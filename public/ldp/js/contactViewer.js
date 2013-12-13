@@ -6,7 +6,7 @@ var ContactViewer = {
 	},
 
 	// Initialize.
-	initialize : function(template, user) {
+	initialize : function(user, template) {
 		var self = this;
 
 		console.log('initialise');
@@ -15,28 +15,17 @@ var ContactViewer = {
 		// Set the template.
 		this.template = template;
 
+		// Set corresponding PG.
+		this.pg = user;
+
 		// Set user uri
-		this.uri = user.uri;
+		this.uri = this.pg.pointer.uri;
 
 		// Clean Uri.
-		this.uriWoFragment = removeFragment(this.uri);
+		this.uriWoFragment = removeFragment(this.pg.pointer.uri);
 
 		// Render.
 		this.render();
-
-		// Fetch user information if not in cache.
-		/*this.graph = graphsCache[this.uriWoFragment];
-		if (!this.graph) {
-			this.graph = graphsCache[this.uriWoFragment] = new $rdf.IndexedFormula();
-			var fetch = $rdf.fetcher(this.graph);
-			fetch.nowOrWhenFetched(this.uriWoFragment, undefined, function () {
-				console.log('graph fetched !!!');
-				self.render();
-			});
-		}
-		else {
-			self.render();
-		}*/
 
 		// Bind events to DOM elements.
 		this.bindEventsToDom();
@@ -51,7 +40,7 @@ var ContactViewer = {
 		$("#"+this.attr.id).find('.userContainer').on("click", function() {
 			console.log('Click : ' + self.attr.id);
 			console.log(self.uri);
-			window.location = self.uri;
+			//window.location = self.uri;
 		})
 	},
 
@@ -59,28 +48,15 @@ var ContactViewer = {
 	render : function() {
 		console.log('render');
 
-		// Get useful attributes.
-		/*/ Get name.
-		var name = findFirst(this.graph, $rdf.sym(this.uri), FOAF('name'));
-		this.attr.fullname = name.value;
-
-		// Get images.
-		var img = findFirst(this.graph, $rdf.sym(this.uri), FOAF('img'), FOAF('depiction'));
-		this.attr.profilePicture = img.uri;
-		*/
-
-		//if (i == 1) renderUserBar(temp, user);
-		//renderUserBar(temp, user);
-
 		// Id
 		this.attr.id = this.uriWoFragment.replace(/\/|\.|:|-|\~|_/g, "");
 
 		// Name
-		var name = findFirst(baseGraph, $rdf.sym(this.uri), FOAF('name'));
+		var name = findFirst(this.pg.graph, $rdf.sym(this.uri), FOAF('name'));
 		this.attr.fullname = name.value;
 
 		// Img
-		var img = findFirst(baseGraph, $rdf.sym(this.uri), FOAF('img'), FOAF('depiction'));
+		var img = findFirst(this.pg.graph, $rdf.sym(this.uri), FOAF('img'), FOAF('depiction'));
 		if (img) this.attr.profilePicture = img.value;
 
 		// Define template.

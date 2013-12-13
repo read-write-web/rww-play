@@ -4,11 +4,14 @@
 
 <head>
 	<title>Primary Html file.</title>
- 	<script type="text/javascript" src="/assets/ldp/lib/jquery-1.7.1.min.js"></script>
+	<script type="text/javascript" src="/assets/ldp/lib/jquery-1.7.1.min.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/underscore.js"></script>
+	<script type="text/javascript" src="/assets/ldp/lib/rsvp-latest.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/rdflib.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/pointedGraph.js"></script>
+	<script type="text/javascript" src="/assets/ldp/lib/fetcherWithPromise.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/rx.js"></script>
+	<script type="text/javascript" src="/assets/ldp/lib/rx.async.js"></script>
 	<script type="text/javascript" src="/assets/ldp/lib/spin.min.js"></script>
     <script type="text/javascript" src="/assets/ldp/js/loadScript.js"></script>
     <script type="text/javascript" src="/assets/ldp/js/loadCSS.js"></script>
@@ -20,24 +23,62 @@
 		var FOAF = $rdf.Namespace("http://xmlns.com/foaf/0.1/");
 		var CONTACT = $rdf.Namespace("http://www.w3.org/2000/10/swap/pim/contact#");
 
+		// Define proxy.
+		$rdf.Fetcher.crossSiteProxyTemplate = "http://data.fm/proxy?uri={uri}";
+		//$rdf.Fetcher.crossSiteProxyTemplate = window.location.origin+"/srv/cors?url={uri}";
+
 		// Global variables.
 		graphsCache = {};
 		baseUriGlobal = window.location.href;
 		baseUriSymGlobal = $rdf.sym(baseUriGlobal);
 		baseUriSym = $rdf.sym(baseUriGlobal);
-		viewerUri = '/assets/ldp/viewer.ttl';
-		rdfTypesGlobals = null;
+		routerUri = window.location.origin + '/assets/ldp/viewer.ttl';
 
+		// Fetch the basic graph.
 		var graph = graphsCache[baseUriGlobal]  = new $rdf.graph();
-		var fetch = $rdf.fetcher(graph);
-		fetch.nowOrWhenFetched(baseUriGlobal, undefined, function () {
-			// Load the main view and utils.
-			loadScript("/assets/ldp/js/bodyViewer.js", null);
+		var f = $rdf.fetcher(graph);
+		var promise = f.fetch(baseUriGlobal, undefined);
+		promise.then(
+			function(x) {
+				// Get the type of the ressource in the graph.
+				var rdfRessourceType = graph.each(baseUriSymGlobal, RDF("type"));
 
-			// Get ressource type.
-			rdfTypesGlobal = graph.each(baseUriSymGlobal, RDF("type"));
-		});
+				// Fetch the router / config file : viewer.ttl
+				var routerGraph = graphsCache[routerUri] =  new $rdf.IndexedFormula();
+				var f2 = $rdf.fetcher(routerGraph);
+				f2.nowOrWhenFetched(routerUri, undefined, function () {
+					// Check ressource type.
+					var viewerJsUri, cpt = 0;
+					_.each(rdfRessourceType,  function(type) {
+						var vjs = routerGraph.any(type, STAMPLE("view"));
+						if (vjs && cpt < 1) {viewerJsUri = vjs.uri; cpt++;}
+					});
 
+					// Load viewer.
+					if (viewerJsUri != undefined) {
+						loadScript("/assets/ldp/js/bodyViewer.js", function() {
+							BodyView.initialize(viewerJsUri);
+						});
+					}
+					else
+						throw new Error('no viewer can render any of the RDF document types: ' + rdfRessourceType);
+				});
+
+				/*
+				console.log('success');
+				console.log(x);
+				// Load the main view and utils.
+				loadScript("/assets/ldp/js/bodyViewer.js", null);
+
+				 // Get ressource type.
+				 rdfTypesGlobal = graph.each(baseUriSymGlobal, RDF("type"));
+				*/
+			},
+			function(err) {
+				console.log('error');
+				console.log(err);
+			}
+		);
 	</script>
 </head>
 

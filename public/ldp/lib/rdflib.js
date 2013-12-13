@@ -7362,8 +7362,6 @@ $rdf.Fetcher = function(store, timeout, async) {
 
 
 
-
-
     /** Requests a document URI and arranges to load the document.
      ** Parameters:
      **	    term:  term for the thing whose URI is to be dereferenced
@@ -7440,6 +7438,7 @@ $rdf.Fetcher = function(store, timeout, async) {
         */
 
         var onerrorFactory = function(xhr) { return function(event) {
+			console.log("*********************onerrorFactory*****************");
             if ($rdf.Fetcher.crossSiteProxyTemplate && document && document.location && !this.proxyUsed) { // In mashup situation
                 var hostpart = $rdf.Util.uri.hostpart;
                 var here = '' + document.location;

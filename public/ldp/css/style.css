@@ -9,10 +9,22 @@ body {
 }
 
 /*
+* Menu View
+*/
+
+#menuContainer {
+	position: fixed;
+	top: 70px;
+}
+
+/*
 * Category viewer
 */
 
-
+#index {
+	top: 125px;
+	position: fixed;
+}
 
 /*
 * File viewer
@@ -85,6 +97,8 @@ body {
 	width:100%;
 	height: auto;
 	z-index: 1;
+	/*position: fixed;
+	top: 125px;*/
 }
 
 .userProfile label {

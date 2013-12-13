@@ -7,10 +7,11 @@ $rdf.pointedGraph = function(graph, pointer, graphName) {
 };
 
 $rdf.PointedGraph = function() {
-	$rdf.PointedGraph = function(graph, pointer, graphName){
-		this.pointer = pointer;
+	$rdf.PointedGraph = function(graph, pointer, graphName, useProxy){
 		this.graph = graph;
+		this.pointer = pointer; //#
 		this.graphName = graphName;
+		this.useProxy = useProxy;
 	};
 
 	$rdf.PointedGraph.prototype.constructor = $rdf.PointedGraph;
@@ -59,31 +60,31 @@ $rdf.PointedGraph = function() {
 		// and return that as an Observable result
 		//return observer?
 
-		var fetch = function(pg) {
-			var f = $rdf.fetcher(pg.graph);
-			f.nowOrWhenFetch(pg.pointer, function(){
-
-			})
-		}
-
 		var pgList = this.rel(relUri);
 		var localRemote = _.groupBy(pgList,function(pg){return pg.isLocalPointer()});
-		console.log("Local Remote true :" + _.size(localRemote.true))
-		console.log("Local Remote false :" + _.size(localRemote.false))
 		var source1 = Rx.Observable.fromArray(localRemote.true);
 		var source2 = Rx.Observable.create(function(observer) {
 			_.map(localRemote.false, function(pg) {
 				var f = $rdf.fetcher(pg.graph);
-				var docURL = pg.pointer.uri.split('#')[0]
-				f.nowOrWhenFetched(docURL, pg.graphName, function(){
-					//todo: need to deal with errors
-					observer.onNext(new $rdf.PointedGraph(pg.graph,pg.pointer,docURL))
-				})
+				var docURL = pg.pointer.uri.split('#')[0];
+				var promise = f.fetch(docURL, pg.graphName, self.useProxy);
+				promise.then(
+					function(x){
+						//todo: need to deal with errors
+						console.log(docURL);
+						observer.onNext(new $rdf.PointedGraph(pg.graph,pg.pointer,docURL))
+					},
+					function(err) {
+						observer.onError(err)
+					}
+				);
 			})
 		});
 
 		return source1.merge(source2);
 	}
+
+	//$rdf.PointedGraph.prototype.fetch = function(relUri) {
 
 	$rdf.PointedGraph.prototype.rel = function (relUri) {
 		console.log("***********$rdf.PointedGraph.prototype.rel*******************");
@@ -103,12 +104,10 @@ $rdf.PointedGraph = function() {
 		return pgList;
 	}
 
-
 	$rdf.PointedGraph.prototype.relFirst = function(relUri) {
 		var l = $rdf.PointedGraph.prototype.rel(relUri);
 		if (l.length > 0) return l[0];
 	}
-
 
 	$rdf.PointedGraph.prototype.future = function(pointer, name) {
 		$rdf.PointedGraph(this.graph, pointer, this.graphName)

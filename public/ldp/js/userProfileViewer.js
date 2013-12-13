@@ -1,3 +1,312 @@
+var App = {
+	attr: {
+		"name":"This information does not exist !",
+		"imgUrl":"/assets/ldp/images/user_background.png",
+		"nickname":"-",
+		"email":"-",
+		"phone":"-",
+		"city":"-",
+		"country":"-",
+		"postalCode":"-",
+		"street":"-",
+		"birthday":"-",
+		"gender":"-",
+		"website":"-"
+	},
+
+	initialize: function(){
+		var self = this;
+		var templateUri = "/assets/ldp/templates/userProfileTemplate.html";
+		console.log('initialise user profile view');
+
+		// Get base graph and uri.
+		this.baseUri = baseUriGlobal;
+		this.baseGraph = graphsCache[baseUriGlobal];
+
+		// Get current user relative URI.
+		currentUserGlobal = this.currentUserGlobal = this.getPersonToDisplay(this.baseGraph).value;
+		console.log("Person to display:" + this.currentUserGlobal);
+
+		// Get corresponding template.
+		$.get(templateUri, function(template) {
+			loadScript("/assets/ldp/js/menuViewer.js", function() {
+				// Create menu.
+				MenuView.initialize();
+
+				// Set template.
+				self.template = template;
+
+				// Create a PG.
+				pointedGraphGlobal = self.pointedGraph = new $rdf.pointedGraph(self.baseGraph, $rdf.sym(self.currentUserGlobal), $rdf.sym(self.baseUri));
+
+				// Load current user.
+				self.loadUser(self.currentUserGlobal, function() {
+					// render.
+					self.render();
+				})
+			});
+		})
+
+		// useful Define templates.
+		var formTemplate =
+			'<form id="form">' +
+				'<input id="input" style="">' +
+				'<div class="savePrompt">Save changes?' +
+				'<span class="yesSave submit">Yes</span>' +
+				'<span class="noCancel cancel">No</span>' +
+				'</div>'+
+				'</form>';
+
+		// Bind events to DOM.
+		this.bindEventsToDom();
+	},
+
+	getSubjectsOfType:function (g, subjectType) {
+		var triples = g.statementsMatching(undefined,
+			RDF('type'),
+			subjectType,
+			$rdf.sym(this.baseUri));
+		return _.map(triples, function (triple) {
+			return triple['subject'];
+		})
+	},
+
+	getFoafPrimaryTopic:function (g) {
+		return g.any($rdf.sym(this.baseUri), FOAF('primaryTopic'), undefined)
+	},
+
+	getPersonToDisplay:function (g) {
+		var foafPrimaryTopic = this.getFoafPrimaryTopic(g);
+		if (foafPrimaryTopic) {
+			return foafPrimaryTopic;
+		} else {
+			var personUris = this.getSubjectsOfType(this.baseGraph, FOAF("Person"));
+			if (personUris.length === 0) {
+				throw "No person to display in this card: " + this.baseUri;
+			} else {
+				return personUris[0];
+			}
+		}
+	},
+
+ 	// Clean URI.
+ 	// i.e. : look for hashbang in URL and remove it and anything after it
+ 	cleanUri: function (uri) {
+ 		var docURI, indexOf = uri.indexOf('#');
+ 		if (indexOf >= 0)
+ 		docURI = uri.slice(0, indexOf);
+ 		else  docURI = uri;
+ 		return docURI;
+ 	},
+
+ 	loadUser:function (webId, callback) {
+		var self = this;
+
+		// Turn Uri into symbol.
+		var uriSym = $rdf.sym(webId);
+
+		// Clean Uri.
+		var uriCleaned = this.cleanUri(webId);
+
+		// If user graph already fetched, get attributes and render, otherwise fetch it.
+		var graph = graphsCache[uriCleaned];
+		if (!graph) {
+			graph = graphsCache[uriCleaned] = new $rdf.IndexedFormula();
+			var fetch = $rdf.fetcher(graph);
+			fetch.nowOrWhenFetched(uriCleaned, undefined, function () {
+				self.getUserAttributes(this.pointedGraph,
+					function () {
+						if (callback) callback();
+					});
+			});
+		}
+		else {
+			self.getUserAttributes(this.pointedGraph,
+				function () {
+					if (callback) callback();
+				});
+		}
+	},
+
+	/*
+ 	*
+ 	* @param userPG pointed graph with pointer pointing on user.
+ 	* @param callback
+ 	*/
+	getUserAttributes:function (userPg, callback) {
+		console.log("getUserAttributes");
+
+		// add name
+		var namesPg = userPg.rel(FOAF('name'));
+		var names =
+			_.chain(namesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		this.attr.name = (names && names.length > 0 ) ? names[0].value : "No value";
+		console.log(this.attr.name);
+
+		// Add image if available
+		var imgsPg1 = userPg.rel(FOAF('img'));
+		var imgsPg2 = userPg.rel(FOAF('depiction'));
+		console.log(imgsPg1);
+		console.log(imgsPg2);
+		var imgs =
+			_.chain(imgsPg1.concat(imgsPg2))
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		this.attr.imgUrl = (imgs && imgs.length > 0 ) ? imgs[0].value : "No profile picture";
+
+		// Render callback.
+		if (callback) callback();
+	},
+
+	// Define handlers.
+	handlerClickOnEditLink:function (e) {
+		console.log("handlerClickOnEditLink");
+		var parent, parentId , $labelText, $editLink, $form, $input, formerValue;
+
+		// Get target.
+		parent = $(e.target).parent().parent();
+		parentId = parent.attr('id');
+
+		// Hide name and Open form editor.
+		$labelText = parent.find(".labelText");
+		$editLink = parent.find(".editLink");
+		formerValue = $labelText.html();
+		$labelText.hide();
+		$editLink.hide();
+
+		// Insert template in the DOM.
+		$(formTemplate).insertAfter(parent.find(".labelContainer"));
+
+		// Store useful references.
+		$form = parent.find("#form");
+		$input = parent.find("#input");
+
+		// Give the form the focus.
+		$input
+			.val(formerValue)
+			.show()
+			.focus();
+
+		parent.find(".submit").on("click", function () {
+			console.log('submit !');
+
+			// Get the new value.
+			var newValue = $input.val();
+
+			// Make the SPARQL request.
+			var pred = ' foaf:' + parentId;
+			var queryDelete =
+				'PREFIX foaf: <http://xmlns.com/foaf/0.1/> \n' +
+					'DELETE DATA \n' +
+					'{' +
+					"<" + baseUri + "#me" + ">" + pred + ' "' + formerValue + '"' + '. \n' +
+					'}';
+
+			var queryInsert =
+				'PREFIX foaf: <http://xmlns.com/foaf/0.1/> \n' +
+					'INSERT DATA \n' +
+					'{' +
+					"<" + baseUri + "#me" + ">" + pred + ' "' + newValue + '"' + '. \n' +
+					'}';
+
+			// Callback success.
+			function successCallback() {
+				console.log('Saved!');
+				// Change value in label.
+				$labelText.html(newValue);
+
+				// Re-initiliaze the form.
+				$form.remove();
+				$labelText.show();
+				$editLink.show();
+			}
+
+			// Callback error.
+			function errorCallback() {
+				console.log('error!');
+				// Re-initiliaze the form.
+				$form.remove();
+				$labelText.show();
+				$editLink.show();
+			}
+
+			// Delete old and insert new triples.
+			sparqlPatch(baseUri, queryDelete,
+				function () {
+					sparqlPatch(baseUri, queryInsert, successCallback, errorCallback);
+				},
+				function () {
+					if (errorCallback) errorCallback();
+				}
+			);
+
+		});
+		parent.find(".cancel").on("click", function () {
+			console.log('cancel');
+			$form.remove();
+			$labelText.show();
+			$editLink.show();
+		});
+	},
+
+	handlerClickOnfriends:function (e) {
+		console.log('handlerClickOnfriends');
+		if ($('#userbar').css('display') == 'none') {
+			// Show contacts Bar.
+			loadScript("/assets/ldp/js/contactsViewer.js", function () {
+				ContactsView.initialize();
+				$("#friends").find('label').html('Hide Contacts')
+			});
+		}
+		else {
+			$('#userbar').css('display', 'none');
+			$('#userbar').find("#userBarContent").remove();
+			$("#friends").find('label').html('Show Contacts')
+		}
+
+	},
+
+	bindEventsToView: function() {
+		console.log($(".showContacts"));
+		// Bind click for on view elements.
+		$(".editLinkImg").on("click", this.handlerClickOnEditLink);
+		$("#friends").on("click", this.handlerClickOnfriends);
+		$(".showContacts").on("click", this.handlerClickOnEditLink);
+	},
+
+	bindEventsToDom: function() {},
+
+	render: function(){
+		// Define view template.
+		var html = _.template(this.template, this.attr);
+
+		// Append in the DOM.
+		$('#viewerContent').append(html);
+
+		// Bind events to View elements.
+		this.bindEventsToView();
+	}
+};
+
+
+
+
+
+
+
+
+
+/*
+
 // Define templates.
 var templateURI = "/assets/ldp/templates/userProfileTemplate.html";
 var formTemplate =
@@ -40,9 +349,6 @@ $.get(templateURI, function(data) {
 	// Create a PG.
 	pointedGraphGlobal = new $rdf.pointedGraph(baseGraph, $rdf.sym(currentUserGlobal), $rdf.sym(baseUri));
 
-	// Create a list of PGs for each FOAF knows results.
-	//pointedGraph.rel(FOAF('knows'));
-
 	// Load current user.
 	loadUser(currentUserGlobal, function() {
 		// Define view template.
@@ -84,9 +390,11 @@ function getPersonToDisplay(g) {
 }
 
 
+*/
 /*
 * Define handlers.
-* */
+* *//*
+
 function handlerClickOnEditLink(e) {
 	console.log("handlerClickOnEditLink");
 	var parent, parentId , $labelText, $editLink, $form, $input, formerValue;
@@ -194,10 +502,12 @@ function handlerClickOnfriends(e) {
 }
 
 
+*/
 /*
 * Clean URI.
 * i.e. : look for hashbang in URL and remove it and anything after it
-* */
+* *//*
+
 function cleanUri(uri) {
 	var docURI, indexOf = uri.indexOf('#');
 	if (indexOf >= 0)
@@ -207,9 +517,11 @@ function cleanUri(uri) {
 }
 
 
+*/
 /*
 * Load a given user (get attributes and render).
-* */
+* *//*
+
 function loadUser(webId, callback) {
 	console.log("loadUser");
 
@@ -239,10 +551,12 @@ function loadUser(webId, callback) {
 	}
 }
 
+*/
 /*
  * Clean URI.
  * i.e. : look for hashbang in URL and remove it and anything after it
- * */
+ * *//*
+
 function cleanUri(uri) {
 	var docURI, indexOf = uri.indexOf('#');
 	if (indexOf >= 0)
@@ -251,9 +565,11 @@ function cleanUri(uri) {
 	return docURI;
 }
 
+*/
 /**
  * Get attributes of given user by querrying the graph.
- */
+ *//*
+
 function getUserAttributes2(graph, uriSym, callback) {
 	console.log("getUserAttributes");
 	// Helper to select the first existing element of a series of arguments
@@ -298,9 +614,11 @@ function getUserAttributes2(graph, uriSym, callback) {
 	var bday = graph.any(uriSym, FOAF('birthday'));
 	if(bday && bday.value) tab.birthday=bday.value;
 
-	/*
+	*/
+/*
 	* Get Contact.
-	* */
+	* *//*
+
 
 	// Define a SPARQL query to fetch the address
 	var sparqlQuery = "PREFIX contact:  <http://www.w3.org/2000/10/swap/pim/contact#> \n" +
@@ -335,11 +653,13 @@ function getUserAttributes2(graph, uriSym, callback) {
 	graph.query(addressQuery, onResult, undefined, onDone);
 }
 
+*/
 /**
  *
  * @param userPG pointed graph with pointer pointing on user.
  * @param callback
- */
+ *//*
+
 function getUserAttributes(userPg, callback) {
 	console.log("getUserAttributes");
 
@@ -353,25 +673,24 @@ function getUserAttributes(userPg, callback) {
 	tab.name = (names && names.length >0 )? names[0].value : "No value";
 	console.log(tab.name);
 
+	// Add image if available
+	var imgsPg1 = userPg.rel(FOAF('img'));
+	var imgsPg2 = userPg.rel(FOAF('depiction'));
+	console.log(imgsPg1);
+	console.log(imgsPg2);
+	var imgs =
+		_.chain(imgsPg1.concat(imgsPg2))
+		.map(function(pg) {return pg.pointer})
+		.value();
+	tab.imgUrl = (imgs && imgs.length >0 )? imgs[0].value : "No profile picture";
 
-	// Test Observables.
-	var source = userPg.observableRel(FOAF('knows'));
-	var subscription = source.subscribe(
-		function(value) {
-			console.log("onNext : " + value.isLocalPointer());
-			updateAttributesPg(value) ;
-		},
-		function(err) {
-			console.log("onError : " );
-			console.log( err.message);
-		},
-		function() {
-			console.log('Completed !!!')
-		}
-	)
+	// Render callback.
+	if (callback) callback();
 }
 
 
 function updateAttributesPg(value) {
 
 }
+*/
+

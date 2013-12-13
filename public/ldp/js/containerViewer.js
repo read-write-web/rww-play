@@ -1,5 +1,85 @@
+var App = {
+	initialize: function() {
+		var self = this;
+		var templateUri = "/assets/ldp/templates/containerTemplate.html";
+
+		$.get(templateUri, function(template) {
+
+			loadScript("/assets/ldp/js/menuViewer.js", function() {
+				// Create menu.
+				MenuView.initialize()
+
+				// Set template.
+				self.template = template;
+
+				// render.
+				self.render();
+			});
+		})
+	},
+
+	// Get content of the current container and render them.
+	getContainerContent: function() {
+		var template2URI = "/assets/ldp/templates/containerEltTemplate.html";
+
+		// Fetch template for container items.
+		$.get(template2URI, function (template) {
+			var onResult, onDone;
+			var templateAll = "";
+			var $lines = $('.lines');
+			var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
+
+			// Get current graph and uri.
+			var baseUri = baseUriGlobal;
+			var baseGraph = graphsCache[baseUri];
+
+			// Define Sparql query to get items in container.
+			var sparqlQuery =
+				"PREFIX ldp: <http://www.w3.org/ns/ldp#> \n" +
+					"PREFIX stat:  <http://www.w3.org/ns/posix/stat#> \n" +
+					"PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> \n" +
+					"SELECT ?m ?type ?size ?mt \n" +
+					"WHERE {\n" +
+					" <" + baseUri + "> ldp:created ?m . \n" +
+					" OPTIONAL { ?m stat:size ?size . } \n" +
+					" OPTIONAL { ?m a ?type . } \n" +
+					" OPTIONAL { ?m stat:mtime ?mt .} \n" +
+					"}"
+
+			// Bind the Sparql query to the graph.
+			var fileQuery = $rdf.SPARQLToQuery(sparqlQuery, false, baseGraph);
+
+			// Define callback for Sparql request.
+			onResult = function (result) {
+				// Create corresponding contact view.
+				loadScript("/assets/ldp/js/containerEltView.js", function() {
+					containerEltView.initialize(result, template);
+				});
+			};
+			onDone = function (result) {};
+
+			// Execute the Sparql query.
+			baseGraph.query(fileQuery, onResult, undefined, onDone);
+		});
+	},
+
+	render: function() {
+		// Load Html.
+		var template = _.template(this.template, {});
+
+		// Append in the DOM.
+		$("#viewerContent").append(template);
+
+		// Render each items in the container.
+		this.getContainerContent();
+	}
+};
+
+
+/*
 var templateURI = "/assets/ldp/templates/containersTemplate.html";
 var template2URI = "/assets/ldp/templates/containerTemplate.html";
+var tab = {};
 $.get(templateURI, function (data) {
 	// Load Html.
 	var template = _.template(data, tab);
@@ -111,3 +191,4 @@ $.get(templateURI, function (data) {
 
 
 }, 'html');
+*/

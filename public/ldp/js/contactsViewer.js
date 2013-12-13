@@ -1,3 +1,96 @@
+var ContactsView = {
+	initialize: function() {
+		var self = this;
+		var templateUri = "/assets/ldp/templates/contactsBarTemplate.html";
+		this.templateUriContact = "/assets/ldp/templates/contactBarTemplate.html";
+		console.log('initialise');
+		$.get(templateUri, function(template) {
+			// Set template.
+			self.template = template;
+
+			// render.
+			self.render();
+		})
+	},
+
+	getUserContacts:function (graph, uriSym, callback) {
+		var self = this;
+		console.log("getUserContacts");
+		console.log(uriSym);
+
+		$.get(this.templateUriContact, function (temp) {
+			// Create Observables on user contacts.
+			var source = pointedGraphGlobal.observableRel(FOAF('knows'));
+			var subscription = source.subscribe(
+				function (pg) {
+					console.log("onNext : " + pg.isLocalPointer());
+					self.renderUserBar(pg, temp);
+				},
+				function (err) {
+					console.log("onError : ");
+					console.log(err.message);
+				},
+				function () {
+					console.log('Completed !!!')
+				}
+			)
+		});
+	},
+
+	renderUserBar: function (pg, temp) {
+		console.log('render each');
+		// Show contacts Bar.
+		loadScript("/assets/ldp/js/contactViewer.js", function () {
+			ContactViewer.initialize(pg, temp);
+		});
+	},
+
+	render: function() {
+		var self = this;
+		console.log("render");
+		// Define template
+		var template = _.template(this.template, {});
+
+		// Append to the DOM
+		$("#userbar")
+			.append(template)
+			.show();
+
+		// If user graph already fetched, get attributes and render, otherwise fetch it.
+		var graph = graphsCache[baseUriGlobal];
+		console.log(graph);
+		if (!graph) {
+			graph = graphsCache[baseUriGlobal] = new $rdf.IndexedFormula();
+			var fetch = $rdf.fetcher(graph);
+			fetch.nowOrWhenFetched(baseUriGlobal, undefined, function () {
+				self.getUserContacts(graph, $rdf.sym(currentUserGlobal),
+					function() {
+						if (callback) callback();
+					});
+			});
+		}
+		else {
+			self.getUserContacts(graph, $rdf.sym(currentUserGlobal),
+				function() {
+					if (callback) callback();
+				});
+		}
+	}
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 var templateUri = "/assets/ldp/templates/contactsBarTemplate.html";
 var templateUriContact = "/assets/ldp/templates/contactBarTemplate.html";
 var tab = {};
@@ -38,7 +131,8 @@ $.get(templateUri, function(data) {
 function getUserContacts(graph, uriSym, callback) {
 	console.log("getUserContacts");
 	console.log(uriSym);
-	var friends = graph.each(uriSym, FOAF('knows'));
+	*/
+/*var friends = graph.each(uriSym, FOAF('knows'));
 
 	$.get(templateUriContact, function(temp) {
 		// Render each contact.
@@ -47,12 +141,32 @@ function getUserContacts(graph, uriSym, callback) {
 			console.log(user);
 			renderUserBar(temp, user);
 		});
+	});*//*
+
+
+	$.get(templateUriContact, function(temp) {
+	// Create Observables on user contacts.
+	var source = pointedGraphGlobal.observableRel(FOAF('knows'));
+	var subscription = source.subscribe(
+		function(pg) {
+			console.log("onNext : " + pg.isLocalPointer());
+			//updateAttributesPg(value) ;
+			renderUserBar(pg, temp);
+		},
+		function(err) {
+			console.log("onError : " );
+			console.log( err.message);
+		},
+		function() {
+			console.log('Completed !!!')
+		}
+	)
 	});
 }
 
-function renderUserBar(temp, user) {
+function renderUserBar(pg, temp) {
 	// Show contacts Bar.
 	loadScript("/assets/ldp/js/contactViewer.js", function() {
-		ContactViewer.initialize(temp, user);
+		ContactViewer.initialize(pg, temp);
 	});
-}
+}*/
