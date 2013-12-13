@@ -17,7 +17,7 @@ import util.Success
 */
 class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
                            (implicit ops: RDFOps[Rdf], sparqlGraph: SparqlGraph[Rdf], ec: ExecutionContext,
-                            turtleWriter: RDFWriter[Rdf,Turtle]) extends RActor {
+                            turtleWriter: RDFWriter[Rdf,Turtle]) extends BaseLDPActor {
 
   import ops._
   import org.w3.banana.syntax._

@@ -21,7 +21,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
                         reader: RDFReader[Plantain,Turtle],
                         writer: RDFWriter[Plantain,Turtle],
                         adviceSelector: AdviceSelector[Plantain]= new EmptyAdviceSelector
-                         ) extends RActor {
+                         ) extends BaseLDPActor {
   var ext = ".ttl"
   val acl = ".acl"
 
@@ -94,13 +94,15 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   def getResource(name: String): Try[LocalNamedResource[Plantain]] = {
     import scalax.io.{Resource=>xResource}
     //todo: the file should be verified to see if it is up to date.
-    cacheg.get(name) match {
+    val resource = cacheg.get(name) match {
       case Success(LocalLDPR(_,_,path,updated)) if (path.toFile.lastModified() > updated.get.getTime) => {
         cacheg.invalidate(name)
         cacheg.get(name)
       }
       case ldpr => ldpr
     }
+    log.info(s"getResource with name=$name , found=$resource")
+    resource
   }
 
   /**

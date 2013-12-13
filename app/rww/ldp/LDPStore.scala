@@ -20,23 +20,6 @@ import scalaz.\/-
 import scalaz.-\/
 import org.w3.banana.syntax.URISyntax
 
-trait RActor extends Actor with akka.actor.ActorLogging {
-
-  def returnErrors[A,B](pf: Receive): Receive = new PartialFunction[Any,Unit] {
-    //interestingly it seems we can't catch an error here! If we do, we have to return a true or a false
-    // and whatever we choose it could have bad sideffects. What happens if the isDefinedAt throws an exception?
-      def isDefinedAt(x: Any): Boolean = pf.isDefinedAt(x)
-      def apply(a: Any): Unit = try {
-        log.info(s"received $a");
-        pf.apply(a)
-      } catch {
-        case e: Exception => sender ! akka.actor.Status.Failure(e)
-      }
-    }
-
-    def rwwRouterActor =  context.actorSelection(RWW.rwwPath)
-
-}
 
 
 class LocalSetup {
@@ -74,7 +57,7 @@ class LocalSetup {
  * resource that is not given a name... so this should probably extend a more abstract resource
  */
 trait NamedResource[Rdf<:RDF] extends Meta[Rdf] {
-   def location: Rdf#URI
+   def location: Rdf#URI // TODO already defined in meta so is it useful to keep it here too
 }
 
 /**
@@ -239,7 +222,6 @@ case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
   def size = None
 }
 
-
 case class RemoteLDPR[Rdf<:RDF](location: Rdf#URI, graph: Rdf#Graph, meta: PointedGraph[Rdf], updated: Option[Date])
                                (implicit val ops: RDFOps[Rdf]) extends LDPR[Rdf] {
   import diesel._
@@ -268,6 +250,11 @@ case class UnsupportedMediaType(message: String) extends Exception(message) with
 case class StorageError(message: String)  extends Exception(message) with BananaException
 
 
+
+
+
+// TODO these are just messages which permit to set/change actorRef of some other actors
+// TODO rename because these are not actors but kind of setters, and maybe it would be more clear to use Props instead?
 case class WebActor(web: ActorRef)
 case class LDPSActor(ldps: ActorRef)
 

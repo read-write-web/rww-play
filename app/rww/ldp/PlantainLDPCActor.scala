@@ -72,6 +72,9 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
     else super.localName(uri)
   }
 
+  // TODO permits to retrieve metadatas on the file etc...
+  // this is relative to LDP spec and may need to be update with newer spec version
+  // TODO add better documentation
   private def descriptionFor(path: Path, attrs: BasicFileAttributes): Plantain#Graph = {
     def graphFor(uri: Plantain#URI) = {
       var res = emptyGraph +

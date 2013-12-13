@@ -2,7 +2,7 @@ package test.ldp
 
 import org.scalatest.WordSpec
 import org.scalatest.Matchers
-import rww.ldp.RActor
+import rww.ldp.BaseLDPActor
 import java.net.{URI, URL}
 
 /**

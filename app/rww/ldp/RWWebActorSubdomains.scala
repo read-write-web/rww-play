@@ -2,16 +2,25 @@ package rww.ldp
 
 import org.w3.banana.{syntax, RDFOps, RDF}
 import akka.util.Timeout
-import akka.actor.ActorRef
+import akka.actor.{Identify, ActorRef}
 import scalaz.{\/-, -\/}
 import java.net.{URI=>jURI}
 
 object RWWebActorSubdomains {
-  case class Switch(subhost: Option[String], path: String)
+  case class SubdomainSwitch(subhost: Option[String], path: String)
 
-  def local(u: jURI, base: jURI): Option[Switch] = {
+  /**
+   * We compare the uri u to the base URI, and if this uri seems local to the base uri,
+   * this means that the uri content can be retrieved on the filesystem, and not on a remote host
+   * Thus we return the local path of the resource
+   * TODO add better doc: i think the return is the relative local path
+   * @param u
+   * @param base
+   * @return
+   */
+  def local(u: jURI, base: jURI): Option[SubdomainSwitch] = {
     if (!u.isAbsolute ) {
-      RWWebActor.local(u,base).map(path=>Switch(None,path))
+      RWWebActor.local(u,base).map(path=>SubdomainSwitch(None,path))
     } else {
       val url = u.toURL
       val baseUrl = base.toURL
@@ -23,10 +32,10 @@ object RWWebActorSubdomains {
         else
           Some(url.getHost.substring(0,url.getHost.length - baseUrl.getHost.length-1) )
 
-        if (subhost == None) RWWebActor.local(u, base).map(p=>Switch(None,p))
+        if (subhost == None) RWWebActor.local(u, base).map(p=>SubdomainSwitch(None,p))
         else {
           val path = RWWebActor.cleanDots(u.getPath)
-          Option(Switch(subhost,path.mkString("/")))
+          Option(SubdomainSwitch(subhost,path.mkString("/")))
         }
       } else None
     }
@@ -45,7 +54,7 @@ object RWWebActorSubdomains {
  * @tparam Rdf
  */
 class RWWebActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
-                          (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RActor {
+                          (implicit ops: RDFOps[Rdf], timeout: Timeout) extends BaseLDPActor {
   import syntax.URISyntax.uriW
   import RWWebActorSubdomains._
 
@@ -97,6 +106,5 @@ class RWWebActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
     }
 
   }
-
 
 }

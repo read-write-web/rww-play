@@ -16,6 +16,15 @@ object RWWebActor {
     } else None
 
 
+  /**
+   * We compare the uri u to the base URI, and if this uri seems local to the base uri,
+   * this means that the uri content can be retrieved on the filesystem, and not on a remote host
+   * Thus we return the local path of the resource
+   * TODO add better doc: i think the return is the relative local path
+   * @param u
+   * @param base
+   * @return
+   */
   def local(u: jURI, base: jURI): Option[String] = {
     if (!u.isAbsolute) {
       path(u.getPath,base.getPath)
@@ -57,7 +66,7 @@ object RWWebActor {
  * @tparam Rdf
  */
 class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
-                          (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RActor {
+                          (implicit ops: RDFOps[Rdf], timeout: Timeout) extends BaseLDPActor {
   import syntax.URISyntax.uriW
   import RWWebActor._
 
@@ -73,6 +82,7 @@ class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
       }
     }
     case cmd: Cmd[Rdf,_] => forwardSwitch(cmd)
+    // TODO do we really need to be able to change the actorRef of these at runtime? it could be simpler to simply use Props?
     case WebActor(webActor) => {
       log.info(s"setting web actor to <$webActor> ")
       web = Some(webActor)
@@ -84,6 +94,7 @@ class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
   }
 
   /** We in fact ignore the R and A types, since we cannot capture */
+  // TODO doc! local vs remote
   protected def forwardSwitch[A](cmd: Cmd[Rdf,A]) {
     local(cmd.command.uri.underlying,baseUri.underlying).map { path=>
       rootContainer match {
