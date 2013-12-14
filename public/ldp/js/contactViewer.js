@@ -6,23 +6,17 @@ var ContactViewer = {
 	},
 
 	// Initialize.
-	initialize : function(user, template) {
+	initialize : function(pointedGraph, template) {
 		var self = this;
 
-		console.log('initialise');
-		console.log(user);
+		console.log('initialize');
+		console.log(pointedGraph);
 
 		// Set the template.
 		this.template = template;
 
 		// Set corresponding PG.
-		this.pg = user;
-
-		// Set user uri
-		this.uri = this.pg.pointer.uri;
-
-		// Clean Uri.
-		this.uriWoFragment = removeFragment(this.pg.pointer.uri);
+		this.pointedGraph = pointedGraph;
 
 		// Render.
 		this.render();
@@ -40,32 +34,67 @@ var ContactViewer = {
 		$("#"+this.attr.id).find('.userContainer').on("click", function() {
 			console.log('Click : ' + self.attr.id);
 			console.log(self.uri);
+			console.log(App);
+			App.loadUser(self.pointedGraph);
+
 			//window.location = self.uri;
 		})
 	},
 
+	getContactAttributes:function (callback) {
+		var userPg = this.pointedGraph;
+		console.log("getUserAttributes");
+		console.log(userPg);
+
+		// add name
+		var namesPg = this.pointedGraph.rel(FOAF('name'));
+		var names =
+			_.chain(namesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		this.attr.fullname = (names && names.length > 0 ) ? names[0].value : "No value";
+		console.log(this.attr.fullname);
+
+		// Add image if available
+		var imgsPg1 = this.pointedGraph.rel(FOAF('img'));
+		var imgsPg2 = this.pointedGraph.rel(FOAF('depiction'));
+		var imgs =
+			_.chain(imgsPg1.concat(imgsPg2))
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		this.attr.profilePicture = (imgs && imgs.length > 0 ) ? imgs[0].value : "No profile picture";
+		console.log(this.attr.profilePicture);
+
+		// Callback.
+		if (callback) callback();
+	},
+
 	// Append to the DOM.
 	render : function() {
+		var self = this;
 		console.log('render');
 
-		// Id
-		this.attr.id = this.uriWoFragment.replace(/\/|\.|:|-|\~|_/g, "");
+		// Get contact attributes.
+		this.getContactAttributes(function() {
+			// Set view Id.
+			console.log(self.pointedGraph.graphName);
+			self.attr.id = self.pointedGraph.graphName.uri.replace(/\/|\.|:|-|\~|_/g, "");
 
-		// Name
-		var name = findFirst(this.pg.graph, $rdf.sym(this.uri), FOAF('name'));
-		this.attr.fullname = name.value;
+			// Define template.
+			var html = _.template(self.template, self.attr);
 
-		// Img
-		var img = findFirst(this.pg.graph, $rdf.sym(this.uri), FOAF('img'), FOAF('depiction'));
-		if (img) this.attr.profilePicture = img.value;
+			// Append to DOM.
+			$("#usersBar").append(html);
 
-		// Define template.
-		var obj = _.template(this.template, this.attr);
-
-		// Append to DOM.
-		$("#usersBar").append(obj);
-
-		// Bind events to view elements.
-		this.bindEventsToView();
+			// Bind events to view elements.
+			self.bindEventsToView();
+		});
 	}
 }

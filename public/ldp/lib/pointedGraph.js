@@ -1,17 +1,20 @@
-/*
-*
-* */
-
-$rdf.pointedGraph = function(graph, pointer, graphName) {
-	return new $rdf.PointedGraph(graph, pointer, graphName);
+/**
+ *
+ * @param store Quand Store
+ * @param pointer onto an object.  Type : $rdf.sym() - ie Literal, Bnode, or URI
+ * @param graphName name of graph in which to point - // Type : $rdf.sym() but limited to URI
+ * @return {$rdf.PointedGraph}
+ */
+$rdf.pointedGraph = function(store, pointer, graphName) {
+	return new $rdf.PointedGraph(store, pointer, graphName);
 };
 
 $rdf.PointedGraph = function() {
 	$rdf.PointedGraph = function(graph, pointer, graphName, useProxy){
 		this.graph = graph;
-		this.pointer = pointer; //#
-		this.graphName = graphName;
-		this.useProxy = useProxy;
+		this.pointer = pointer; //# // Type : $rdf.sym()
+		this.graphName = graphName; // Type : $rdf.sym()
+		this.useProxy = useProxy ;
 	};
 
 	$rdf.PointedGraph.prototype.constructor = $rdf.PointedGraph;
@@ -72,9 +75,10 @@ $rdf.PointedGraph = function() {
 					function(x){
 						//todo: need to deal with errors
 						console.log(docURL);
-						observer.onNext(new $rdf.PointedGraph(pg.graph,pg.pointer,docURL))
+						observer.onNext(new $rdf.PointedGraph(pg.graph,pg.pointer, $rdf.sym(docURL)))
 					},
 					function(err) {
+						console.log(err);
 						observer.onError(err)
 					}
 				);
@@ -91,9 +95,15 @@ $rdf.PointedGraph = function() {
 		var g = this.graph;
 		var n = this.graphName;
 		var p = this.pointer;
+		console.log(this);
+		console.log(g);
+		console.log(n);
+		console.log(p);
+		console.log(relUri);
 
 		// Select all that matches the relation relUri.
-		var resList = g.statementsMatching(p, relUri, undefined, n, false);
+		//var resList = g.statementsMatching(p, relUri, undefined, n, false);
+		var resList = this.graph.statementsMatching(this.pointer, relUri, undefined, this.graphName);
 		console.log(resList);
 
 		// Create as much PG as q results.
@@ -111,6 +121,12 @@ $rdf.PointedGraph = function() {
 
 	$rdf.PointedGraph.prototype.future = function(pointer, name) {
 		$rdf.PointedGraph(this.graph, pointer, this.graphName)
+	}
+
+	$rdf.PointedGraph.prototype.print= function() {
+		return "PG(<"+this.pointer+">, <"+this.graphName+"> = { "+
+		$rdf.Serializer(this.graph).statementsToN3(this.graph.statementsMatching(undefined, undefined, undefined, this.graphName)) + "}"
+
 	}
 
 	return $rdf.PointedGraph;

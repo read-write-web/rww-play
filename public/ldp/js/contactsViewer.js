@@ -1,9 +1,14 @@
 var ContactsView = {
-	initialize: function() {
+	initialize: function(pointedGraph) {
 		var self = this;
 		var templateUri = "/assets/ldp/templates/contactsBarTemplate.html";
 		this.templateUriContact = "/assets/ldp/templates/contactBarTemplate.html";
-		console.log('initialise');
+		console.log('initialise ContactsView');
+		console.log(pointedGraph);
+		// Set view variables.
+		this.pointedGraph = pointedGraph;
+
+		// Fetch template and render.
 		$.get(templateUri, function(template) {
 			// Set template.
 			self.template = template;
@@ -13,14 +18,13 @@ var ContactsView = {
 		})
 	},
 
-	getUserContacts:function (graph, uriSym, callback) {
+	getUserContacts:function () {
 		var self = this;
 		console.log("getUserContacts");
-		console.log(uriSym);
 
 		$.get(this.templateUriContact, function (temp) {
 			// Create Observables on user contacts.
-			var source = pointedGraphGlobal.observableRel(FOAF('knows'));
+			var source = self.pointedGraph.observableRel(FOAF('knows'));
 			var subscription = source.subscribe(
 				function (pg) {
 					console.log("onNext : " + pg.isLocalPointer());
@@ -28,7 +32,7 @@ var ContactsView = {
 				},
 				function (err) {
 					console.log("onError : ");
-					console.log(err.message);
+					console.log(err);
 				},
 				function () {
 					console.log('Completed !!!')
@@ -56,25 +60,8 @@ var ContactsView = {
 			.append(template)
 			.show();
 
-		// If user graph already fetched, get attributes and render, otherwise fetch it.
-		var graph = graphsCache[baseUriGlobal];
-		console.log(graph);
-		if (!graph) {
-			graph = graphsCache[baseUriGlobal] = new $rdf.IndexedFormula();
-			var fetch = $rdf.fetcher(graph);
-			fetch.nowOrWhenFetched(baseUriGlobal, undefined, function () {
-				self.getUserContacts(graph, $rdf.sym(currentUserGlobal),
-					function() {
-						if (callback) callback();
-					});
-			});
-		}
-		else {
-			self.getUserContacts(graph, $rdf.sym(currentUserGlobal),
-				function() {
-					if (callback) callback();
-				});
-		}
+		//
+		this.getUserContacts();
 	}
 };
 

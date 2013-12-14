@@ -29,56 +29,99 @@
 
 		// Global variables.
 		graphsCache = {};
+		storeGlobal = new $rdf.IndexedFormula();
 		baseUriGlobal = window.location.href;
 		baseUriSymGlobal = $rdf.sym(baseUriGlobal);
 		baseUriSym = $rdf.sym(baseUriGlobal);
 		routerUri = window.location.origin + '/assets/ldp/viewer.ttl';
+		routerUriSym = $rdf.sym(routerUri);
 
-		// Fetch the basic graph.
-		var graph = graphsCache[baseUriGlobal]  = new $rdf.graph();
-		var f = $rdf.fetcher(graph);
-		var promise = f.fetch(baseUriGlobal, undefined);
-		promise.then(
-			function(x) {
+		// Fetch the basic graphs.
+		var f1 = $rdf.fetcher(storeGlobal);
+		var f2 = $rdf.fetcher(storeGlobal);
+
+		// Create related promises.
+		baseGraphPromise = f1.fetch(baseUriGlobal, baseUriGlobal, false);
+		routerPromise = f2.fetch(routerUri, routerUri, false);
+
+		RSVP.all([baseGraphPromise, routerPromise]).then(
+			function(results) {
 				// Get the type of the ressource in the graph.
-				var rdfRessourceType = graph.each(baseUriSymGlobal, RDF("type"));
+				var basicGraphPg = results[0];
+				var routerPg = results[1];
+				var routerTypes = _.chain(results[0].rel(RDF("type")))
+					.map(function(pg) {
+						var pg2 = new $rdf.PointedGraph(routerPg.graph,pg.pointer,routerPg.graphName)
+						var res = pg2.rel(STAMPLE("view"));
+                        return res
+					})
+					.flatten()
+					.map(function(pg){
+						return pg.pointer
+					}).value();
 
-				// Fetch the router / config file : viewer.ttl
-				var routerGraph = graphsCache[routerUri] =  new $rdf.IndexedFormula();
-				var f2 = $rdf.fetcher(routerGraph);
-				f2.nowOrWhenFetched(routerUri, undefined, function () {
-					// Check ressource type.
-					var viewerJsUri, cpt = 0;
-					_.each(rdfRessourceType,  function(type) {
-						var vjs = routerGraph.any(type, STAMPLE("view"));
-						if (vjs && cpt < 1) {viewerJsUri = vjs.uri; cpt++;}
+				// Load viewer.
+				if (routerTypes && routerTypes.length > 0) {
+					var viewerJsUri = routerTypes[0].uri;
+					// Load viewer app.
+					loadScript(viewerJsUri, function() {
+						App.initialize(basicGraphPg);
 					});
+				}
+				else
+					throw new Error('no viewer can render any of the RDF document types: ' + routerTypes);
 
-					// Load viewer.
-					if (viewerJsUri != undefined) {
-						loadScript("/assets/ldp/js/bodyViewer.js", function() {
-							BodyView.initialize(viewerJsUri);
-						});
-					}
-					else
-						throw new Error('no viewer can render any of the RDF document types: ' + rdfRessourceType);
-				});
-
-				/*
-				console.log('success');
-				console.log(x);
-				// Load the main view and utils.
-				loadScript("/assets/ldp/js/bodyViewer.js", null);
-
-				 // Get ressource type.
-				 rdfTypesGlobal = graph.each(baseUriSymGlobal, RDF("type"));
-				*/
-			},
-			function(err) {
-				console.log('error');
-				console.log(err);
 			}
 		);
+
+
+//		promise.then(
+//			function(pg) {
+//				// Get the type of the ressource in the graph.
+//				var pgTypes = pg.rel(RDF("type"));
+//
+//				// Fetch the router / config file : viewer.ttl
+//				var routerGraph = new $rdf.IndexedFormula();
+//				var f2 = $rdf.fetcher(routerGraph);
+//				var promise2 = f2.fetch(routerUri, undefined, true)
+//				promise2.then(
+//
+//				)
+//				f2.nowOrWhenFetched(routerUri, undefined, function () {
+//					// Check ressource type.
+//					var viewerJsUri, cpt = 0;
+//					_.each(rdfRessourceType,  function(type) {
+//						var vjs = routerGraph.any(type, STAMPLE("view"));
+//						if (vjs && cpt < 1) {viewerJsUri = vjs.uri; cpt++;}
+//					});
+//
+//					// Load viewer.
+//					if (viewerJsUri != undefined) {
+//						loadScript("/assets/ldp/js/bodyViewer.js", function() {
+//							BodyView.initialize(viewerJsUri);
+//						});
+//					}
+//					else
+//						throw new Error('no viewer can render any of the RDF document types: ' + rdfRessourceType);
+//				});
+//
+//				/*
+//				console.log('success');
+//				console.log(x);
+//				// Load the main view and utils.
+//				loadScript("/assets/ldp/js/bodyViewer.js", null);
+//
+//				 // Get ressource type.
+//				 rdfTypesGlobal = graph.each(baseUriSymGlobal, RDF("type"));
+//				*/
+//			},
+//			function(err) {
+//				console.log('error');
+//				console.log(err);
+//			}
+//		);
+
+
 	</script>
 </head>
 

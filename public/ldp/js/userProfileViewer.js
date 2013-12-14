@@ -14,18 +14,21 @@ var App = {
 		"website":"-"
 	},
 
-	initialize: function(){
+	initialize: function(pointedGraph){
 		var self = this;
 		var templateUri = "/assets/ldp/templates/userProfileTemplate.html";
 		console.log('initialise user profile view');
 
-		// Get base graph and uri.
-		this.baseUri = baseUriGlobal;
-		this.baseGraph = graphsCache[baseUriGlobal];
+		// Load necessary CSS and Scripts files
+		this.loadVariousFiles();
 
 		// Get current user relative URI.
-		currentUserGlobal = this.currentUserGlobal = this.getPersonToDisplay(this.baseGraph).value;
-		console.log("Person to display:" + this.currentUserGlobal);
+		this.pointedGraph = this.getPersonToDisplay(pointedGraph);
+		this.baseGraph = pointedGraph.graph;
+		this.baseUri = pointedGraph.graphName;
+
+		console.log("Person to display:" );
+		console.log(this.pointedGraph);
 
 		// Get corresponding template.
 		$.get(templateUri, function(template) {
@@ -36,16 +39,10 @@ var App = {
 				// Set template.
 				self.template = template;
 
-				// Create a PG.
-				pointedGraphGlobal = self.pointedGraph = new $rdf.pointedGraph(self.baseGraph, $rdf.sym(self.currentUserGlobal), $rdf.sym(self.baseUri));
-
-				// Load current user.
-				self.loadUser(self.currentUserGlobal, function() {
-					// render.
-					self.render();
-				})
+				// And render.
+				self.render();
 			});
-		})
+		});
 
 		// useful Define templates.
 		var formTemplate =
@@ -61,81 +58,61 @@ var App = {
 		this.bindEventsToDom();
 	},
 
-	getSubjectsOfType:function (g, subjectType) {
-		var triples = g.statementsMatching(undefined,
-			RDF('type'),
-			subjectType,
-			$rdf.sym(this.baseUri));
-		return _.map(triples, function (triple) {
-			return triple['subject'];
-		})
+	// Load Css and utils files.
+	loadVariousFiles: function() {
+		// Load related CSS.
+		loadCSS("/assets/ldp/css/blueprint.css");
+		loadCSS("/assets/ldp/css/common.css");
+		loadCSS("/assets/ldp/css/font-awesome.min.css");
+		loadCSS("/assets/ldp/css/buttons.css");
+		loadCSS("/assets/ldp/css/style.css");
+
+		// Load utils js.
+		loadScript("/assets/ldp/js/utils.js", null);
+		loadScript("/assets/ldp/js/utils/appUtils.js", null);
 	},
 
-	getFoafPrimaryTopic:function (g) {
-		return g.any($rdf.sym(this.baseUri), FOAF('primaryTopic'), undefined)
-	},
-
-	getPersonToDisplay:function (g) {
-		var foafPrimaryTopic = this.getFoafPrimaryTopic(g);
-		if (foafPrimaryTopic) {
-			return foafPrimaryTopic;
-		} else {
-			var personUris = this.getSubjectsOfType(this.baseGraph, FOAF("Person"));
-			if (personUris.length === 0) {
+	// Pointed graph on current user.
+	getPersonToDisplay:function (pg) {
+		console.log(pg);
+		var pgPrims = pg.rel(FOAF('primaryTopic'))
+		if (pgPrims.length>0) {
+			return pgPrims[0]
+		}else {
+			var pgPersons = $rdf.pointedGraph(pg.graph,FOAF("Person"),pg.graphName).rev(RDF("type"))
+			if (pgPersons.length === 0) {
 				throw "No person to display in this card: " + this.baseUri;
 			} else {
-				return personUris[0];
+				return pgPersons[0]; //todo return list
 			}
 		}
 	},
 
- 	// Clean URI.
- 	// i.e. : look for hashbang in URL and remove it and anything after it
- 	cleanUri: function (uri) {
- 		var docURI, indexOf = uri.indexOf('#');
- 		if (indexOf >= 0)
- 		docURI = uri.slice(0, indexOf);
- 		else  docURI = uri;
- 		return docURI;
- 	},
+ 	loadUser:function (pg) {
+		 var self = this;
+		 console.log(pg);
 
- 	loadUser:function (webId, callback) {
-		var self = this;
+		 // Get related person.
 
-		// Turn Uri into symbol.
-		var uriSym = $rdf.sym(webId);
+		 // Fills user attributes.
+		 var attr = this.getUserAttributesPg(pg);
 
-		// Clean Uri.
-		var uriCleaned = this.cleanUri(webId);
+		 // Define view template.
+		 var html = _.template(this.template, attr);
 
-		// If user graph already fetched, get attributes and render, otherwise fetch it.
-		var graph = graphsCache[uriCleaned];
-		if (!graph) {
-			graph = graphsCache[uriCleaned] = new $rdf.IndexedFormula();
-			var fetch = $rdf.fetcher(graph);
-			fetch.nowOrWhenFetched(uriCleaned, undefined, function () {
-				self.getUserAttributes(this.pointedGraph,
-					function () {
-						if (callback) callback();
-					});
-			});
-		}
-		else {
-			self.getUserAttributes(this.pointedGraph,
-				function () {
-					if (callback) callback();
-				});
-		}
+		 // Append in the DOM.
+		 $('body').find('.userProfile').remove();
+		 $('body').append(html);
+
+		 // Bind events to View elements.
+		 //this.bindEventsToView();
 	},
 
-	/*
- 	*
- 	* @param userPG pointed graph with pointer pointing on user.
- 	* @param callback
- 	*/
-	getUserAttributes:function (userPg, callback) {
+	//
+	getUserAttributes:function () {
+		var userPg = this.pointedGraph;
 		console.log("getUserAttributes");
-
+		console.log(userPg);
 		// add name
 		var namesPg = userPg.rel(FOAF('name'));
 		var names =
@@ -148,13 +125,10 @@ var App = {
 				})
 				.value();
 		this.attr.name = (names && names.length > 0 ) ? names[0].value : "No value";
-		console.log(this.attr.name);
 
 		// Add image if available
 		var imgsPg1 = userPg.rel(FOAF('img'));
 		var imgsPg2 = userPg.rel(FOAF('depiction'));
-		console.log(imgsPg1);
-		console.log(imgsPg2);
 		var imgs =
 			_.chain(imgsPg1.concat(imgsPg2))
 				.map(function (pg) {
@@ -163,8 +137,243 @@ var App = {
 				.value();
 		this.attr.imgUrl = (imgs && imgs.length > 0 ) ? imgs[0].value : "No profile picture";
 
-		// Render callback.
-		if (callback) callback();
+		// Add nickname
+		var nicknamesPg = this.pointedGraph.rel(FOAF('nick'));
+		var nicknames =
+			_.chain(nicknamesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (nicknames && nicknames.length > 0 ) this.attr.nickname = nicknames[0].value;
+
+		// Add email if available
+		var emailsPg = this.pointedGraph.rel(FOAF('mbox'));
+		var emails =
+			_.chain(emailsPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (emails && emails.length > 0 ) this.attr.email = emails[0].value;
+
+		 // Add phone if available
+		var phonesPg = this.pointedGraph.rel(FOAF('phone'));
+		var phones =
+			_.chain(phonesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (phones && phones.length > 0 ) this.attr.phone = phones[0].value;
+
+		 // Add website if available
+		var websitesPg = this.pointedGraph.rel(FOAF('homepage'));
+		var websites =
+			_.chain(websitesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (websites && websites.length > 0 ) this.attr.website = websites[0].value;
+
+		 // Add bday if available
+		var gendersPg = this.pointedGraph.rel(FOAF('gender'));
+		var genders =
+			_.chain(gendersPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (genders && genders.length > 0 ) this.attr.gender = genders[0].value;
+
+
+		 // Add bday if available
+		var birthdaysPg = this.pointedGraph.rel(FOAF('birthday'));
+		var birthdays =
+			_.chain(birthdaysPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (birthdays && birthdays.length > 0 ) this.attr.birthday = birthdays[0].value;
+
+		/*/ Define a SPARQL query to fetch the address
+		 var sparqlQuery = "PREFIX contact:  <http://www.w3.org/2000/10/swap/pim/contact#> \n" +
+		 "SELECT ?city ?country ?postcode ?street \n" +
+		 "WHERE {\n" +
+		 "  " + uriSym + " contact:home ?h . \n" +
+		 "  ?h contact:address ?addr  . \n" +
+		 "  OPTIONAL { ?addr contact:city ?city . } \n" +
+		 "  OPTIONAL { ?addr contact:country ?country . } \n" +
+		 "  OPTIONAL { ?addr contact:postalCode ?postcode . } \n" +
+		 "  OPTIONAL { ?addr contact:street ?street . } \n" +
+		 "}",
+		 */
+
+		/*
+		 * Contact information.
+		 * */
+		// Add city if available
+		console.log();
+		var citysPg = this.pointedGraph.rel(CONTACT('city'));
+		console.log(citysPg);
+		var citys =
+			_.chain(citysPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+					console.log(pg);
+				})
+				.map(function (pg) {
+					console.log(pg);
+					return pg.pointer
+				})
+				.value();
+		//if (birthdays && birthdays.length > 0 ) attr.birthday = birthdays[0].value;
+
+
+	},
+
+	getUserAttributesPg:function (userPg) {
+		console.log("getUserAttributes : ");
+		console.log(userPg);
+		var attr = {
+				"name":"This information does not exist !",
+				"imgUrl":"/assets/ldp/images/user_background.png",
+				"nickname":"-",
+				"email":"-",
+				"phone":"-",
+				"city":"-",
+				"country":"-",
+				"postalCode":"-",
+				"street":"-",
+				"birthday":"-",
+				"gender":"-",
+				"website":"-"
+			};
+
+		// add name
+		var namesPg = userPg.rel(FOAF('name'));
+		var names =
+			_.chain(namesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (names && names.length > 0 ) attr.name = names[0].value;
+
+		// Add image if available
+		var imgsPg1 = userPg.rel(FOAF('img'));
+		var imgsPg2 = userPg.rel(FOAF('depiction'));
+		var imgs =
+			_.chain(imgsPg1.concat(imgsPg2))
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (imgs && imgs.length > 0 ) attr.imgUrl = imgs[0].value;
+
+		// Add nickname
+		var nicknamesPg = this.pointedGraph.rel(FOAF('nick'));
+		var nicknames =
+			_.chain(nicknamesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (nicknames && nicknames.length > 0 ) attr.nickname = nicknames[0].value;
+
+		// Add email if available
+		var emailsPg = this.pointedGraph.rel(FOAF('mbox'));
+		var emails =
+			_.chain(emailsPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (emails && emails.length > 0 ) attr.email = emails[0].value;
+
+		// Add phone if available
+		var phonesPg = this.pointedGraph.rel(FOAF('phone'));
+		var phones =
+			_.chain(phonesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (phones && phones.length > 0 ) attr.phone = phones[0].value;
+
+		// Add website if available
+		var websitesPg = this.pointedGraph.rel(FOAF('homepage'));
+		var websites =
+			_.chain(websitesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (websites && websites.length > 0 ) attr.website = websites[0].value;
+
+		// Add bday if available
+		var gendersPg = this.pointedGraph.rel(FOAF('gender'));
+		var genders =
+			_.chain(gendersPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (genders && genders.length > 0 ) attr.gender = genders[0].value;
+
+
+		// Add bday if available
+		var birthdaysPg = this.pointedGraph.rel(FOAF('birthday'));
+		var birthdays =
+			_.chain(birthdaysPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (birthdays && birthdays.length > 0 ) attr.birthday = birthdays[0].value;
+
+		return attr;
 	},
 
 	// Define handlers.
@@ -259,11 +468,13 @@ var App = {
 	},
 
 	handlerClickOnfriends:function (e) {
+		var self = e.data.ref;
+
 		console.log('handlerClickOnfriends');
 		if ($('#userbar').css('display') == 'none') {
 			// Show contacts Bar.
 			loadScript("/assets/ldp/js/contactsViewer.js", function () {
-				ContactsView.initialize();
+				ContactsView.initialize(self.pointedGraph);
 				$("#friends").find('label').html('Hide Contacts')
 			});
 		}
@@ -276,21 +487,25 @@ var App = {
 	},
 
 	bindEventsToView: function() {
-		console.log($(".showContacts"));
+		var self = this;
+
 		// Bind click for on view elements.
 		$(".editLinkImg").on("click", this.handlerClickOnEditLink);
-		$("#friends").on("click", this.handlerClickOnfriends);
+		$("#friends").on("click", {ref:this}, this.handlerClickOnfriends);
 		$(".showContacts").on("click", this.handlerClickOnEditLink);
 	},
 
 	bindEventsToDom: function() {},
 
 	render: function(){
+		// Fills user attributes.
+		this.getUserAttributes();
+
 		// Define view template.
 		var html = _.template(this.template, this.attr);
 
 		// Append in the DOM.
-		$('#viewerContent').append(html);
+		$('body').append(html);
 
 		// Bind events to View elements.
 		this.bindEventsToView();

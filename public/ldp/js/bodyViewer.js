@@ -1,5 +1,5 @@
 var BodyView = {
-	initialize: function(viewerJsUri) {
+	initialize: function(viewerJsUri, pointedGraph) {
 		var self = this;
 		var templateURI = "/assets/ldp/templates/bodyTemplate.html";
 		console.log('initialize Appview');
@@ -17,7 +17,7 @@ var BodyView = {
 
 			// Load viewer app.
 			loadScript(viewerJsUri, function() {
-				App.initialize();
+				App.initialize(pointedGraph);
 			});
 		});
 
