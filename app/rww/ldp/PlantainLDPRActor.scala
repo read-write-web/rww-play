@@ -36,6 +36,7 @@ import rww.ldp.RequestNotAcceptable
 import rww.ldp.SelectLDPR
 import rww.ldp.Scrpt
 import com.google.common.base.Throwables
+import scala.collection.convert.decorateAsScala._
 
 class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
                        (implicit ops: RDFOps[Plantain],
@@ -55,10 +56,9 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   val mimeExt = WellKnownMimeExtensions
 
   import org.w3.banana.syntax._
-  import scala.collection.convert.decorateAsScala._
 
   //google cache with soft values: at least it will remove the simplest failures
-  val cacheg: LoadingCache[String,Try[LocalNamedResource[Plantain]]] = CacheBuilder.newBuilder()
+  val resourceCache: LoadingCache[String,Try[LocalNamedResource[Plantain]]] = CacheBuilder.newBuilder()
     .softValues()
     .build(new CacheLoader[String,Try[LocalNamedResource[Plantain]]]() {
     import scalax.io.{Resource=>xResource}
@@ -83,17 +83,6 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
     }
   })
 
-  // maybe this can be removed soon, just a workaround until banana is improved.
-  // see https://github.com/w3c/banana-rdf/issues/80
-  object RDFParseExceptionMatcher {
-    private val ExceptionClass = classOf[org.openrdf.rio.RDFParseException]
-    def unapply(t: Throwable) = {
-      val list = Throwables.getCausalChain(t).asScala.filter(ex => ExceptionClass.isAssignableFrom(ex.getClass))
-      // this may be strange that we return t and not list.headOption but we want to have the whole stacktrace...
-      if ( !list.isEmpty ) Some(t)
-      else None
-    }
-  }
 
 
   def filter = new Filter[Path]() {
@@ -132,13 +121,13 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   def getResource(name: String): Try[LocalNamedResource[Plantain]] = {
     import scalax.io.{Resource=>xResource}
     //todo: the file should be verified to see if it is up to date.
-    val resourceGet = cacheg.get(name) match {
+    val resourceGet = resourceCache.get(name) match {
       case success @ Success(LocalLDPR(_,_,path,updated)) if (path.toFile.lastModified() > updated.get.getTime) => {
-        cacheg.invalidate(name)
+        resourceCache.invalidate(name)
         success
       }
       case failure @ Failure(exception: UnparsableSource) => {
-        cacheg.invalidate(name)
+        resourceCache.invalidate(name)
         failure
       }
       case otherResult => otherResult
@@ -184,7 +173,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
       case scala.util.Failure(t) => throw new StoreProblem(t)
       case x => x
     }
-    cacheg.put(name,Success(LocalLDPR[Plantain](iri,graph, file.toPath, Some(new Date(file.lastModified())))))
+    resourceCache.put(name,Success(LocalLDPR[Plantain](iri,graph, file.toPath, Some(new Date(file.lastModified())))))
   }
 
 
@@ -338,3 +327,15 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   }
 }
 
+
+// maybe this can be removed soon, just a workaround until banana is improved.
+// see https://github.com/w3c/banana-rdf/issues/80
+object RDFParseExceptionMatcher {
+  private val ExceptionClass = classOf[org.openrdf.rio.RDFParseException]
+  def unapply(t: Throwable) = {
+    val list = Throwables.getCausalChain(t).asScala.filter(ex => ExceptionClass.isAssignableFrom(ex.getClass))
+    // this may be strange that we return t and not list.headOption but we want to have the whole stacktrace...
+    if ( !list.isEmpty ) Some(t)
+    else None
+  }
+}
