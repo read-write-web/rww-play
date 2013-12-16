@@ -101,7 +101,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
       }
       case ldpr => ldpr
     }
-    log.info(s"getResource with name=$name , found=$resource")
+    log.debug(s"getResource with name=$name , found success?=${resource.isSuccess}")
     resource
   }
 
