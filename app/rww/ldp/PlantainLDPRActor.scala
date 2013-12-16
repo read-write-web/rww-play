@@ -71,7 +71,6 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
 
         if (file.toString.endsWith(ext)) {
           val res = xResource.fromFile(file)
-          log.error("Will try to read!")
           reader.read(res, iri.toString).map { g =>
             LocalLDPR[Plantain](iri, g, path, Option(new Date(path.toFile.lastModified())))
           } recover {
@@ -106,7 +105,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   }
 
   override def preStart() {
-    log.info(s"creating PlantainLDPRActor($baseUri,$path)")
+    log.debug(s"creating PlantainLDPRActor($baseUri,$path)")
   }
 
   def fileName = path.getFileName.toString
