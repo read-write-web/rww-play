@@ -20,6 +20,7 @@ var ContactsView = {
 
 	getUserContacts:function () {
 		var self = this;
+		console.log("//////////////////////////////////////////////////");
 		console.log("getUserContacts");
 
 		$.get(this.templateUriContact, function (temp) {

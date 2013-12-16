@@ -70,14 +70,17 @@ $rdf.PointedGraph = function() {
 			_.map(localRemote.false, function(pg) {
 				var f = $rdf.fetcher(pg.graph);
 				var docURL = pg.pointer.uri.split('#')[0];
+				console.log("Proxy : "+ self.useProxy);
 				var promise = f.fetch(docURL, pg.graphName, self.useProxy);
 				promise.then(
 					function(x){
 						//todo: need to deal with errors
-						console.log(docURL);
+						console.log("Observable rel = On Next");
+						console.log(x);
 						observer.onNext(new $rdf.PointedGraph(pg.graph,pg.pointer, $rdf.sym(docURL)))
 					},
 					function(err) {
+						console.log("Observable rel = Error");
 						console.log(err);
 						observer.onError(err)
 					}
@@ -102,11 +105,116 @@ $rdf.PointedGraph = function() {
 		console.log(relUri);
 
 		// Select all that matches the relation relUri.
-		//var resList = g.statementsMatching(p, relUri, undefined, n, false);
-		var resList = this.graph.statementsMatching(this.pointer, relUri, undefined, this.graphName);
+		var resList = g.statementsMatching(p, relUri, undefined, n, false);
+		//var resList = this.graph.statementsMatching(this.pointer, relUri, undefined, this.graphName);
+		console.log('RestList');
 		console.log(resList);
 
 		// Create as much PG as q results.
+		var pgList = _.map(resList, function (it) {
+			return new $rdf.PointedGraph(g, it.object, n);
+		});
+
+		return pgList;
+	}
+
+	$rdf.PointedGraph.prototype.relBnode = function (relUri) {
+		console.log("***********$rdf.PointedGraph.prototype.rel*******************");
+		var g = this.graph;
+		var n = this.graphName;
+		var p = this.pointer;
+		console.log(this);
+		console.log(g);
+		console.log(n);
+		console.log(p);
+		console.log(relUri);
+
+		// Select all that matches the relation relUri.
+		var resList = g.statementsMatching(p, relUri, undefined, n, false);
+		//var resList = this.graph.statementsMatching(this.pointer, relUri, undefined, this.graphName);
+		console.log('RestList');
+		console.log(resList);
+
+		_.map(resList, function(statement) {
+			var symbol = statement.object;
+			if (symbol.termType == 'bnode') {
+				console.log('Blank Node ');
+				console.log(symbol);
+				var rTest = g.statementsMatching(symbol, undefined, undefined, n, false);
+				console.log(rTest);
+			}
+		});
+
+		// Create as much PG as q results.
+		var pgList = _.map(resList, function (it) {
+			return new $rdf.PointedGraph(g, it.object, n);
+		});
+
+		return pgList;
+	}
+
+	$rdf.PointedGraph.prototype.rel2 = function (relUri) {
+		console.log("***********$rdf.PointedGraph.prototype.rel*******************");
+		var g = this.graph;
+		var n = this.graphName;
+		var p = this.pointer;
+		console.log(this);
+		console.log(g);
+		console.log(n);
+		console.log(p);
+		console.log(relUri);
+
+		// Select all that matches the relation relUri.
+		//11111
+		var resList = g.statementsMatching(undefined, relUri, undefined, n, false);
+		//var resList = this.graph.statementsMatching(this.pointer, relUri, undefined, this.graphName);
+		console.log('RestList');
+		console.log(resList);
+
+		_.map(resList, function(statement) {
+			var symbol = statement.subject;
+			console.log('Symbol is : ');
+			console.log(symbol);
+			if (symbol.termType == 'bnode') {
+				console.log('It is a Blank Node 1 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+				var rTest1 = g.statementsMatching(undefined, undefined, symbol, n, false);
+				console.log(rTest1);
+				_.map(rTest1, function(statement2) {
+					var symbol2 = statement2.subject;
+					console.log('Symbol2 is : ');
+					console.log(symbol2);
+					if (symbol2.termType == 'bnode') {
+						console.log('It is a Blank Node 2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!' );
+						console.log(symbol2);
+						var rTest2 = g.statementsMatching(undefined, undefined, symbol2, n, false);
+						console.log(rTest2);
+
+						_.map(rTest2, function(statement3) {
+							var symbol3 = statement3.subject;
+							console.log('Symbol3 is : ');
+							console.log(symbol3);
+
+							if (symbol3.value == p.uri ) {
+								console.log('Pareilllll');
+								resList = resList;
+							}
+
+							if (symbol3.termType == 'bnode') {
+								console.log('Blank Node 3');
+								console.log(symbol3);
+								var rTest3 = g.statementsMatching(undefined, undefined, symbol3, n, false);
+								console.log(rTest3);
+							}
+						})
+					}
+				})
+
+
+			}
+		});
+
+		// Create as much PG as q results.
+		console.log(resList);
 		var pgList = _.map(resList, function (it) {
 			return new $rdf.PointedGraph(g, it.object, n);
 		});

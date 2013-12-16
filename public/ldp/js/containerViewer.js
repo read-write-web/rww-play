@@ -47,13 +47,6 @@ var App = {
 		// Fetch template for container items.
 		$.get(template2URI, function (template) {
 			var onResult, onDone;
-			var templateAll = "";
-			var $lines = $('.lines');
-			var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
-
-			// Get current graph and uri.
-			//var baseUri = baseUriGlobal;
-			//var baseGraph = graphsCache[baseUri];
 
 			// Define Sparql query to get items in container.
 			var sparqlQuery =

@@ -74,7 +74,6 @@ var App = {
 
 	// Pointed graph on current user.
 	getPersonToDisplay:function (pg) {
-		console.log(pg);
 		var pgPrims = pg.rel(FOAF('primaryTopic'))
 		if (pgPrims.length>0) {
 			return pgPrims[0]
@@ -105,7 +104,7 @@ var App = {
 		 $('body').append(html);
 
 		 // Bind events to View elements.
-		 //this.bindEventsToView();
+		 this.bindEventsToView();
 	},
 
 	//
@@ -233,21 +232,60 @@ var App = {
 		 * Contact information.
 		 * */
 		// Add city if available
-		console.log();
-		var citysPg = this.pointedGraph.rel(CONTACT('city'));
-		console.log(citysPg);
+		var citysPg = this.pointedGraph.rel2(CONTACT('city'));
 		var citys =
 			_.chain(citysPg)
 				.filter(function (pg) {
 					return pg.pointer.termType == 'literal';
-					console.log(pg);
 				})
 				.map(function (pg) {
-					console.log(pg);
 					return pg.pointer
 				})
 				.value();
-		//if (birthdays && birthdays.length > 0 ) attr.birthday = birthdays[0].value;
+		console.log(citys);
+		if (citys && citys.length > 0 ) this.attr.city = citys[0].value;
+
+
+		var citysPg = this.pointedGraph.rel2(CONTACT('country'));
+		var citys =
+			_.chain(citysPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		console.log(citys);
+		if (citys && citys.length > 0 ) this.attr.country = citys[0].value;
+
+
+		var citysPg = this.pointedGraph.rel2(CONTACT('postalCode'));
+		var citys =
+			_.chain(citysPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		console.log(citys);
+		if (citys && citys.length > 0 ) this.attr.postalCode = citys[0].value;
+
+
+		var citysPg = this.pointedGraph.rel2(CONTACT('street'));
+		var citys =
+			_.chain(citysPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		console.log(citys);
+		if (citys && citys.length > 0 ) this.attr.street = citys[0].value;
 
 
 	},

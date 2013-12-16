@@ -6,7 +6,7 @@
  */
 $rdf.Fetcher.prototype.fetch = function(uri, referringTerm, useProxy) {
 	var self = this;
-	console.log(self.store);
+	console.log("fetch with promise");
 	// Create a promise which create a new PG.
 	var promise = new RSVP.Promise(function (resolve, reject) {
 			var sta = self.getState(uri);
@@ -15,7 +15,7 @@ $rdf.Fetcher.prototype.fetch = function(uri, referringTerm, useProxy) {
 			}
 			else {
 				self.addCallback('done', function (uri2) {
-					console.log('done');
+					console.log('fetch done');
 					//todo: use reject on failure and return a pointed graph on the error bnode in the store
 					if (uri2 == uri || ( $rdf.Fetcher.crossSiteProxy(uri) == uri2  ))
 						resolve(new $rdf.PointedGraph(self.store, $rdf.sym(uri), $rdf.sym(uri)));

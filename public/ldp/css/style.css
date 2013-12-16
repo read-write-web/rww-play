@@ -64,22 +64,8 @@ body {
 	left: 7px;
 	right: 7px;
 	position: absolute !important;
-
-
 	bottom: 2em;
 	border-color: #ddd;
-	word-wrap: break-word;
-
-}
-
-.viewerContent {
-	max-width: 945px;
-	bottom: 2em;
-	border-color: #ddd;
-	background: white;
-	padding:30px;
-	margin-bottom: 10px;
-	margin-top: 10px;
 	word-wrap: break-word;
 }
 
@@ -88,10 +74,6 @@ body {
 * Category viewer
 */
 
-#index {
-	top: 95px;
-	position: fixed;
-}
 
 /*
 * File viewer
@@ -101,10 +83,17 @@ body {
 	z-index: 1000;
 	font-size:1em;
 	position: absolute;
-	top:0;
 }
 
-.emptyFile {
+.fileContent {
+	max-width: 945px;
+	bottom: 2em;
+	border-color: #ddd;
+	background: white;
+	padding:30px;
+	margin-top: 10px;
+	word-wrap: break-word;
+	height: auto;
 }
 
 #viewerType {
