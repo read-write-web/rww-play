@@ -10,10 +10,32 @@ import java.nio.file.DirectoryStream.Filter
 import java.io.{FileOutputStream, File}
 import scala.io.Codec
 import scala.util.Failure
-import scala.Some
+import scala._
 import scala.util.Success
 import akka.actor.ActorRef
 import scalaz.{\/-, -\/}
+import rww.ldp.DeleteResource
+import rww.ldp.ResourceDoesNotExist
+import rww.ldp.GetMeta
+import rww.ldp.PatchLDPR
+import scala.util.Failure
+import scala.Some
+import org.w3.banana.StoreProblem
+import rww.ldp.Cmd
+import scala.util.Success
+import scalaz.\/-
+import rww.ldp.AskLDPR
+import rww.ldp.ConstructLDPR
+import scalaz.-\/
+import rww.ldp.UpdateLDPR
+import rww.ldp.UnparsableSource
+import rww.ldp.GetResource
+import rww.ldp.LocalLDPR
+import rww.ldp.LocalBinaryR
+import rww.ldp.RequestNotAcceptable
+import rww.ldp.SelectLDPR
+import rww.ldp.Scrpt
+import com.google.common.base.Throwables
 
 class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
                        (implicit ops: RDFOps[Plantain],
@@ -49,14 +71,30 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
 
         if (file.toString.endsWith(ext)) {
           val res = xResource.fromFile(file)
+          log.error("Will try to read!")
           reader.read(res, iri.toString).map { g =>
             LocalLDPR[Plantain](iri, g, path, Option(new Date(path.toFile.lastModified())))
+          } recover {
+            case RDFParseExceptionMatcher(e) => throw UnparsableSource(s"Can't parse resource $iri as an RDF file",e)
           }
         } else Success(LocalBinaryR[Plantain](file.toPath, iri))
 
       } else Failure(ResourceDoesNotExist(s"no resource for '$key'"))
     }
   })
+
+  // maybe this can be removed soon, just a workaround until banana is improved.
+  // see https://github.com/w3c/banana-rdf/issues/80
+  object RDFParseExceptionMatcher {
+    private val ExceptionClass = classOf[org.openrdf.rio.RDFParseException]
+    def unapply(t: Throwable) = {
+      val list = Throwables.getCausalChain(t).asScala.filter(ex => ExceptionClass.isAssignableFrom(ex.getClass))
+      // this may be strange that we return t and not list.headOption but we want to have the whole stacktrace...
+      if ( !list.isEmpty ) Some(t)
+      else None
+    }
+  }
+
 
   def filter = new Filter[Path]() {
     val fileName = path.getFileName.toString
@@ -94,15 +132,22 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   def getResource(name: String): Try[LocalNamedResource[Plantain]] = {
     import scalax.io.{Resource=>xResource}
     //todo: the file should be verified to see if it is up to date.
-    val resource = cacheg.get(name) match {
-      case Success(LocalLDPR(_,_,path,updated)) if (path.toFile.lastModified() > updated.get.getTime) => {
+    val resourceGet = cacheg.get(name) match {
+      case success @ Success(LocalLDPR(_,_,path,updated)) if (path.toFile.lastModified() > updated.get.getTime) => {
         cacheg.invalidate(name)
-        cacheg.get(name)
+        success
       }
-      case ldpr => ldpr
+      case failure @ Failure(exception: UnparsableSource) => {
+        cacheg.invalidate(name)
+        failure
+      }
+      case otherResult => otherResult
     }
-    log.debug(s"getResource with name=$name , found success?=${resource.isSuccess}")
-    resource
+    log.debug(s"getResource with name=$name , found success?=${resourceGet.isSuccess}")
+    if ( resourceGet.isFailure ) {
+      log.error(resourceGet.failed.get,s"getResource with name=$name failure")
+    }
+    resourceGet
   }
 
   /**

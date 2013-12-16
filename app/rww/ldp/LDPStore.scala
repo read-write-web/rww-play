@@ -248,6 +248,7 @@ case class AccessDenied(message: String) extends Exception(message) with BananaE
 case class PreconditionFailed(message: String) extends Exception(message) with BananaException
 case class UnsupportedMediaType(message: String) extends Exception(message) with BananaException
 case class StorageError(message: String)  extends Exception(message) with BananaException
+case class UnparsableSource(message: String,cause: Throwable)  extends Exception(message,cause) with BananaException
 
 
 
