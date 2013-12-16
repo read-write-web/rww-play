@@ -186,6 +186,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
       }
       case CreateBinary(_, slugOpt, mime: MimeType, k) => {
         mimeExt.extension(mime).map { ext =>
+          log.debug(s"Receiving createBinary message for resource with slug $slugOpt. ext=$ext")
           val (uri, path) = mkFile(slugOpt, ext)
           val (actor,iri) = try {
             val actor = context.actorOf(Props(new PlantainLDPRActor(uri,path)),path.getFileName.toString)
@@ -201,7 +202,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
           }
           val s = LDPCommand.getResource[Plantain,NamedResource[Plantain]](iri)
           actor forward Scrpt(s.flatMap{
-            case br: BinaryResource[Plantain] =>k(br)
+            case br: BinaryResource[Plantain] => k(br)
             case x => throw UnsupportedMediaType("was looking for a BinaryResource but received a "+x.getClass)//todo: not the right error code
           })
           //todo: make sure the uri does not end in ";aclPath" or whatever else the aclPath standard will be

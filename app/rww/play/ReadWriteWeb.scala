@@ -1,31 +1,27 @@
 package rww.play
 
-import _root_.play.mvc.Http
 import _root_.play.{api => PlayApi}
+import PlayApi.Logger
 import PlayApi.mvc.Results._
-import PlayApi.libs.Files.TemporaryFile
 import PlayApi.http.Status._
 import PlayApi.libs.iteratee.Enumerator
 import PlayApi.mvc._
 import org.w3.banana._
 import rww.ldp._
 import concurrent.{Future, ExecutionContext}
-import java.io.{StringWriter, PrintWriter}
-import java.net.{URLEncoder, URI, URLDecoder}
+import java.net.URLDecoder
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
-import net.sf.uadetector.service.UADetectorServiceFactory
-import scala.Some
-import rww.ldp.ParentDoesNotExist
-import rww.ldp.AccessDenied
-import rww.ldp.WrongTypeException
-import net.sf.uadetector.UserAgentType
-import rww.play.auth.AuthenticationError
-import controllers.routes
 import com.google.common.base.Throwables
 import scala.util.Try
-import scala.util.Success
+import rww.ldp.ResourceDoesNotExist
 import scala.util.Failure
+import scala.Some
+import rww.play.auth.AuthenticationError
+import rww.ldp.ParentDoesNotExist
+import scala.util.Success
+import rww.ldp.AccessDenied
+import rww.ldp.WrongTypeException
 
 object Method extends Enumeration {
   val Read = Value
@@ -66,6 +62,14 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
   def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
 
+  /**
+   * The user header is used to transmoit the WebId URI to the client, because he can't know it before
+   * the authentication takes place with the server.
+   * @param res
+   * @return
+   */
+  def userHeader(res: IdResult[_]) =  "User"->res.id.toString
+
 
   def get(path: String) = Action.async { request =>
     getAsync(request)
@@ -81,15 +85,6 @@ trait ReadWriteWeb[Rdf <: RDF] {
     import utils.HeaderUtils._
     request.findReplyContentType(SupportedMimeType.StringSet).map( SupportedMimeType.withName(_) )
   }
-
-
-  /**
-   * The user header is used to transmoit the WebId URI to the client, because he can't know it before
-   * the authentication takes place with the server.
-   * @param res
-   * @return
-   */
-  private def userHeader(res: IdResult[_]) =  "User"->res.id.toString
 
 
   def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
@@ -210,7 +205,6 @@ trait ReadWriteWeb[Rdf <: RDF] {
   }
 
   def put(path: String) = Action.async(rwwBodyParser) { implicit request =>
-
     val future = for {
       answer <- rwwActor.put(request.body)
     } yield {
@@ -236,57 +230,12 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
 
   def post(path: String) = Action.async(rwwBodyParser) { implicit request =>
-
-    def postGraph(rwwGraph: Option[Rdf#Graph])(implicit request: PlayApi.mvc.Request[RwwContent]): Future[SimpleResult] = {
-      for {
-        location <- rwwActor.postGraph(
-          request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
-          rwwGraph
-        )
-      } yield {
-        Created.withHeaders("Location" -> location.result.toString,userHeader(location))
-      }
-    }
-
+    Logger.debug(s"Post on $path some body of type ${request.body.getClass}")
     val future = request.body match {
-      case rwwGraph: GraphRwwContent[Rdf] => {
-        postGraph(Some(rwwGraph.graph))
-      }
-      case rwwQuery: QueryRwwContent[Rdf] => {
-        for {
-          answer <- rwwActor.postQuery(request.path, rwwQuery)
-        } yield {
-          answer.result.fold(
-            graph =>
-              writerFor[Rdf#Graph](request).map {
-                wr => result(200, wr,Map(userHeader(answer)))(graph)
-              },
-            sol =>
-              writerFor[Rdf#Solutions](request).map {
-                wr => result(200, wr,Map(userHeader(answer)))(sol)
-              },
-            bool =>
-              writerFor[Boolean](request).map {
-                wr => result(200, wr,Map(userHeader(answer)))(bool)
-              }
-          ).getOrElse(PlayApi.mvc.Results.UnsupportedMediaType(s"Cannot publish answer of type ${answer.getClass} as" +
-            s"one of the mime types given ${request.headers.get("Accept")}"))
-        }
-      }
-      case BinaryRwwContent(file: TemporaryFile, mime: String) => {
-        for {
-          answer <- rwwActor.postBinary(request.path,
-            request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8")),
-            file,
-            MimeType(mime))
-        } yield {
-          Created.withHeaders("Location" -> answer.result.toString,userHeader(answer))
-        }
-      }
-      case emptyContent => {
-        postGraph(None)
-      }
-      //        case _ => Ok("received content")
+      case rwwGraph: GraphRwwContent[Rdf] => postGraph(Some(rwwGraph.graph))
+      case rwwQuery: QueryRwwContent[Rdf] => postRwwQuery(rwwQuery)
+      case rwwBinaryContent: BinaryRwwContent => postBinaryContent(rwwBinaryContent)
+      case emptyContent => postGraph(None)
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
@@ -300,6 +249,47 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
+  def slug(implicit request: PlayApi.mvc.Request[RwwContent]) = request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8"))
+
+  def postGraph(rwwGraph: Option[Rdf#Graph])(implicit request: PlayApi.mvc.Request[RwwContent]): Future[SimpleResult] = {
+    for {
+      location <- rwwActor.postGraph(slug, rwwGraph)
+    } yield {
+      Created.withHeaders("Location" -> location.result.toString,userHeader(location))
+    }
+  }
+
+  def postBinaryContent(binaryContent: BinaryRwwContent)(implicit request: PlayApi.mvc.Request[RwwContent]) = {
+    for {
+      answer <- rwwActor.postBinary(request.path, slug, binaryContent.file, MimeType(binaryContent.mime) )
+    } yield {
+      Created.withHeaders("Location" -> answer.result.toString,userHeader(answer))
+    }
+  }
+
+  def postRwwQuery(query: QueryRwwContent[Rdf])(implicit request: PlayApi.mvc.Request[RwwContent]) = {
+    for {
+      answer <- rwwActor.postQuery(request.path, query)
+    } yield {
+      answer.result.fold(
+        graph =>
+          writerFor[Rdf#Graph](request).map {
+            wr => result(200, wr,Map(userHeader(answer)))(graph)
+          },
+        sol =>
+          writerFor[Rdf#Solutions](request).map {
+            wr => result(200, wr,Map(userHeader(answer)))(sol)
+          },
+        bool =>
+          writerFor[Boolean](request).map {
+            wr => result(200, wr,Map(userHeader(answer)))(bool)
+          }
+      ).getOrElse(PlayApi.mvc.Results.UnsupportedMediaType(s"Cannot publish answer of type ${answer.getClass} as" +
+        s"one of the mime types given ${request.headers.get("Accept")}"))
+    }
+  }
+
+
   def delete(path: String) = Action.async { implicit request =>
     val future = for {
       answer <- rwwActor.delete(request)
@@ -311,11 +301,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
       case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
     }
   }
+
 }
-
-
-
-
-
 
 

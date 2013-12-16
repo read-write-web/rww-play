@@ -16,6 +16,7 @@
 
 package rww.play
 
+import _root_.play.api.Logger
 import org.w3.banana._
 import rww.ldp.LDPCommand._
 import concurrent.{Future, ExecutionContext}
@@ -113,6 +114,9 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
       }
     } yield f
   }
+
+
+
 
   //    val res = store.execute(Command.PUT(LinkedDataResource(resourceURI, PointedGraph(resourceURI, model))))
   //    res
@@ -232,18 +236,21 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
                 ( implicit request: PlayRequestHeader ): Future[IdResult[Rdf#URI]] = {
     val (collection, file) = split(path)
     if ("" != file) Future.failed(WrongTypeException("Can only POST binary on a Collection"))
-    else
+    else {
+      val containerUri = request.getAbsoluteURI.toString
+      Logger.debug(s"Will post binary on containerUri=$containerUri with slug=$slug and mimeType=$mime")
       for {
-        id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
+        id <- auth(request, containerUri, Method.Write)
         x <- rww.execute {
           for {
-            b <- createBinary(URI(request.getAbsoluteURI.toString), slug, mime)
+            b <- createBinary(URI(containerUri), slug, mime)
           } yield {
             Enumerator.fromFile(tmpFile.file)(ec)(b.write)
             b.location
           }
         }
       } yield IdResult(id, x)
+    }
   }
 
 
@@ -286,6 +293,8 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     } yield IdResult(id,e)
 
   }
+
+
 
 
 }
