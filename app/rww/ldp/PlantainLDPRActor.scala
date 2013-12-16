@@ -191,8 +191,10 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
 
     cmd match {
       case GetResource(uri, agent, k) => {
-        val res = getResource(localName(uri)).get
-        rwwRouterActor.tell(Scrpt(k(res)),sender)
+        getResource(localName(uri)) match {
+          case Success(res) => rwwRouterActor.tell(Scrpt(k(res)),context.sender)
+          case Failure(fail) =>  context.sender ! akka.actor.Status.Failure(fail)
+        }
       }
       case GetMeta(uri, k) => {
         //todo: GetMeta here is very close to GetResource, as currently there is no big work difference between the two
