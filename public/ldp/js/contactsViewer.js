@@ -20,19 +20,14 @@ var ContactsView = {
 
 	getUserContacts:function () {
 		var self = this;
-		console.log("//////////////////////////////////////////////////");
-		console.log("getUserContacts");
-
 		$.get(this.templateUriContact, function (temp) {
 			// Create Observables on user contacts.
 			var source = self.pointedGraph.observableRel(FOAF('knows'));
 			var subscription = source.subscribe(
 				function (pg) {
-					console.log("onNext : " + pg.isLocalPointer());
 					self.renderUserBar(pg, temp);
 				},
 				function (err) {
-					console.log("onError : ");
 					console.log(err);
 				},
 				function () {

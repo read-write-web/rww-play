@@ -1,6 +1,6 @@
 var App = {
 	attr: {
-		"name":"This information does not exist !",
+		"name":"-",
 		"imgUrl":"/assets/ldp/images/user_background.png",
 		"nickname":"-",
 		"email":"-",
@@ -70,6 +70,7 @@ var App = {
 		// Load utils js.
 		loadScript("/assets/ldp/js/utils.js", null);
 		loadScript("/assets/ldp/js/utils/appUtils.js", null);
+        loadScript("/assets/ldp/js/utils/foafUtils.js", null);
 	},
 
 	// Pointed graph on current user.
@@ -112,189 +113,38 @@ var App = {
 		var userPg = this.pointedGraph;
 		console.log("getUserAttributes");
 		console.log(userPg);
-		// add name
-		var namesPg = userPg.rel(FOAF('name'));
-		var names =
-			_.chain(namesPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		this.attr.name = (names && names.length > 0 ) ? names[0].value : "No value";
-
-		// Add image if available
-		var imgsPg1 = userPg.rel(FOAF('img'));
-		var imgsPg2 = userPg.rel(FOAF('depiction'));
-		var imgs =
-			_.chain(imgsPg1.concat(imgsPg2))
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		this.attr.imgUrl = (imgs && imgs.length > 0 ) ? imgs[0].value : "No profile picture";
-
-		// Add nickname
-		var nicknamesPg = this.pointedGraph.rel(FOAF('nick'));
-		var nicknames =
-			_.chain(nicknamesPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		if (nicknames && nicknames.length > 0 ) this.attr.nickname = nicknames[0].value;
-
-		// Add email if available
-		var emailsPg = this.pointedGraph.rel(FOAF('mbox'));
-		var emails =
-			_.chain(emailsPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		if (emails && emails.length > 0 ) this.attr.email = emails[0].value;
-
-		 // Add phone if available
-		var phonesPg = this.pointedGraph.rel(FOAF('phone'));
-		var phones =
-			_.chain(phonesPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		if (phones && phones.length > 0 ) this.attr.phone = phones[0].value;
-
-		 // Add website if available
-		var websitesPg = this.pointedGraph.rel(FOAF('homepage'));
-		var websites =
-			_.chain(websitesPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		if (websites && websites.length > 0 ) this.attr.website = websites[0].value;
-
-		 // Add bday if available
-		var gendersPg = this.pointedGraph.rel(FOAF('gender'));
-		var genders =
-			_.chain(gendersPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		if (genders && genders.length > 0 ) this.attr.gender = genders[0].value;
-
-
-		 // Add bday if available
-		var birthdaysPg = this.pointedGraph.rel(FOAF('birthday'));
-		var birthdays =
-			_.chain(birthdaysPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		if (birthdays && birthdays.length > 0 ) this.attr.birthday = birthdays[0].value;
-
-		/*/ Define a SPARQL query to fetch the address
-		 var sparqlQuery = "PREFIX contact:  <http://www.w3.org/2000/10/swap/pim/contact#> \n" +
-		 "SELECT ?city ?country ?postcode ?street \n" +
-		 "WHERE {\n" +
-		 "  " + uriSym + " contact:home ?h . \n" +
-		 "  ?h contact:address ?addr  . \n" +
-		 "  OPTIONAL { ?addr contact:city ?city . } \n" +
-		 "  OPTIONAL { ?addr contact:country ?country . } \n" +
-		 "  OPTIONAL { ?addr contact:postalCode ?postcode . } \n" +
-		 "  OPTIONAL { ?addr contact:street ?street . } \n" +
-		 "}",
-		 */
 
 		/*
-		 * Contact information.
+		* Foaf information.
+		* */
+        var userFoafInfo = foafUtils.getPersonInfo(userPg);
+		if (userFoafInfo) {
+ 			if (userFoafInfo.img) this.attr.imgUrl = userFoafInfo.img;
+			if (userFoafInfo.name) this.attr.name = userFoafInfo.name;
+			if (userFoafInfo.nick) this.attr.nickname = userFoafInfo.nick;
+			if (userFoafInfo.mbox) this.attr.email = userFoafInfo.mbox;
+			if (userFoafInfo.phone) this.attr.phone = userFoafInfo.phone;
+			if (userFoafInfo.birthday) this.attr.birthday = userFoafInfo.birthday;
+			if (userFoafInfo.gender) this.attr.gender = userFoafInfo.gender;
+			if (userFoafInfo.homepage) this.attr.website = userFoafInfo.homepage;
+		}
+		/*
+		 * Location information.
 		 * */
-		// Add city if available
-		var citysPg = this.pointedGraph.rel2(CONTACT('city'));
-		var citys =
-			_.chain(citysPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		console.log(citys);
-		if (citys && citys.length > 0 ) this.attr.city = citys[0].value;
-
-
-		var citysPg = this.pointedGraph.rel2(CONTACT('country'));
-		var citys =
-			_.chain(citysPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		console.log(citys);
-		if (citys && citys.length > 0 ) this.attr.country = citys[0].value;
-
-
-		var citysPg = this.pointedGraph.rel2(CONTACT('postalCode'));
-		var citys =
-			_.chain(citysPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		console.log(citys);
-		if (citys && citys.length > 0 ) this.attr.postalCode = citys[0].value;
-
-
-		var citysPg = this.pointedGraph.rel2(CONTACT('street'));
-		var citys =
-			_.chain(citysPg)
-				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
-				})
-				.map(function (pg) {
-					return pg.pointer
-				})
-				.value();
-		console.log(citys);
-		if (citys && citys.length > 0 ) this.attr.street = citys[0].value;
-
-
+//		var userLocationInfo = userPg.getLocationInfo();
+//		if (userLocationInfo) {
+//			if (userLocationInfo.country) this.attr.country = userLocationInfo.country;
+//			if (userLocationInfo.city) this.attr.city = userLocationInfo.city;
+//			if (userLocationInfo.street) this.attr.street = userLocationInfo.street;
+//			if (userLocationInfo.postalCode) this.attr.postalCode = userLocationInfo.postalCode;
+//		}
 	},
 
 	getUserAttributesPg:function (userPg) {
 		console.log("getUserAttributes : ");
 		console.log(userPg);
 		var attr = {
-				"name":"This information does not exist !",
+				"name":"-",
 				"imgUrl":"/assets/ldp/images/user_background.png",
 				"nickname":"-",
 				"email":"-",
@@ -333,7 +183,7 @@ var App = {
 		if (imgs && imgs.length > 0 ) attr.imgUrl = imgs[0].value;
 
 		// Add nickname
-		var nicknamesPg = this.pointedGraph.rel(FOAF('nick'));
+		var nicknamesPg = userPg.rel(FOAF('nick'));
 		var nicknames =
 			_.chain(nicknamesPg)
 				.filter(function (pg) {
@@ -346,11 +196,11 @@ var App = {
 		if (nicknames && nicknames.length > 0 ) attr.nickname = nicknames[0].value;
 
 		// Add email if available
-		var emailsPg = this.pointedGraph.rel(FOAF('mbox'));
+		var emailsPg = userPg.rel(FOAF('mbox'));
 		var emails =
 			_.chain(emailsPg)
 				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
+					return pg.pointer.termType == 'symbol';
 				})
 				.map(function (pg) {
 					return pg.pointer
@@ -359,11 +209,11 @@ var App = {
 		if (emails && emails.length > 0 ) attr.email = emails[0].value;
 
 		// Add phone if available
-		var phonesPg = this.pointedGraph.rel(FOAF('phone'));
+		var phonesPg = userPg.rel(FOAF('phone'));
 		var phones =
 			_.chain(phonesPg)
 				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
+					return pg.pointer.termType == 'symbol';
 				})
 				.map(function (pg) {
 					return pg.pointer
@@ -372,11 +222,11 @@ var App = {
 		if (phones && phones.length > 0 ) attr.phone = phones[0].value;
 
 		// Add website if available
-		var websitesPg = this.pointedGraph.rel(FOAF('homepage'));
+		var websitesPg = userPg.rel(FOAF('homepage'));
 		var websites =
 			_.chain(websitesPg)
 				.filter(function (pg) {
-					return pg.pointer.termType == 'literal';
+					return pg.pointer.termType == 'symbol';
 				})
 				.map(function (pg) {
 					return pg.pointer
@@ -385,7 +235,7 @@ var App = {
 		if (websites && websites.length > 0 ) attr.website = websites[0].value;
 
 		// Add bday if available
-		var gendersPg = this.pointedGraph.rel(FOAF('gender'));
+		var gendersPg = userPg.rel(FOAF('gender'));
 		var genders =
 			_.chain(gendersPg)
 				.filter(function (pg) {
@@ -399,7 +249,7 @@ var App = {
 
 
 		// Add bday if available
-		var birthdaysPg = this.pointedGraph.rel(FOAF('birthday'));
+		var birthdaysPg = userPg.rel(FOAF('birthday'));
 		var birthdays =
 			_.chain(birthdaysPg)
 				.filter(function (pg) {
