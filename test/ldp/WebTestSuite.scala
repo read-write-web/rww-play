@@ -16,6 +16,7 @@ import scala.concurrent.{ExecutionContext, Await}
 import scala.concurrent.duration.Duration
 import rww.ldp.auth.{WebIDPrincipal, WebIDVerifier, WACAuthZ}
 import rww.ldp._
+import rww.ldp.actor.{PlantainLDPCActor, LDPWebActor}
 
 
 object WebTestSuite {

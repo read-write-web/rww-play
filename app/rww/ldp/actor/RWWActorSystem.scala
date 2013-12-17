@@ -1,10 +1,11 @@
-package rww.ldp
+package rww.ldp.actor
 
 import org.w3.banana.RDF
 import akka.actor.{ActorRef, ActorSystem}
 import scala.concurrent.Future
+import rww.ldp.LDPCommand
 
-object RWW {
+object RWWActorSystem {
   // the two values below specify the akka paths
   // full example akka://rww/user/router
 
@@ -16,7 +17,7 @@ object RWW {
  * Trait for interactions with ReadWriteWeb
  * @tparam Rdf
  */
-trait RWW[Rdf <: RDF] {  //not sure which of exec or execute is going to be needed
+trait RWWActorSystem[Rdf <: RDF] {  //not sure which of exec or execute is going to be needed
    def system: ActorSystem
 
   /**

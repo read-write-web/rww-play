@@ -1,6 +1,5 @@
 package controllers
 
-import rww.ldp.RWWeb
 import org.w3.banana._
 import play.api.mvc.Action
 import play.api.mvc.Results._
@@ -23,6 +22,7 @@ import play.api.mvc.SimpleResult
 import play.api.mvc.ResponseHeader
 import utils.subdomain.SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
 import java.security.interfaces.RSAPublicKey
+import rww.ldp.actor.RWWActorSystemImpl
 
 case class CreateUserSpaceForm(subdomain: String, key: PublicKey, email: String)
 
@@ -34,7 +34,7 @@ case class CreateUserSpaceRequest(subdomain: String, email: String)
 /**
  *
  */
-class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Path, rww: RWWeb[Rdf])
+class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Path, rww: RWWActorSystemImpl[Rdf])
                           (implicit ops: RDFOps[Rdf]) {
 
   import play.api.libs.concurrent.Execution.Implicits.defaultContext

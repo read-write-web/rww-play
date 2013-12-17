@@ -1,12 +1,17 @@
-package rww.ldp
+package rww.ldp.actor.router
 
 import org.w3.banana.{syntax, RDFOps, RDF}
 import akka.util.Timeout
 import akka.actor.ActorRef
 import scalaz.{\/-, -\/}
 import java.net.{URI=>jURI}
+import rww.ldp._
+import rww.ldp.actor.common.CommonActorMessages
+import CommonActorMessages._
+import rww.ldp.actor.common.RWWBaseActor
 
-object RWWebActor {
+
+object RWWRoutingActor {
 
   def path(uPath: String, basePath: String) =
     if (uPath.startsWith(basePath)) {
@@ -14,7 +19,6 @@ object RWWebActor {
       val treated = cleanDots(res)
       Option(treated.mkString("/"))
     } else None
-
 
   /**
    * We compare the uri u to the base URI, and if this uri seems local to the base uri,
@@ -65,29 +69,29 @@ object RWWebActor {
  * @param timeout
  * @tparam Rdf
  */
-class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
-                          (implicit ops: RDFOps[Rdf], timeout: Timeout) extends BaseLDPActor {
+class RWWRoutingActor[Rdf<:RDF](val baseUri: Rdf#URI)
+                          (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RWWBaseActor {
   import syntax.URISyntax.uriW
-  import RWWebActor._
+  import RWWRoutingActor._
 
   var rootContainer: Option[ActorRef] = None
   var web : Option[ActorRef] = None
 
 
   def receive = returnErrors {
-    case Scrpt(script) => {
+    case ScriptMessage(script) => {
       script.resume match {
-        case command: -\/[LDPCommand[Rdf, LDPCommand.Script[Rdf,_]]] => forwardSwitch(Cmd(command.a))
+        case command: -\/[LDPCommand[Rdf, LDPCommand.Script[Rdf,_]]] => forwardSwitch(CmdMessage(command.a))
         case \/-(res) => sender ! res
       }
     }
-    case cmd: Cmd[Rdf,_] => forwardSwitch(cmd)
+    case cmd: CmdMessage[Rdf,_] => forwardSwitch(cmd)
     // TODO do we really need to be able to change the actorRef of these at runtime? it could be simpler to simply use Props?
-    case WebActor(webActor) => {
+    case WebActorSetterMessage(webActor) => {
       log.info(s"setting web actor to <$webActor> ")
       web = Some(webActor)
     }
-    case LDPSActor(ldps) => {
+    case LDPSActorSetterMessage(ldps) => {
       log.info(s"setting rootContainer to <$ldps> ")
       rootContainer = Some(ldps)
     }
@@ -95,7 +99,7 @@ class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
 
   /** We in fact ignore the R and A types, since we cannot capture */
   // TODO doc! local vs remote
-  protected def forwardSwitch[A](cmd: Cmd[Rdf,A]) {
+  protected def forwardSwitch[A](cmd: CmdMessage[Rdf,A]) {
     local(cmd.command.uri.underlying,baseUri.underlying).map { path=>
       rootContainer match {
         case Some(root) => {
@@ -120,5 +124,5 @@ class RWWebActor[Rdf<:RDF](val baseUri: Rdf#URI)
 
   }
 
-
 }
+

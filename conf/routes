@@ -22,14 +22,14 @@ GET           /srv/createCertificate                   controllers.Subdomains.cr
 # Map static resources from the /public folder to the /assets URL path
 GET           /assets/*file                            controllers.Assets.at(path="/public", file)
 
-GET           /2013                                    controllers.ReadWriteWebApp.about
-GET           /2013/$file<.*>                          controllers.ReadWriteWebApp.get(file)
-PUT           /2013/$file<.*>                          controllers.ReadWriteWebApp.put(file)
-POST          /2013/$file<.*>                          controllers.ReadWriteWebApp.post(file)
-DELETE        /2013/$file<.*>                          controllers.ReadWriteWebApp.delete(file)
+GET           /2013                                    controllers.ReadWriteWebController.about
+GET           /2013/$file<.*>                          controllers.ReadWriteWebController.get(file)
+PUT           /2013/$file<.*>                          controllers.ReadWriteWebController.put(file)
+POST          /2013/$file<.*>                          controllers.ReadWriteWebController.post(file)
+DELETE        /2013/$file<.*>                          controllers.ReadWriteWebController.delete(file)
 #MKCOL        /2013/$file<.*>                          controllers.ReadWriteWebApp.mkcol(file)
-PATCH         /2013/$file<.*>                          controllers.ReadWriteWebApp.patch(file)
-HEAD          /2013/$file<.*>                          controllers.ReadWriteWebApp.head(file)
+PATCH         /2013/$file<.*>                          controllers.ReadWriteWebController.patch(file)
+HEAD          /2013/$file<.*>                          controllers.ReadWriteWebController.head(file)
 
 POST          /srv/certgen                             controllers.ClientCertificateApp.generate
 GET           /srv/certgen                             controllers.ClientCertificateApp.get

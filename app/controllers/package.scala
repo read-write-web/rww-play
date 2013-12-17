@@ -4,25 +4,28 @@ import _root_.play.api.Logger
 import _root_.play.api.Play
 import akka.actor.{Props, ActorSystem}
 import concurrent.ExecutionContext
-import rww.play.rdf.IterateeSelector
 import rww.ldp._
-import org.w3.banana._
-import scala.Some
 import java.io.File
 import java.nio.file.Path
 import akka.util.Timeout
 import java.util.concurrent.TimeUnit
+import rww.ldp.actor.{RWWActorSystemImpl, LDPWebActor}
+import rww.ldp.actor.plantain.{PlantainLDPCSubdomainActor, PlantainLDPCActor}
 
-//import rww.play.{IterateeLDCache, LinkedDataCache}
-//import rww.play.auth.WebAccessControl
 import java.net.URL
-import org.w3.banana.plantain.Plantain
 import rww.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
+
+
+import org.w3.banana._
+import org.w3.banana.plantain._
+import rww.play.rdf.IterateeSelector
+
 
 /**
  * gather some common setup values
  **/
 trait Setup {
+
   implicit val system = ActorSystem("MySystem")
   implicit val executionContext: ExecutionContext = system.dispatcher
 
@@ -55,7 +58,7 @@ trait Setup {
   }
 
   lazy val rwwRoot: URL =  {
-    val path = controllers.routes.ReadWriteWebApp.about.url+"/"
+    val path = controllers.routes.ReadWriteWebController.about.url+"/"
     new URL(hostRoot,path)
   }
 
@@ -99,37 +102,7 @@ trait Setup {
     """)
 }
 
-/**
- * sets the useful objects needed for running a web server.
- * This is the place to set to choose if running Jena or Sesame.
- * ( since the plantain library is not yet generalised ... )
- * todo: in fact one has to do a bit more, because we also have to
- *       select the best iteratees, etc... and that is Jena/Sesame specific
- */
-//object setup extends Setup {
-//  //
-//  //when changing from Jena to Sesame the following group of variables would need to be changed
-//  //
-//
-//  type Rdf = Jena
-//  import Jena._
-//  val jenaAsync = new JenaAsync
-//  implicit val bestIterateeSlector: IterateeSelector[Rdf#Graph] = jenaAsync.graphIterateeSelector
-//  implicit val JenaGraphFetcher: GraphFetcher[Jena] = new GraphFetcher[Jena](jenaAsync.graphIterateeSelector)
-//  implicit def mkSparqlEngine = JenaGraphSparqlEngine.makeSparqlEngine _
-//  implicit val ops = Jena.ops
-//
-//  //
-//  // the following variables should be set correctly automatically when changing the value of Rdf above
-//  //
-//
-//  implicit val wac: WebACL[Rdf] = WebACL[Rdf]
-//  implicit val linkedDataCache: LinkedDataCache[Jena] = new IterateeLDCache[Jena](bestIterateeSlector)
-//
-//  //for WebAccessControl
-//  implicit val JenaWebIDVerifier = new WebIDVerifier[Rdf]()
-//  implicit val wacGuard: WebAccessControl[Rdf] = WebAccessControl[Rdf](linkedDataCache)
-//}
+
 
 object plantain extends Setup {
   type Rdf = Plantain
@@ -148,8 +121,8 @@ object plantain extends Setup {
   implicit val sparqlupdateSelector:  IterateeSelector[Plantain#UpdateQuery] =  PlantainSparqlUpdateIteratee.sparqlSelector
   implicit val webClient: WebClient[Plantain] = new WSClient(Plantain.readerSelector,Plantain.turtleWriter)
 
-  val rww: RWWeb[Plantain] = {
-    val w = new RWWeb[Plantain](ops.URI(rwwRoot.toString))(ops,Timeout(30,TimeUnit.SECONDS))
+  val rww: RWWActorSystemImpl[Plantain] = {
+    val w = new RWWActorSystemImpl[Plantain](ops.URI(rwwRoot.toString))(ops,Timeout(30,TimeUnit.SECONDS))
     val rootActor = if (plantain.rwwSubdomainsEnabled)
       Props(new PlantainLDPCSubdomainActor(w.baseUri, rootContainerPath))
     else Props(new PlantainLDPCActor(w.baseUri, rootContainerPath))

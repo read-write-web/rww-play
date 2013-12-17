@@ -1,12 +1,30 @@
-package rww.ldp
+package rww.ldp.actor
 
 import org.w3.banana._
 import akka.actor.ActorRef
 import concurrent.{ExecutionContext, Future}
-import scalaz.\/-
+import rww.ldp._
+import rww.ldp.CreateContainer
 import scalaz.-\/
-import util.Failure
-import util.Success
+import rww.ldp.DeleteResource
+import rww.ldp.UpdateLDPR
+import rww.ldp.WrappedException
+import rww.ldp.WrongTypeException
+import rww.ldp.GetMeta
+import scala.util.Failure
+import rww.ldp.GetResource
+import rww.ldp.AskLDPC
+import rww.ldp.SelectLDPC
+import scala.util.Success
+import scalaz.\/-
+import rww.ldp.ConstructLDPC
+import rww.ldp.AskLDPR
+import rww.ldp.SelectLDPR
+import rww.ldp.ConstructLDPR
+import rww.ldp.CreateLDPR
+import rww.ldp.actor.common.CommonActorMessages
+import CommonActorMessages._
+import rww.ldp.actor.common.RWWBaseActor
 
 /**
 * A LDP actor that interacts with remote LDP resources
@@ -17,7 +35,7 @@ import util.Success
 */
 class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
                            (implicit ops: RDFOps[Rdf], sparqlGraph: SparqlGraph[Rdf], ec: ExecutionContext,
-                            turtleWriter: RDFWriter[Rdf,Turtle]) extends BaseLDPActor {
+                            turtleWriter: RDFWriter[Rdf,Turtle]) extends RWWBaseActor {
 
   import ops._
   import org.w3.banana.syntax._
@@ -42,7 +60,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
    * @return a script for further evaluation
    */
   def runCmd[A](cmd: LDPCommand[Rdf, LDPCommand.Script[Rdf,A]]) {
-    log.info(s"in RunLocalCmd - received $cmd")
+    log.debug(s"in RunLocalCmd - received $cmd")
 
     def failMsg(e: Throwable, sender: ActorRef, msg: =>String) {
       sender ! akka.actor.Status.Failure({
@@ -58,7 +76,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         val result = webc.post(container,slugOpt,graph,Syntax.Turtle)
         result.onComplete{ tryres =>
           tryres match {
-            case Success(url) => rwwRouterActor.tell(Scrpt(k(url)),sender)
+            case Success(url) => rwwRouterActor.tell(ScriptMessage(k(url)),sender)
             case Failure(e) => failMsg(e, sender,s"failure creating LDPR with $slugOpt to remote container <$container>")
           }
         }
@@ -75,7 +93,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         val result = webc.post(container,slugOpt,graph.union(Graph(Triple(URI(""),rdf.typ, ldp.Container))),Syntax.Turtle)
         result.onComplete{ tryres =>
           tryres match {
-            case Success(url) => rwwRouterActor.tell(Scrpt(k(url)),sender)
+            case Success(url) => rwwRouterActor.tell(ScriptMessage(k(url)),sender)
             case Failure(e) => failMsg(e, sender,s"failure creating a container with POST and slug $slugOpt in remote <$container>")
           }
         }
@@ -91,7 +109,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         val result = webc.get(uri)
         result.onComplete { tryres =>
           tryres match {
-            case Success(response) =>  rwwRouterActor.tell(Scrpt(k(response)),sender)
+            case Success(response) =>  rwwRouterActor.tell(ScriptMessage(k(response)),sender)
             case Failure(e) => {
               failMsg(e, sender,s"failure fetching resource <$uri>")
             }
@@ -105,8 +123,8 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         result.onComplete { tryres =>
           tryres match {
             case Success(response) => {
-              log.info(s"cache received $response")
-              rwwRouterActor.tell(Scrpt(k(response.asInstanceOf[Meta[Rdf]])),sender)
+              log.debug(s"cache received $response")
+              rwwRouterActor.tell(ScriptMessage(k(response.asInstanceOf[Meta[Rdf]])),sender)
             }
             case Failure(e) => failMsg(e, sender,s"failure fetching acl for resource <$uri>")
           }
@@ -118,7 +136,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         result.onComplete{ tryres =>
           tryres match {
             case Success(()) => {
-              rwwRouterActor.tell(Scrpt(a),sender)
+              rwwRouterActor.tell(ScriptMessage(a),sender)
             }
             case Failure(e) => failMsg(e, sender,s"failure DELETing remote resource <$uri>")
           }
@@ -144,7 +162,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           tryRes match {
             case Success(ldpr) => {
               val solutions = sparqlGraph(ldpr.graph).executeSelect(query, bindings)
-              rwwRouterActor.tell(Scrpt(k(solutions)),sender)
+              rwwRouterActor.tell(ScriptMessage(k(solutions)),sender)
             }
             case Failure(e) => sender ! akka.actor.Status.Failure({
               e match {
@@ -163,7 +181,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           tryRes match {
             case Success(ldpr) => {
               val solutions = sparqlGraph(ldpr.graph).executeConstruct(query, bindings)
-              rwwRouterActor tell  (Scrpt(k(solutions)),sender)
+              rwwRouterActor tell  (ScriptMessage(k(solutions)),sender)
             }
             case Failure(e) => sender ! akka.actor.Status.Failure({
               e match {
@@ -181,7 +199,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           tryRes match {
             case Success(ldpr) => {
               val solutions = sparqlGraph(ldpr.graph).executeAsk(query, bindings)
-              rwwRouterActor tell  (Scrpt(k(solutions)),sender)
+              rwwRouterActor tell  (ScriptMessage(k(solutions)),sender)
             }
             case Failure(e) => sender ! akka.actor.Status.Failure({
               e match {
@@ -227,7 +245,7 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           //  run(sender, script)
       }
       case \/-(a) => {
-        log.info(s"returning to $sender $a")
+        log.debug(s"returning to $sender $a")
         sender ! a
       }
     }
@@ -235,10 +253,10 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
 
 
   def receive = returnErrors {
-    case s: Scrpt[Rdf,_]  => {
+    case s: ScriptMessage[Rdf,_]  => {
       run(sender, s.script)
     }
-    case cmd: Cmd[Rdf,_] => {
+    case cmd: CmdMessage[Rdf,_] => {
       runCmd(cmd.command)
     }
   }

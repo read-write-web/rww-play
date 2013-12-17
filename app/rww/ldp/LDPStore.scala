@@ -235,10 +235,6 @@ case class RemoteLDPR[Rdf<:RDF](location: Rdf#URI, graph: Rdf#Graph, meta: Point
   def size = None
 }
 
-case class Scrpt[Rdf<:RDF,A](script:LDPCommand.Script[Rdf,A])
-case class Cmd[Rdf<:RDF,A](command: LDPCommand[Rdf, LDPCommand.Script[Rdf,A]])
-
-
 
 
 case class ParentDoesNotExist(message: String) extends Exception(message) with BananaException
@@ -249,13 +245,3 @@ case class PreconditionFailed(message: String) extends Exception(message) with B
 case class UnsupportedMediaType(message: String) extends Exception(message) with BananaException
 case class StorageError(message: String)  extends Exception(message) with BananaException
 case class UnparsableSource(message: String,cause: Throwable)  extends Exception(message,cause) with BananaException
-
-
-
-
-
-// TODO these are just messages which permit to set/change actorRef of some other actors
-// TODO rename because these are not actors but kind of setters, and maybe it would be more clear to use Props instead?
-case class WebActor(web: ActorRef)
-case class LDPSActor(ldps: ActorRef)
-

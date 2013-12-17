@@ -1,5 +1,11 @@
-package rww.play
+package controllers
 
+import _root_.play.api.mvc.ResponseHeader
+import _root_.play.api.mvc.ResponseHeader
+import _root_.play.api.mvc.ResponseHeader
+import _root_.play.api.mvc.SimpleResult
+import _root_.play.api.mvc.SimpleResult
+import _root_.play.api.mvc.SimpleResult
 import _root_.play.{api => PlayApi}
 import PlayApi.Logger
 import PlayApi.mvc.Results._
@@ -22,6 +28,35 @@ import rww.ldp.ParentDoesNotExist
 import scala.util.Success
 import rww.ldp.AccessDenied
 import rww.ldp.WrongTypeException
+import rww.play._
+import rww.ldp.ResourceDoesNotExist
+import scala.util.Failure
+import scala.Some
+import rww.play.auth.AuthenticationError
+import rww.ldp.ParentDoesNotExist
+import scala.util.Success
+import rww.ldp.AccessDenied
+import rww.ldp.WrongTypeException
+import rww.ldp.ResourceDoesNotExist
+import scala.util.Failure
+import scala.Some
+import rww.play.auth.AuthenticationError
+import rww.ldp.ParentDoesNotExist
+import scala.util.Success
+import rww.ldp.AccessDenied
+import rww.ldp.WrongTypeException
+import rww.play.QueryRwwContent
+import rww.ldp.ResourceDoesNotExist
+import scala.util.Failure
+import rww.play.GraphRwwContent
+import scala.Some
+import rww.play.auth.AuthenticationError
+import rww.ldp.ParentDoesNotExist
+import scala.util.Success
+import rww.play.BinaryRwwContent
+import rww.ldp.AccessDenied
+import rww.play.IdResult
+import rww.ldp.WrongTypeException
 
 object Method extends Enumeration {
   val Read = Value
@@ -42,7 +77,7 @@ object SupportedMimeType extends Enumeration {
 /**
  * ReadWriteWeb Controller for Play
  */
-trait ReadWriteWeb[Rdf <: RDF] {
+trait ReadWriteWebControllerGeneric[Rdf <: RDF] {
 
   def rwwActor: ResourceMgr[Rdf]
 
@@ -136,7 +171,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
 
 
-  def writeGetResult(replyContentType: SupportedMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
+  private def writeGetResult(replyContentType: SupportedMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
                     (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
     val link = namedRes.result.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
     namedRes.result match {
@@ -249,9 +284,9 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def slug(implicit request: PlayApi.mvc.Request[RwwContent]) = request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8"))
+  private def slug(implicit request: PlayApi.mvc.Request[RwwContent]) = request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8"))
 
-  def postGraph(rwwGraph: Option[Rdf#Graph])(implicit request: PlayApi.mvc.Request[RwwContent]): Future[SimpleResult] = {
+  private def postGraph(rwwGraph: Option[Rdf#Graph])(implicit request: PlayApi.mvc.Request[RwwContent]): Future[SimpleResult] = {
     for {
       location <- rwwActor.postGraph(slug, rwwGraph)
     } yield {
@@ -259,7 +294,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def postBinaryContent(binaryContent: BinaryRwwContent)(implicit request: PlayApi.mvc.Request[RwwContent]) = {
+  private def postBinaryContent(binaryContent: BinaryRwwContent)(implicit request: PlayApi.mvc.Request[RwwContent]) = {
     for {
       answer <- rwwActor.postBinary(request.path, slug, binaryContent.file, MimeType(binaryContent.mime) )
     } yield {
@@ -267,7 +302,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def postRwwQuery(query: QueryRwwContent[Rdf])(implicit request: PlayApi.mvc.Request[RwwContent]) = {
+  private def postRwwQuery(query: QueryRwwContent[Rdf])(implicit request: PlayApi.mvc.Request[RwwContent]) = {
     for {
       answer <- rwwActor.postQuery(request.path, query)
     } yield {

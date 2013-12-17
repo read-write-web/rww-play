@@ -22,16 +22,14 @@ import java.nio.file.Path
 import org.w3.banana._
 import rww.play.rdf.IterateeSelector
 import concurrent.ExecutionContext
-import akka.util.Timeout
-import java.util.concurrent.TimeUnit
 import rww.play.auth.WebIDAuthN
-import akka.actor.Props
 import rww.ldp._
 import rww.ldp.auth.{WACAuthZ, WebIDVerifier}
 import java.net.URL
+import rww.ldp.actor.RWWActorSystemImpl
 
 
-class ReadWriteWebApp(base: URL, path: Path, rww: RWWeb[Plantain])(implicit val ops: RDFOps[Plantain],
+class ReadWriteWebControllerPlantain(base: URL, path: Path, rww: RWWActorSystemImpl[Plantain])(implicit val ops: RDFOps[Plantain],
             sparqlOps: SparqlOps[Plantain],
             graphIterateeSelector: IterateeSelector[Plantain#Graph],
             sparqlIterateeSelector: IterateeSelector[Plantain#Query],
@@ -39,7 +37,7 @@ class ReadWriteWebApp(base: URL, path: Path, rww: RWWeb[Plantain])(implicit val 
             val wsClient: WebClient[Plantain],
             val graphWriterSelector: WriterSelector[org.w3.banana.plantain.Plantain#Graph],
             val solutionsWriterSelector: WriterSelector[Plantain#Solutions],
-            val ec: ExecutionContext) extends ReadWriteWeb[Plantain] {
+            val ec: ExecutionContext) extends ReadWriteWebControllerGeneric[Plantain] {
 
 
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
@@ -51,6 +49,7 @@ class ReadWriteWebApp(base: URL, path: Path, rww: RWWeb[Plantain])(implicit val 
 
 }
 
-import plantain._
 
-object ReadWriteWebApp extends ReadWriteWebApp(plantain.rwwRoot, plantain.rootContainerPath,rww)
+// We use plantain as current RWW Controller implementation
+import plantain._
+object ReadWriteWebController extends ReadWriteWebControllerPlantain(plantain.rwwRoot, plantain.rootContainerPath,plantain.rww)

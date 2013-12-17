@@ -29,6 +29,8 @@ import rww.ldp._
 import scala.Some
 import rww.ldp.auth.WACAuthZ
 import java.net.{URI=>jURI, URL=>jURL}
+import rww.ldp.actor.RWWActorSystem
+import controllers.Method
 
 /**
  * This permits to transmit a result and to add an User header in the request which contains the URI of the authenticated user's WebID
@@ -43,7 +45,7 @@ case class IdResult[R](id: jURI, result: R)
 import _root_.play.api.mvc.{Request=>PlayRequest, RequestHeader=>PlayRequestHeader}
 
 
-class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
+class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
                              (implicit ops: RDFOps[Rdf], sparqlOps: SparqlOps[Rdf],
                               ec: ExecutionContext) {
 

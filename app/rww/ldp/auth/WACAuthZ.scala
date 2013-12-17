@@ -1,13 +1,13 @@
 package rww.ldp.auth
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import ExecutionContext.Implicits.global
 import java.util.regex.Pattern
 import org.w3.banana._
 import rww.ldp.{LDPCommand, WebResource}
 import play.api.libs.iteratee.{Enumeratee, Input, Iteratee, Enumerator}
 import scala.Some
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.util.Try
 import utils.Iteratees
 
@@ -24,7 +24,6 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) {
   import LDPCommand._
   import ops._
   import org.w3.banana.diesel._
-  import org.w3.banana.syntax.GraphSyntax
   import org.w3.banana.syntax.LiteralSyntax._
   import org.w3.banana.syntax.URISyntax._
   import web.rww
