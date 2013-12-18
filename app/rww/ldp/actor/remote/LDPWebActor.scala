@@ -1,4 +1,4 @@
-package rww.ldp.actor
+package rww.ldp.actor.remote
 
 import org.w3.banana._
 import akka.actor.ActorRef

@@ -1,14 +1,14 @@
 package utils
 
-import play.api.libs.iteratee.{Error, Input, Iteratee, Enumerator}
+import play.api.libs.iteratee._
 import scala.concurrent.{ExecutionContext, Future}
 import java.io.{IOException, OutputStream}
-import play.api.libs.iteratee.Input.El
+import com.typesafe.scalalogging.slf4j.Logging
 
 /**
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)
  */
-object Iteratees {
+object Iteratees extends Logging {
 
   /**
    * Permits to create an enumerator that will emit a single element, the result of a future

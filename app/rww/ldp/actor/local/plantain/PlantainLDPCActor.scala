@@ -11,7 +11,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.util
 import java.nio.file.Path
 import scala.util.Try
-import java.util.Date
+import java.util.{UUID, Date}
 import java.io.File
 import rww.ldp._
 import rww.ldp.actor.common.CommonActorMessages
@@ -266,44 +266,41 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
   }
 
 
+  protected def mkFile[A](slugOpt: Option[String], ext: String): (Plantain#URI, Path) = {
+    val slug = slugOpt.getOrElse(generateRandomString)
+    mkFile(slug,ext)
+  }
+
   /**
    * creates a file from the slug, and returns the URI and path for it.
-   * @param slugOpt, optional file name
+   * @param slug
    * @param ext for the extension of the file, should not be the "" string
    **/
-  protected def mkFile[A](slugOpt: Option[String], ext: String): (Plantain#URI, Path) = {
+  protected def mkFile[A](slug: String, ext: String): (Plantain#URI, Path) = {
     assert (ext != "")
-    def mkTmpFile: Path = {
-      val file = Files.createTempFile(root, "r_", ext)
-      val name = file.getFileName.toString
-      val link = root.resolve(name.substring(0, name.length - ext.length))
-      Files.createSymbolicLink(link, file)
-      val aclFile = link.resolveSibling(link.getFileName.toString+acl+ext)
-      Files.createFile(aclFile)
-      link
+    val safeSlug = slug.replaceAll("[/.]+", "_")
+    val slugLink = root.resolve(safeSlug)
+    val slugFile =  slugLink.resolveSibling(slugLink.getFileName.toString+ext)
+    val slugAcl = slugLink.resolveSibling(slugLink.getFileName.toString+acl+".ttl")
+    if ( Files.exists(slugLink, LinkOption.NOFOLLOW_LINKS) || Files.exists(slugFile) || Files.exists(slugLink) ) {
+      val slugFallback = generateSlugFallback(slug)
+      log.info(s"filename $slug is not available, will try with new slug $slugFallback")
+      mkFile(Some(slugFallback),ext)
     }
-    val path = slugOpt match {
-      case None =>  mkTmpFile
-      case Some(slug) => {
-        val safeSlug = slug.replaceAll("[/.]+", "_")
-        val slugLink = root.resolve(safeSlug)
-        val slugFile =  slugLink.resolveSibling(slugLink.getFileName.toString+ext)
-        val slugAcl = slugLink.resolveSibling(slugLink.getFileName.toString+acl+ext)
-        if (Files.exists(slugLink, LinkOption.NOFOLLOW_LINKS)
-          || Files.exists(slugFile)
-          || Files.exists(slugLink)) {
-          mkTmpFile
-        } else {
-          Files.createFile(slugFile)
-          Files.createFile(slugAcl)
-          Files.createSymbolicLink(slugLink, slugFile.getFileName)
-        }
-      }
+    else {
+      Files.createFile(slugFile)
+      Files.createFile(slugAcl)
+      log.debug(s"Created file $slugFile with acl file $slugAcl")
+      val symPath = Files.createSymbolicLink(slugLink, slugFile.getFileName)
+      val uri = uriW[Plantain](ldpcUri) / symPath.getFileName.toString
+      (uri, symPath)
     }
-    val uri = uriW[Plantain](ldpcUri) / path.getFileName.toString
-    (uri, path)
-
   }
+
+  def generateSlugFallback(baseSlug: String): String =  baseSlug + "_" + generateRandomString
+
+  def generateRandomString = UUID.randomUUID().toString.replaceAll("-","").substring(0,10)
+
 
   /**
    * creates a dir/collection from the slug, and returns the URI and path for it.

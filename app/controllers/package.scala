@@ -9,7 +9,7 @@ import java.io.File
 import java.nio.file.Path
 import akka.util.Timeout
 import java.util.concurrent.TimeUnit
-import rww.ldp.actor.{RWWActorSystemImpl, LDPWebActor}
+import rww.ldp.actor._
 import rww.ldp.actor.plantain.{PlantainLDPCSubdomainActor, PlantainLDPCActor}
 
 import java.net.URL
@@ -19,6 +19,7 @@ import rww.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryI
 import org.w3.banana._
 import org.w3.banana.plantain._
 import rww.play.rdf.IterateeSelector
+import rww.ldp.actor.remote.LDPWebActor
 
 
 /**

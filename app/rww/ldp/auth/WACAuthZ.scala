@@ -10,6 +10,7 @@ import scala.Some
 import scala.concurrent.Future
 import scala.util.Try
 import utils.Iteratees
+import com.typesafe.scalalogging.slf4j.Logging
 
 /**
  * WACAuthZ groups methods to find the authorized WebIDs for a particular resource
@@ -19,7 +20,7 @@ import utils.Iteratees
  * @param ops
  * @tparam Rdf
  */
-class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) {
+class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) extends Logging {
 
   import LDPCommand._
   import ops._
@@ -45,6 +46,7 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) {
    * @return a Free based recursive structure that will return a list of agents ( identified by WebIDs. )
    * */
   def getAuth(aclUri: Rdf#URI, method: Rdf#URI, on: Rdf#URI): Future[List[Rdf#URI]] = {
+    logger.debug(s"Will try to get the authorized agents for $method on $on with Acl URI = $aclUri")
     val acl: Enumerator[LinkedDataResource[Rdf]] = web~(aclUri)
     getAuthEnum(acl,method,on)
   }
@@ -53,9 +55,15 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) {
 
   protected def getAuthEnum(acls: Enumerator[LinkedDataResource[Rdf]],
                             method: Rdf#URI, on: Rdf#URI): Future[List[Rdf#URI]] = {
-    val authzWebIds: Enumerator[Rdf#URI] = acls.flatMap { ldr =>
+    val aclsLogged = acls through Enumeratee.map { uri =>
+      logger.debug(s"authzWebIDs received URI ${uri.location}")
+      uri
+    }
+
+    val authzWebIds: Enumerator[Rdf#URI] = aclsLogged.flatMap { ldr =>
       authzWebIDs(ldr,on,method)
     }
+
     Iteratees.enumeratorAsList(authzWebIds)
   }
 
@@ -72,13 +80,17 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) {
 
   /** retrieves the acl for a resource */
   def acl(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]] = {
+    logger.debug(s"Will try to get Acls for $uri")
     val futureACL: Future[Option[LinkedDataResource[Rdf]]] = rww.execute {
       //todo: this code could be moved somewhere else see: Command.GET
       val docUri = uri.fragmentLess
       getMeta(docUri).flatMap { m =>
         val x: LDPCommand.Script[Rdf, Option[LinkedDataResource[Rdf]]] = m.acl match {
-          case Some(uri) => getLDPR(uri).map { g =>
-            Some(LinkedDataResource(uri, PointedGraph(uri, g)))
+          case Some(aclUri) => {
+            logger.info(s"Resource $uri claims its ACLs are stored at $aclUri")
+            getLDPR(aclUri).map { g =>
+              Some(LinkedDataResource(aclUri, PointedGraph(aclUri, g)))
+            }
           }
           case None => `return`(None)
         }

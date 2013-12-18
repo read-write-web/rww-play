@@ -96,7 +96,7 @@ class RWWRoutingActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
           val pathList = switch.path.split('/').toList
           val p = root.path / switch.subhost.map(_::pathList).getOrElse(pathList)
           val to = context.actorSelection(p)
-          log.debug(s"forwarding message $cmd to akka('$switch')=$to ")
+          log.debug(s"forwarding message $cmd to akka('$switch')=$to received from $sender")
           to.tell(cmd,context.sender)
         }
         case None => log.warning("RWWebActor not set up yet: missing rootContainer")
