@@ -30,6 +30,8 @@ import scala.Some
 import rww.ldp.auth.WACAuthZ
 import java.net.{URI=>jURI, URL=>jURL}
 import rww.ldp.actor.RWWActorSystem
+import rww.ldp.LDPExceptions._
+import rww.ldp.model.{LDPR, BinaryResource, NamedResource}
 
 
 // TODO not appropriate place

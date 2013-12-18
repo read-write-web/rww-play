@@ -15,7 +15,6 @@ import rww.ldp._
 import com.google.common.base.Throwables
 import scala.collection.convert.decorateAsScala._
 import rww.ldp.DeleteResource
-import rww.ldp.ResourceDoesNotExist
 import rww.ldp.GetMeta
 import rww.ldp.PatchLDPR
 import scala.util.Failure
@@ -27,15 +26,14 @@ import rww.ldp.AskLDPR
 import rww.ldp.ConstructLDPR
 import scalaz.-\/
 import rww.ldp.UpdateLDPR
-import rww.ldp.UnparsableSource
+import rww.ldp.LDPExceptions._
 import rww.ldp.GetResource
-import rww.ldp.LocalLDPR
-import rww.ldp.LocalBinaryR
-import rww.ldp.RequestNotAcceptable
 import rww.ldp.SelectLDPR
 import rww.ldp.actor.common.CommonActorMessages
 import CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
+import rww.ldp.model._
+
 
 class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
                        (implicit ops: RDFOps[Plantain],
@@ -75,7 +73,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
           } recover {
             case RDFParseExceptionMatcher(e) => throw UnparsableSource(s"Can't parse resource $iri as an RDF file",e)
           }
-        } else Success(LocalBinaryR[Plantain](file.toPath, iri))
+        } else Success(LocalBinaryResource[Plantain](file.toPath, iri))
 
       } else Failure(ResourceDoesNotExist(s"no resource for '$key'"))
     }

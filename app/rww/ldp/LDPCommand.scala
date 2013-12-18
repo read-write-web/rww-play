@@ -5,6 +5,7 @@ import scalaz.{ Free, Functor }
 import scalaz.Free.Suspend
 import scalaz.Free.Return
 import java.security.Principal
+import rww.ldp.model.{LDPR, BinaryResource, Meta, NamedResource}
 
 sealed trait LDPCommand[Rdf <: RDF, +A]{
   //the uri on which the action is applied.

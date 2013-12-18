@@ -22,6 +22,7 @@ import rww.play.PlayWriterBuilder._
 import akka.util.Timeout
 import akka.actor.ActorSystem
 import rww.ldp._
+import rww.ldp.model.LDPR
 
 /**
 * A <a href="http://www.w3.org/TR/cors/">CORS</a> proxy that allows a client to fetch remote RDF

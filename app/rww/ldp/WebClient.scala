@@ -3,7 +3,6 @@ package rww.ldp
 import com.ning.http.client.FluentCaseInsensitiveStringsMap
 import com.ning.http.util.DateUtil
 import concurrent.{ExecutionContext, Future}
-import java.net.URL
 import org.slf4j.LoggerFactory
 import org.w3.banana._
 import org.w3.play.api.libs.ws.{Response, ResponseHeaders, WS}
@@ -11,6 +10,7 @@ import scala.Some
 import util.{Try, Success, Failure}
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.immutable
+import rww.ldp.model._
 
 /**
  * A Web Client interacts directly with http resources on the web.

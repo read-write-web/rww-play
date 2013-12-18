@@ -25,6 +25,7 @@ import rww.ldp.CreateLDPR
 import rww.ldp.actor.common.CommonActorMessages
 import CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
+import rww.ldp.model.{LDPR, Meta}
 
 /**
 * A LDP actor that interacts with remote LDP resources

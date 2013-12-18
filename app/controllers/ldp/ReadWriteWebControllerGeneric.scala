@@ -16,17 +16,16 @@ import com.google.common.base.Throwables
 import scala.util.Try
 import rww.play._
 import rww.play.QueryRwwContent
-import rww.ldp.ResourceDoesNotExist
+import rww.ldp.LDPExceptions._
 import scala.util.Failure
 import rww.play.GraphRwwContent
 import scala.Some
 import rww.play.auth.AuthenticationError
-import rww.ldp.ParentDoesNotExist
 import scala.util.Success
 import rww.play.BinaryRwwContent
-import rww.ldp.AccessDenied
 import rww.play.IdResult
 import rww.ldp.WrongTypeException
+import rww.ldp.model.{LDPR, BinaryResource, NamedResource}
 
 
 /**

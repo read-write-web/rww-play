@@ -12,6 +12,7 @@ import rww.ldp._
 import rww.ldp.actor.router._
 import rww.ldp.actor.common.CommonActorMessages
 import CommonActorMessages._
+import rww.ldp.LDPExceptions._
 
 object RWWActorSystemImpl {
 

@@ -20,14 +20,13 @@ import rww.ldp.DeleteResource
 import scala.util.Failure
 import scala.Some
 import scala.util.Success
-import rww.ldp.UnsupportedMediaType
+import rww.ldp.LDPExceptions._
 import CommonActorMessages.ScriptMessage
-import rww.ldp.PreconditionFailed
 import rww.ldp.CreateBinary
-import rww.ldp.StorageError
 import akka.actor.InvalidActorNameException
-import rww.ldp.LocalLDPR
 import rww.ldp.CreateLDPR
+import rww.ldp.model._
+
 
 /**
  * A LDP Container actor that is responsible for the equivalent of a directory

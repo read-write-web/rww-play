@@ -2,6 +2,7 @@ package rww.ldp
 
 import org.w3.banana._
 import org.openrdf.model.Graph
+import rww.ldp.model.{LDPR, NamedResource}
 
 /**
  * Advice ( http://en.wikipedia.org/wiki/Advice_in_aspect-oriented_programming ) to be applied before or after
