@@ -44,7 +44,7 @@ class ReadWriteWebControllerPlantain(base: URL, path: Path, rww: RWWActorSystemI
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain](base)(ops,sparqlOps,graphIterateeSelector,
     sparqlIterateeSelector,sparqlUpdateSelector,ec)
 
-  lazy val rwwActor =  new ResourceMgr[Plantain](base,rww, new WebIDAuthN(new WebIDVerifier(rww)),
+  lazy val resourceManager =  new ResourceMgr[Plantain](base,rww, new WebIDAuthN(new WebIDVerifier(rww)),
     new WACAuthZ[Plantain](new WebResource[Plantain](rww))(ops))
 
 }

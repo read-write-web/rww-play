@@ -34,7 +34,7 @@ import rww.ldp.WrongTypeException
  */
 trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTrait {
 
-  def rwwActor: ResourceMgr[Rdf]
+  def resourceManager: ResourceMgr[Rdf]
 
   implicit def rwwBodyParser: RwwBodyParser[Rdf]
   implicit def ec: ExecutionContext
@@ -97,7 +97,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
    */
   private def getAsync(replyContentType: SupportedMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
     val getResult = for {
-      namedRes <- rwwActor.get(request, request.getAbsoluteURI)
+      namedRes <- resourceManager.get(request, request.getAbsoluteURI)
     }
     yield writeGetResult(replyContentType,namedRes)
     getResult recover {
@@ -171,7 +171,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
     def mk(graph: Option[Rdf#Graph]): Future[SimpleResult] = {
       val path = correctedPath.toString.substring(coll.toString.length)
-      for (answer <- rwwActor.makeCollection(coll.toString, Some(path), graph))
+      for (answer <- resourceManager.makeCollection(coll.toString, Some(path), graph))
       yield {
         val res = Created("Created Collection at " + answer).withHeaders(userHeader(answer))
         if (request.path == correctedPath) res
@@ -193,7 +193,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
   def put(path: String) = Action.async(rwwBodyParser) { implicit request =>
     val future = for {
-      answer <- rwwActor.put(request.body)
+      answer <- resourceManager.put(request.body)
     } yield {
       Ok("Succeeded").withHeaders(userHeader(answer))
     }
@@ -205,7 +205,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
   def patch(path: String) = Action.async(rwwBodyParser) {implicit request =>
     val future = for {
-      answer <- rwwActor.patch( request.body)
+      answer <- resourceManager.patch( request.body)
     } yield {
       Ok("Succeeded").withHeaders(userHeader(answer))
     }
@@ -240,7 +240,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
   private def postGraph(rwwGraph: Option[Rdf#Graph])(implicit request: PlayApi.mvc.Request[RwwContent]): Future[SimpleResult] = {
     for {
-      location <- rwwActor.postGraph(slug, rwwGraph)
+      location <- resourceManager.postGraph(slug, rwwGraph)
     } yield {
       Created.withHeaders("Location" -> location.result.toString,userHeader(location))
     }
@@ -248,7 +248,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
   private def postBinaryContent(binaryContent: BinaryRwwContent)(implicit request: PlayApi.mvc.Request[RwwContent]) = {
     for {
-      answer <- rwwActor.postBinary(request.path, slug, binaryContent.file, MimeType(binaryContent.mime) )
+      answer <- resourceManager.postBinary(request.path, slug, binaryContent.file, MimeType(binaryContent.mime) )
     } yield {
       Created.withHeaders("Location" -> answer.result.toString,userHeader(answer))
     }
@@ -256,7 +256,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
   private def postRwwQuery(query: QueryRwwContent[Rdf])(implicit request: PlayApi.mvc.Request[RwwContent]) = {
     for {
-      answer <- rwwActor.postQuery(request.path, query)
+      answer <- resourceManager.postQuery(request.path, query)
     } yield {
       answer.result.fold(
         graph =>
@@ -279,7 +279,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
   def delete(path: String) = Action.async { implicit request =>
     val future = for {
-      answer <- rwwActor.delete(request)
+      answer <- resourceManager.delete(request)
     } yield {
       Ok.withHeaders(userHeader(answer))
     }
