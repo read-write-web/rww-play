@@ -20,7 +20,7 @@ package object play {
 
   implicit class EnhancedRequest(val request: PlayApi.mvc.Request[_]) extends AnyVal {
     private def buildRootURI(implicit request: PlayApi.mvc.Request[_])  : java.net.URI = {
-      val path : Call = routes.ReadWriteWebController.get("")
+      val path : Call = controllers.ldp.routes.ReadWriteWebController.get("")
       new java.net.URI( path.absoluteURL(true).replace( path.url, request.path))
 
     }
@@ -30,7 +30,7 @@ package object play {
 
   implicit class EnhancedRequestHeader(val requestHeader: PlayApi.mvc.RequestHeader) extends AnyVal {
     private def buildRootURI(requestHeader: PlayApi.mvc.RequestHeader)  : java.net.URI = {
-      val path : Call = routes.ReadWriteWebController.get("")
+      val path : Call = controllers.ldp.routes.ReadWriteWebController.get("")
       val absUrl = path.absoluteURL(true) (requestHeader)
       new java.net.URI( absUrl.replace( path.url, requestHeader.path))
 

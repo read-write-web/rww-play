@@ -58,7 +58,7 @@ trait Setup {
   }
 
   lazy val rwwRoot: URL =  {
-    val path = controllers.routes.ReadWriteWebController.about.url+"/"
+    val path = controllers.routes.MainController.about.url+"/" // TODO: not the appropriate way to get this url!
     new URL(hostRoot,path)
   }
 

@@ -57,13 +57,6 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
 
 
-
-
-  // TODO to move: not specially related to subdomains
-  def index = Action {
-    Ok(views.html.index())
-  }
-
   def createSubdomain = Action {
     Ok(views.html.subdomain.createSubdomain(createUserSpaceRequestForm))
   }

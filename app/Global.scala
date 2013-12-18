@@ -3,6 +3,8 @@
  * Date: 24/11/2013
  */
 
+import controllers.ldp
+import controllers.ldp.ReadWriteWebController
 import play.api._
 import mvc.RequestHeader
 
@@ -17,13 +19,13 @@ object Global extends GlobalSettings {
       super.onRouteRequest(req)
     } else if (uri.getHost != controllers.plantain.host) {
       req.method match {
-        case "GET" => Some(controllers.ReadWriteWebController.get(req.path))
-        case "POST" => Some(controllers.ReadWriteWebController.post(req.path))
-        case "PATCH" => Some(controllers.ReadWriteWebController.patch(req.path))
-        case "MKCOL" => Some(controllers.ReadWriteWebController.mkcol(req.path))
-        case "HEAD" => Some(controllers.ReadWriteWebController.head(req.path))
-        case "PUT" =>  Some(controllers.ReadWriteWebController.put(req.path))
-        case "DELETE" => Some(controllers.ReadWriteWebController.delete(req.path))
+        case "GET" => Some(ReadWriteWebController.get(req.path))
+        case "POST" => Some(ldp.ReadWriteWebController.post(req.path))
+        case "PATCH" => Some(ldp.ReadWriteWebController.patch(req.path))
+        case "MKCOL" => Some(ldp.ReadWriteWebController.mkcol(req.path))
+        case "HEAD" => Some(ldp.ReadWriteWebController.head(req.path))
+        case "PUT" =>  Some(ldp.ReadWriteWebController.put(req.path))
+        case "DELETE" => Some(ldp.ReadWriteWebController.delete(req.path))
       }
     } else  super.onRouteRequest(req)
   }

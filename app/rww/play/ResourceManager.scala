@@ -30,7 +30,13 @@ import scala.Some
 import rww.ldp.auth.WACAuthZ
 import java.net.{URI=>jURI, URL=>jURL}
 import rww.ldp.actor.RWWActorSystem
-import controllers.Method
+
+
+// TODO not appropriate place
+object Method extends Enumeration {
+  val Read = Value
+  val Write = Value
+}
 
 /**
  * This permits to transmit a result and to add an User header in the request which contains the URI of the authenticated user's WebID

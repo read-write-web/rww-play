@@ -1,11 +1,5 @@
-package controllers
+package controllers.ldp
 
-import _root_.play.api.mvc.ResponseHeader
-import _root_.play.api.mvc.ResponseHeader
-import _root_.play.api.mvc.ResponseHeader
-import _root_.play.api.mvc.SimpleResult
-import _root_.play.api.mvc.SimpleResult
-import _root_.play.api.mvc.SimpleResult
 import _root_.play.{api => PlayApi}
 import PlayApi.Logger
 import PlayApi.mvc.Results._
@@ -20,31 +14,7 @@ import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import com.google.common.base.Throwables
 import scala.util.Try
-import rww.ldp.ResourceDoesNotExist
-import scala.util.Failure
-import scala.Some
-import rww.play.auth.AuthenticationError
-import rww.ldp.ParentDoesNotExist
-import scala.util.Success
-import rww.ldp.AccessDenied
-import rww.ldp.WrongTypeException
 import rww.play._
-import rww.ldp.ResourceDoesNotExist
-import scala.util.Failure
-import scala.Some
-import rww.play.auth.AuthenticationError
-import rww.ldp.ParentDoesNotExist
-import scala.util.Success
-import rww.ldp.AccessDenied
-import rww.ldp.WrongTypeException
-import rww.ldp.ResourceDoesNotExist
-import scala.util.Failure
-import scala.Some
-import rww.play.auth.AuthenticationError
-import rww.ldp.ParentDoesNotExist
-import scala.util.Success
-import rww.ldp.AccessDenied
-import rww.ldp.WrongTypeException
 import rww.play.QueryRwwContent
 import rww.ldp.ResourceDoesNotExist
 import scala.util.Failure
@@ -58,26 +28,11 @@ import rww.ldp.AccessDenied
 import rww.play.IdResult
 import rww.ldp.WrongTypeException
 
-object Method extends Enumeration {
-  val Read = Value
-  val Write = Value
-}
-
-/**
- * These are the currently supported mime types that can be used to transmit the RDF data to clients
- */
-object SupportedMimeType extends Enumeration {
-  val Turtle = Value("text/turtle")
-  val RdfXml = Value("application/rdf+xml")
-  val Html = Value("text/html")
-
-  val StringSet = SupportedMimeType.values.map(_.toString)
-}
 
 /**
  * ReadWriteWeb Controller for Play
  */
-trait ReadWriteWebControllerGeneric[Rdf <: RDF] {
+trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTrait {
 
   def rwwActor: ResourceMgr[Rdf]
 
@@ -91,11 +46,8 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] {
 
   import rww.play.PlayWriterBuilder._
 
-  def about = Action {
-    Ok(views.html.rww.ldp())
-  }
 
-  def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
+  private def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
 
   /**
    * The user header is used to transmoit the WebId URI to the client, because he can't know it before
@@ -103,7 +55,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] {
    * @param res
    * @return
    */
-  def userHeader(res: IdResult[_]) =  "User"->res.id.toString
+  private def userHeader(res: IdResult[_]) =  "User"->res.id.toString
 
 
   def get(path: String) = Action.async { request =>
@@ -122,7 +74,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] {
   }
 
 
-  def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+  private def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
     findReplyContentType(request) match {
       case Failure(t) => {
         Future.successful {
@@ -143,7 +95,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] {
    * @param request
    * @return
    */
-  def getAsync(replyContentType: SupportedMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+  private def getAsync(replyContentType: SupportedMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
     val getResult = for {
       namedRes <- rwwActor.get(request, request.getAbsoluteURI)
     }
@@ -172,7 +124,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] {
 
 
   private def writeGetResult(replyContentType: SupportedMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
-                    (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
+                            (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
     val link = namedRes.result.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
     namedRes.result match {
       case ldpr: LDPR[Rdf] =>  {

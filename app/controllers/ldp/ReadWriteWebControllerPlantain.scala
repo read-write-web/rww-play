@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package controllers
+package controllers.ldp
 
 import rww.play._
 import org.w3.banana.plantain._
@@ -48,8 +48,3 @@ class ReadWriteWebControllerPlantain(base: URL, path: Path, rww: RWWActorSystemI
     new WACAuthZ[Plantain](new WebResource[Plantain](rww))(ops))
 
 }
-
-
-// We use plantain as current RWW Controller implementation
-import plantain._
-object ReadWriteWebController extends ReadWriteWebControllerPlantain(plantain.rwwRoot, plantain.rootContainerPath,plantain.rww)
