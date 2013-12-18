@@ -36,7 +36,7 @@ function main () {
 			// Define the people collection (read only)
 			People = BL.Collection.extend({
 				model: Person,
-				genera  tor: "{ <"+defaultWebId+"> foaf:knows ?id }"
+				generator: "{ <"+defaultWebId+"> foaf:knows ?id }"
 			});
 
 			// Build the domain objects

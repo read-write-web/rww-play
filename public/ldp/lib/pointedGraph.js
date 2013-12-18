@@ -18,6 +18,19 @@ $rdf.PointedGraph = function() {
 	};
 	$rdf.PointedGraph.prototype.constructor = $rdf.PointedGraph;
 
+    // Utils
+    function sparqlPatch(uri, query) {
+        var promise = $.ajax({
+            type: "PATCH",
+            url: uri,
+            contentType: 'application/sparql-update',
+            dataType: 'text',
+            processData:false,
+            data: query
+        }).promise();
+        return promise;
+    }
+
     // relUri => Array[Pgs]
 	$rdf.PointedGraph.prototype.rel = function (relUri) {
 		console.log("***********$rdf.PointedGraph.prototype.rel*******************");
@@ -159,7 +172,43 @@ $rdf.PointedGraph = function() {
 		if (l.length > 0) return l[0];
 	}
 
-	$rdf.PointedGraph.prototype.future = function(pointer, name) {
+    // Interaction with the PGs.
+    $rdf.PointedGraph.prototype.destroy = function () {}
+
+    $rdf.PointedGraph.prototype.delete = function(relUri, value) {
+        var queryDelete =
+            'PREFIX foaf: <http://xmlns.com/foaf/0.1/> \n' +
+            'DELETE DATA \n' +
+            '{' + "<" + this.pointer.value + ">" + relUri + ' "' + value + '"' + '. \n' + '}';
+
+
+        // Sparql request return a promise.
+        return sparqlPatch(this.pointer.value, queryDelete);
+    }
+
+    $rdf.PointedGraph.prototype.insert = function(relUri, value) {
+        var queryInsert =
+            'PREFIX foaf: <http://xmlns.com/foaf/0.1/> \n' +
+            'INSERT DATA \n' +
+            '{' + "<" + this.pointer.value + ">" + relUri + ' "' + value + '"' + '. \n' + '}';
+
+        // Sparql request return a promise.
+        return sparqlPatch(this.pointer.value, queryInsert);
+    }
+
+    $rdf.PointedGraph.prototype.update = function (relUri, oldvalue, newValue) {
+        var queryDeleteInsert =
+            'DELETE DATA \n' +
+                '{' + "<" + this.pointer.value + "> " + relUri + ' "' + oldvalue + '"' + '} ;\n' +
+            'INSERT DATA \n' +
+                '{' + "<" + this.pointer.value + "> " + relUri + ' "' + newValue + '"' + '. } ';
+
+        // Sparql request return a promise.
+        return sparqlPatch(this.pointer.value, queryDeleteInsert);
+    }
+
+    // Future.
+    $rdf.PointedGraph.prototype.future = function(pointer, name) {
 		$rdf.PointedGraph(this.graph, pointer, this.graphName)
 	}
 

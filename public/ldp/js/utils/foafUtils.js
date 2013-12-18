@@ -1,44 +1,43 @@
 var foafUtils = {
 
     getFoafName: function (pg) {
-        var pgList = pg.getLiteral(FOAF('name'));
-        return (pgList && pgList.length>0)? pgList[0] : null;
+        var tab = pg.getLiteral(FOAF('name'));
+        return (tab && tab.length>0)? tab[0] : null;
     },
 
     getFoafNick: function (pg) {
-        var pgList = pg.getLiteral(FOAF('nick'));
-        return (pgList && pgList.length>0)? pgList[0] : null;
+        var tab = pg.getLiteral(FOAF('nick'));
+        return (tab && tab.length>0)? tab[0] : null;
     },
 
     getFoafImg: function (pg) {
-        var pgList = pg.getSymbol(FOAF('img'), FOAF('depiction'));
-        return (pgList && pgList.length>0)? pgList[0] : null;
+        var tab = pg.getSymbol(FOAF('img'), FOAF('depiction'));
+        return (tab && tab.length>0)? tab[0] : null;
     },
 
     getFoafMbox: function (pg) {
-        var pgList = pg.getSymbol(FOAF('mbox'));
-        return (pgList && pgList.length>0)? pgList[0] : null;
+        var tab = pg.getSymbol(FOAF('mbox'));
+        return (tab && tab.length>0)? tab[0] : null;
     },
 
     getFoafPhone: function (pg) {
-        var pgList = pg.getSymbol(FOAF('phone'));
-        return (pgList && pgList.length>0)? pgList[0] : null;
-        return pg.getSymbol(FOAF('phone'));
+        var tab = pg.getSymbol(FOAF('phone'));
+        return (tab && tab.length>0)? tab[0] : null;
     },
 
     getFoafHomepage: function (pg) {
-        var pgList = pg.getSymbol(FOAF('homepage'));
-        return (pgList && pgList.length>0)? pgList[0] : null;
+        var tab = pg.getSymbol(FOAF('homepage'));
+        return (tab && tab.length>0)? tab[0] : null;
     },
 
     getFoafGender: function (pg) {
-        var pgList = pg.getLiteral(FOAF('gender'));
-        return (pgList && pgList.length>0)? pgList[0] : null;
+        var tab = pg.getLiteral(FOAF('gender'));
+        return (tab && tab.length>0)? tab[0] : null;
     },
 
     getFoafBirthday: function (pg) {
-        var pgList = pg.getLiteral(FOAF('birthday'));
-        return (pgList && pgList.length>0)? pgList[0] : null;
+        var tab = pg.getLiteral(FOAF('birthday'));
+        return (tab && tab.length>0)? tab[0] : null;
     },
 
     getPersonInfo: function (pg) {
@@ -70,7 +69,7 @@ var foafUtils = {
 //        console.log(pgHomes)
 //
 //        //
-//        var pgList = _.chain(pgHomes)
+//        var tab = _.chain(pgHomes)
 //            .map(function (pg) {
 //                console.log(pg)
 //                return pg.rel(relUri);
@@ -78,18 +77,18 @@ var foafUtils = {
 //            .flatten()
 //            .value()
 //
-//        return pgList;
+//        return tab;
 //        /*
-//         var pgList = _.chain(arguments)
+//         var tab = _.chain(arguments)
 //         .map(function(arg) {
 //         var pg = new $rdf.PointedGraph(self.graph, objectHome, self.graphName)
 //         return pg.rel(arg);
 //         })
 //         .flatten()
 //         .value();
-//         console.log(pgList);
+//         console.log(tab);
 //         var infoTab =
-//         _.chain(pgList)
+//         _.chain(tab)
 //         .filter(function (pg) {
 //         return (pg.pointer.termType == 'literal') || (pg.pointer.termType == 'symbol');
 //         })

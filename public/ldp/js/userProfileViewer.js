@@ -27,8 +27,19 @@ var App = {
 		this.baseGraph = pointedGraph.graph;
 		this.baseUri = pointedGraph.graphName;
 
-		console.log("Person to display:" );
-		console.log(this.pointedGraph);
+        console.log("Person to display:" );
+        console.log(this.pointedGraph);
+
+        // Attach a model to the view
+        /*loadScript("/assets/ldp/js/models/userModel.js", function() {
+            self.model = UserModel.initialize(pointedGraph);
+            self.model = {
+                name: ST.observable()
+            }
+            self.model.fetch();
+            console.log("User model !!!!")
+            console.log(self.model)
+        });*/
 
 		// Get corresponding template.
 		$.get(templateUri, function(template) {
@@ -45,7 +56,7 @@ var App = {
 		});
 
 		// useful Define templates.
-		var formTemplate =
+		this.formTemplate =
 			'<form id="form">' +
 				'<input id="input" style="">' +
 				'<div class="savePrompt">Save changes?' +
@@ -267,7 +278,8 @@ var App = {
 	// Define handlers.
 	handlerClickOnEditLink:function (e) {
 		console.log("handlerClickOnEditLink");
-		var parent, parentId , $labelText, $editLink, $form, $input, formerValue;
+        var self = e.data.ref;
+        var parent, parentId , $labelText, $editLink, $form, $input, formerValue;
 
 		// Get target.
 		parent = $(e.target).parent().parent();
@@ -281,7 +293,7 @@ var App = {
 		$editLink.hide();
 
 		// Insert template in the DOM.
-		$(formTemplate).insertAfter(parent.find(".labelContainer"));
+		$(self.formTemplate).insertAfter(parent.find(".labelContainer"));
 
 		// Store useful references.
 		$form = parent.find("#form");
@@ -294,57 +306,35 @@ var App = {
 			.focus();
 
 		parent.find(".submit").on("click", function () {
-			console.log('submit !');
+            //var pred = ' foaf:' + parentId;
+            var pred = FOAF(parentId)
+            console.log('submit !');
+            console.log(pred)
 
 			// Get the new value.
 			var newValue = $input.val();
 
-			// Make the SPARQL request.
-			var pred = ' foaf:' + parentId;
-			var queryDelete =
-				'PREFIX foaf: <http://xmlns.com/foaf/0.1/> \n' +
-					'DELETE DATA \n' +
-					'{' +
-					"<" + baseUri + "#me" + ">" + pred + ' "' + formerValue + '"' + '. \n' +
-					'}';
+			//
+            var promise = self.pointedGraph.update(pred, formerValue, newValue);
+            promise.then(
+                function(res) {
+                    console.log('Success!')
+                    // Change value in label.
+                    $labelText.html(newValue);
 
-			var queryInsert =
-				'PREFIX foaf: <http://xmlns.com/foaf/0.1/> \n' +
-					'INSERT DATA \n' +
-					'{' +
-					"<" + baseUri + "#me" + ">" + pred + ' "' + newValue + '"' + '. \n' +
-					'}';
-
-			// Callback success.
-			function successCallback() {
-				console.log('Saved!');
-				// Change value in label.
-				$labelText.html(newValue);
-
-				// Re-initiliaze the form.
-				$form.remove();
-				$labelText.show();
-				$editLink.show();
-			}
-
-			// Callback error.
-			function errorCallback() {
-				console.log('error!');
-				// Re-initiliaze the form.
-				$form.remove();
-				$labelText.show();
-				$editLink.show();
-			}
-
-			// Delete old and insert new triples.
-			sparqlPatch(baseUri, queryDelete,
-				function () {
-					sparqlPatch(baseUri, queryInsert, successCallback, errorCallback);
-				},
-				function () {
-					if (errorCallback) errorCallback();
-				}
-			);
+                    // Re-initiliaze the form.
+                    $form.remove();
+                    $labelText.show();
+                    $editLink.show();
+                },
+                function(err) {
+                    console.log('Error!')
+                    // Re-initiliaze the form.
+                    $form.remove();
+                    $labelText.show();
+                    $editLink.show();
+                }
+            )
 
 		});
 		parent.find(".cancel").on("click", function () {
@@ -378,7 +368,7 @@ var App = {
 		var self = this;
 
 		// Bind click for on view elements.
-		$(".editLinkImg").on("click", this.handlerClickOnEditLink);
+		$(".editLinkImg").on("click", {ref:this}, this.handlerClickOnEditLink);
 		$("#friends").on("click", {ref:this}, this.handlerClickOnfriends);
 		$(".showContacts").on("click", this.handlerClickOnEditLink);
 	},
@@ -391,6 +381,7 @@ var App = {
 
 		// Define view template.
 		var html = _.template(this.template, this.attr);
+        //var html = _.template(this.model.TOJSON());
 
 		// Append in the DOM.
 		$('body').append(html);
