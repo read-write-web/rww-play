@@ -140,6 +140,9 @@ object LDPCommand {
       }
     }
 
+  case class OperationNotSupported(msg: String) extends Exception(msg)
+
+
   def getMeta[Rdf <: RDF,A](uri: Rdf#URI): Script[Rdf, Meta[Rdf]] =
     suspend[Rdf,Meta[Rdf]](GetMeta(uri, ldpr => `return`(ldpr)))
 

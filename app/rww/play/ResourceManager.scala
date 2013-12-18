@@ -103,7 +103,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
             resrc <- getResource(URI(request.getAbsoluteURI.toString))
             x <- resrc match {
               case ldpr: LDPR[Rdf] => updateLDPR(ldpr.location,remove=Seq((ANY,ANY,ANY)),add=grc.graph.toIterable)
-              case _ => throw new Error("yoyo")
+              case other => throw OperationNotSupported(s"Not expected resource type for path $request.getAbsoluteURI.toString, type: $other")
             }
           } yield IdResult[Rdf#URI](id,resrc.location))
         }
@@ -113,10 +113,10 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
               resrc <- getResource(URI(request.getAbsoluteURI.toString))
             //                if (resrc.isInstanceOf[BinaryResource[Rdf]])
             } yield {
-              val b = resrc.asInstanceOf[BinaryResource[Rdf]]
+              val binaryResource = resrc.asInstanceOf[BinaryResource[Rdf]]
               //todo: very BAD. This will block the agent, and so on long files break the collection.
               //this needs to be sent to another agent, or it needs to be rethought
-              Enumerator.fromFile(tmpFile.file)(ec)(b.write)
+              Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
               IdResult(id,resrc.location)
             })
         }
@@ -253,10 +253,10 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
         id <- auth(request, containerUri, Method.Write)
         x <- rww.execute {
           for {
-            b <- createBinary(URI(containerUri), slug, mime)
+            binaryResource <- createBinary(URI(containerUri), slug, mime)
           } yield {
-            Enumerator.fromFile(tmpFile.file)(ec)(b.write)
-            b.location
+            Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
+            binaryResource.location
           }
         }
       } yield IdResult(id, x)

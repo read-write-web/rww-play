@@ -141,7 +141,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       case bin: BinaryResource[Rdf] => {
         SimpleResult(
           header = ResponseHeader(200, Map("Content-Type" -> "todo", userHeader(namedRes)) ++ link),
-          body = bin.reader(1024 * 8)
+          body = bin.readerEnumerator(1024 * 8)
         )
       }
     }

@@ -7,6 +7,7 @@ import java.nio.file.{StandardCopyOption, StandardOpenOption, Files, Path}
 import scala.util.Try
 import java.util.Date
 import utils.Iteratees
+import com.typesafe.scalalogging.slf4j.Logging
 
 /**
  * A binary resource does not get direct semantic interpretation.
@@ -21,8 +22,8 @@ trait BinaryResource[Rdf<:RDF] extends NamedResource[Rdf]  {
   def mime: MimeType
 
   // creates a new BinaryResource, with new time stamp, etc...
-  def write(implicit ec: ExecutionContext):  Iteratee[Array[Byte], BinaryResource[Rdf]]
-  def reader(chunkSize: Int)(implicit ec: ExecutionContext): Enumerator[Array[Byte]]
+  def writeIteratee(implicit ec: ExecutionContext):  Iteratee[Array[Byte], BinaryResource[Rdf]]
+  def readerEnumerator(chunkSize: Int)(implicit ec: ExecutionContext): Enumerator[Array[Byte]]
 }
 
 
@@ -30,7 +31,7 @@ trait BinaryResource[Rdf<:RDF] extends NamedResource[Rdf]  {
 
 case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI)
                                  (implicit val ops: RDFOps[Rdf])
-  extends BinaryResource[Rdf] with LocalNamedResource[Rdf] {
+  extends BinaryResource[Rdf] with LocalNamedResource[Rdf] with Logging {
   import ops._
 
   def meta = PointedGraph(location,Graph.empty)  //todo: need to build it correctly
@@ -46,17 +47,18 @@ case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI)
   // creates a new BinaryResource, with new time stamp, etc...
   //here I can just write to the file, as that should be a very quick operation, which even if it blocks,
   //should be extreemly fast server side.  Iteratee
-  def write(implicit ec: ExecutionContext): Iteratee[Array[Byte], LocalBinaryResource[Rdf] ] = {
-    val tmpfile = Files.createTempFile(path.getParent,path.getFileName.toString,"tmp")
+  def writeIteratee(implicit ec: ExecutionContext): Iteratee[Array[Byte], LocalBinaryResource[Rdf] ] = {
+    val tmpfile = Files.createTempFile(path.getFileName.toString+"_",".tmp")
     val out = Files.newOutputStream(tmpfile, StandardOpenOption.WRITE)
-    val iteratee = Iteratees.toOutputStream(out)
-    iteratee.map { _ =>
+    logger.info(s"Will prepare Iteratee to write to temporary file $tmpfile")
+    Iteratees.toOutputStream(out) map { _ =>
+      logger.info(s"Iteratee is done, will move temporary written file $tmpfile to real path $path")
       Files.move(tmpfile,path,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
       this
     }
   }
 
   //this will probably require an agent to push things along.
-  def reader(chunkSize: Int=1024*8)(implicit ec: ExecutionContext) = Enumerator.fromFile(path.toFile,chunkSize)
+  def readerEnumerator(chunkSize: Int=1024*8)(implicit ec: ExecutionContext) = Enumerator.fromFile(path.toFile,chunkSize)
 
 }
