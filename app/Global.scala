@@ -3,10 +3,8 @@
  * Date: 24/11/2013
  */
 
-import controllers.{RwwConfiguration, routes}
 import play.api._
 import mvc.RequestHeader
-import java.net._
 
 object Global extends GlobalSettings {
   override def onRouteRequest(req: RequestHeader) = {
