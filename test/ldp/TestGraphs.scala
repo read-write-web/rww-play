@@ -10,6 +10,7 @@ import org.w3.play.api.libs.ws.ResponseHeaders
 import org.w3.banana
 import org.scalatest.{Suite, BeforeAndAfter}
 import rww.ldp._
+import rww.ldp.model.{LDPR, NamedResource}
 
 /**
  * Build up a set of Graphs with representing some realistic scenarios that can then be used

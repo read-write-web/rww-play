@@ -1,4 +1,4 @@
-package rww.ldp
+package rww.ldp.actor.plantain
 
 import org.w3.banana.plantain.{PlantainLDPatch, Plantain}
 import java.nio.file.{Files, Path}
@@ -9,34 +9,31 @@ import java.util.Date
 import java.nio.file.DirectoryStream.Filter
 import java.io.{FileOutputStream, File}
 import scala.io.Codec
-import scala.util.Failure
 import scala._
-import scala.util.Success
 import akka.actor.ActorRef
-import scalaz.{\/-, -\/}
+import rww.ldp._
+import com.google.common.base.Throwables
+import scala.collection.convert.decorateAsScala._
 import rww.ldp.DeleteResource
-import rww.ldp.ResourceDoesNotExist
 import rww.ldp.GetMeta
 import rww.ldp.PatchLDPR
 import scala.util.Failure
 import scala.Some
 import org.w3.banana.StoreProblem
-import rww.ldp.Cmd
 import scala.util.Success
 import scalaz.\/-
 import rww.ldp.AskLDPR
 import rww.ldp.ConstructLDPR
 import scalaz.-\/
 import rww.ldp.UpdateLDPR
-import rww.ldp.UnparsableSource
+import rww.ldp.LDPExceptions._
 import rww.ldp.GetResource
-import rww.ldp.LocalLDPR
-import rww.ldp.LocalBinaryR
-import rww.ldp.RequestNotAcceptable
 import rww.ldp.SelectLDPR
-import rww.ldp.Scrpt
-import com.google.common.base.Throwables
-import scala.collection.convert.decorateAsScala._
+import rww.ldp.actor.common.CommonActorMessages
+import CommonActorMessages._
+import rww.ldp.actor.common.RWWBaseActor
+import rww.ldp.model._
+
 
 class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
                        (implicit ops: RDFOps[Plantain],
@@ -44,7 +41,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
                         reader: RDFReader[Plantain,Turtle],
                         writer: RDFWriter[Plantain,Turtle],
                         adviceSelector: AdviceSelector[Plantain]= new EmptyAdviceSelector
-                         ) extends BaseLDPActor {
+                         ) extends RWWBaseActor {
   var ext = ".ttl"
   val acl = ".acl"
 
@@ -76,7 +73,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
           } recover {
             case RDFParseExceptionMatcher(e) => throw UnparsableSource(s"Can't parse resource $iri as an RDF file",e)
           }
-        } else Success(LocalBinaryR[Plantain](file.toPath, iri))
+        } else Success(LocalBinaryResource[Plantain](file.toPath, iri))
 
       } else Failure(ResourceDoesNotExist(s"no resource for '$key'"))
     }
@@ -185,13 +182,11 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
      * @return a script for further evaluation
      */
   def runLocalCmd[A](cmd: LDPCommand[Plantain, LDPCommand.Script[Plantain,A]]) {
-    log.info(s"in PlantainLDPRActor.runLocalCmd - received $cmd")
-
-
+    log.debug(s"received $cmd")
     cmd match {
       case GetResource(uri, agent, k) => {
         getResource(localName(uri)) match {
-          case Success(res) => rwwRouterActor.tell(Scrpt(k(res)),context.sender)
+          case Success(res) => rwwRouterActor.tell(ScriptMessage(k(res)),context.sender)
           case Failure(fail) =>  context.sender ! akka.actor.Status.Failure(fail)
         }
       }
@@ -200,7 +195,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         //The point of GetMeta is mostly to remove work if there were work that was very time
         //consuming ( such as serialising a graph )
         getResource(localName(uri)) match {
-          case Success(res) => rwwRouterActor.tell(Scrpt(k(res)),context.sender)
+          case Success(res) => rwwRouterActor.tell(ScriptMessage(k(res)),context.sender)
           case Failure(fail) =>  context.sender ! akka.actor.Status.Failure(fail)
         }
 
@@ -215,7 +210,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
           pathStream.close()
         }
         context.stop(self)
-        rwwRouterActor.tell(Scrpt(a),context.sender)
+        rwwRouterActor.tell(ScriptMessage(a),context.sender)
       }
       case UpdateLDPR(uri, remove, add, a) => {
         val nme = localName(uri)
@@ -228,7 +223,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
               (graph, triple) => graph + triple.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
             }
             setResource(nme,resultGraph)
-            rwwRouterActor.tell(Scrpt(a),context.sender)
+            rwwRouterActor.tell(ScriptMessage(a),context.sender)
           }
           case Success(_) => throw RequestNotAcceptable(s"$uri does not contain a GRAPH, cannot Update")
           case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
@@ -241,7 +236,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
             PlantainLDPatch.executePatch(graph,update,bindings) match {
               case Success(gr) => {
                 setResource(nme, gr)
-                rwwRouterActor.tell(Scrpt(k(true)),context.sender)
+                rwwRouterActor.tell(ScriptMessage(k(true)),context.sender)
               }
               case Failure(e) => throw e
             }
@@ -254,7 +249,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         getResource(localName(uri)) match {
           case Success(LocalLDPR(_,graph,_,_)) => {
             val solutions = sparqlGraph(graph).executeSelect(query, bindings)
-            rwwRouterActor.tell(Scrpt(k(solutions)),context.sender)
+            rwwRouterActor.tell(ScriptMessage(k(solutions)),context.sender)
           }
           case Success(_) => context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
           case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
@@ -264,7 +259,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         getResource(localName(uri)).get match {
           case LocalLDPR(_,graph,_,_) => {
             val result = sparqlGraph(graph).executeConstruct(query, bindings)
-            rwwRouterActor.tell(Scrpt(k(result)),context.sender)
+            rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
           }
           case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
         }
@@ -274,7 +269,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         getResource(localName(uri)).get match {
           case LocalLDPR(_,graph,_,_) => {
             val result = sparqlGraph(graph).executeAsk(query, bindings)
-            rwwRouterActor.tell(Scrpt(k(result)),context.sender)
+            rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
           }
           case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
         }
@@ -298,7 +293,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         }
         else {
           log.info(s"sending to $rwwRouterActor")
-          rwwRouterActor.tell(Cmd(cmd),context.sender)
+          rwwRouterActor.tell(CmdMessage(cmd),context.sender)
         }
       }
       case \/-(a) => {
@@ -319,10 +314,10 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
 
 
   def receive = returnErrors {
-    case s: Scrpt[Plantain,_]  => {
+    case s: ScriptMessage[Plantain,_]  => {
       run(sender, s.script)
     }
-    case cmd: Cmd[Plantain,_] => {
+    case cmd: CmdMessage[Plantain,_] => {
       adviceCmd(cmd.command)
     }
   }

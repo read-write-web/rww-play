@@ -1,12 +1,13 @@
-package rww.ldp
+package rww.ldp.actor.common
 
 import akka.actor.Actor
+import rww.ldp.actor.RWWActorSystem
 
 /**
  * Base actor trait used by many actors of this project
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)
  */
-trait BaseLDPActor extends Actor with akka.actor.ActorLogging {
+trait RWWBaseActor extends Actor with akka.actor.ActorLogging {
 
 
   /**
@@ -21,7 +22,7 @@ trait BaseLDPActor extends Actor with akka.actor.ActorLogging {
     // and whatever we choose it could have bad sideffects. What happens if the isDefinedAt throws an exception?
     def isDefinedAt(x: Any): Boolean = pf.isDefinedAt(x)
     def apply(a: Any): Unit = try {
-      log.info(s"received $a");
+      log.debug(s"received $a")
       pf.apply(a)
     } catch {
       case e: Exception => sender ! akka.actor.Status.Failure(e)
@@ -30,6 +31,6 @@ trait BaseLDPActor extends Actor with akka.actor.ActorLogging {
 
   // TODO as we've seen, actorSelection is not like ActorRef and
   // sending message to a selection could lead to no message being sent at all, without dead lettering
-  def rwwRouterActor =  context.actorSelection(RWW.rwwPath)
+  def rwwRouterActor =  context.actorSelection(RWWActorSystem.rwwPath)
 
 }

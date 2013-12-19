@@ -1,4 +1,4 @@
-package rww.play
+package controllers.ldp
 
 import _root_.play.{api => PlayApi}
 import PlayApi.Logger
@@ -14,37 +14,26 @@ import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import com.google.common.base.Throwables
 import scala.util.Try
-import rww.ldp.ResourceDoesNotExist
+import rww.play._
+import rww.play.QueryRwwContent
+import rww.ldp.LDPExceptions._
 import scala.util.Failure
+import rww.play.GraphRwwContent
 import scala.Some
 import rww.play.auth.AuthenticationError
-import rww.ldp.ParentDoesNotExist
 import scala.util.Success
-import rww.ldp.AccessDenied
+import rww.play.BinaryRwwContent
+import rww.play.IdResult
 import rww.ldp.WrongTypeException
+import rww.ldp.model.{LDPR, BinaryResource, NamedResource}
 
-object Method extends Enumeration {
-  val Read = Value
-  val Write = Value
-}
-
-/**
- * These are the currently supported mime types that can be used to transmit the RDF data to clients
- */
-object SupportedMimeType extends Enumeration {
-  val Turtle = Value("text/turtle")
-  val RdfXml = Value("application/rdf+xml")
-  val Html = Value("text/html")
-
-  val StringSet = SupportedMimeType.values.map(_.toString)
-}
 
 /**
  * ReadWriteWeb Controller for Play
  */
-trait ReadWriteWeb[Rdf <: RDF] {
+trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTrait {
 
-  def rwwActor: ResourceMgr[Rdf]
+  def resourceManager: ResourceMgr[Rdf]
 
   implicit def rwwBodyParser: RwwBodyParser[Rdf]
   implicit def ec: ExecutionContext
@@ -56,11 +45,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
   import rww.play.PlayWriterBuilder._
 
-  def about = Action {
-    Ok(views.html.rww.ldp())
-  }
 
-  def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
+  private def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
 
   /**
    * The user header is used to transmoit the WebId URI to the client, because he can't know it before
@@ -68,7 +54,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
    * @param res
    * @return
    */
-  def userHeader(res: IdResult[_]) =  "User"->res.id.toString
+  private def userHeader(res: IdResult[_]) =  "User"->res.id.toString
 
 
   def get(path: String) = Action.async { request =>
@@ -87,7 +73,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
   }
 
 
-  def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+  private def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
     findReplyContentType(request) match {
       case Failure(t) => {
         Future.successful {
@@ -108,9 +94,9 @@ trait ReadWriteWeb[Rdf <: RDF] {
    * @param request
    * @return
    */
-  def getAsync(replyContentType: SupportedMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+  private def getAsync(replyContentType: SupportedMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
     val getResult = for {
-      namedRes <- rwwActor.get(request, request.getAbsoluteURI)
+      namedRes <- resourceManager.get(request, request.getAbsoluteURI)
     }
     yield writeGetResult(replyContentType,namedRes)
     getResult recover {
@@ -136,8 +122,8 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
 
 
-  def writeGetResult(replyContentType: SupportedMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
-                    (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
+  private def writeGetResult(replyContentType: SupportedMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
+                            (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
     val link = namedRes.result.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
     namedRes.result match {
       case ldpr: LDPR[Rdf] =>  {
@@ -155,7 +141,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
       case bin: BinaryResource[Rdf] => {
         SimpleResult(
           header = ResponseHeader(200, Map("Content-Type" -> "todo", userHeader(namedRes)) ++ link),
-          body = bin.reader(1024 * 8)
+          body = bin.readerEnumerator(1024 * 8)
         )
       }
     }
@@ -184,7 +170,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
     def mk(graph: Option[Rdf#Graph]): Future[SimpleResult] = {
       val path = correctedPath.toString.substring(coll.toString.length)
-      for (answer <- rwwActor.makeCollection(coll.toString, Some(path), graph))
+      for (answer <- resourceManager.makeCollection(coll.toString, Some(path), graph))
       yield {
         val res = Created("Created Collection at " + answer).withHeaders(userHeader(answer))
         if (request.path == correctedPath) res
@@ -206,7 +192,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
   def put(path: String) = Action.async(rwwBodyParser) { implicit request =>
     val future = for {
-      answer <- rwwActor.put(request.body)
+      answer <- resourceManager.put(request.body)
     } yield {
       Ok("Succeeded").withHeaders(userHeader(answer))
     }
@@ -218,7 +204,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
   def patch(path: String) = Action.async(rwwBodyParser) {implicit request =>
     val future = for {
-      answer <- rwwActor.patch( request.body)
+      answer <- resourceManager.patch( request.body)
     } yield {
       Ok("Succeeded").withHeaders(userHeader(answer))
     }
@@ -249,27 +235,27 @@ trait ReadWriteWeb[Rdf <: RDF] {
     }
   }
 
-  def slug(implicit request: PlayApi.mvc.Request[RwwContent]) = request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8"))
+  private def slug(implicit request: PlayApi.mvc.Request[RwwContent]) = request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8"))
 
-  def postGraph(rwwGraph: Option[Rdf#Graph])(implicit request: PlayApi.mvc.Request[RwwContent]): Future[SimpleResult] = {
+  private def postGraph(rwwGraph: Option[Rdf#Graph])(implicit request: PlayApi.mvc.Request[RwwContent]): Future[SimpleResult] = {
     for {
-      location <- rwwActor.postGraph(slug, rwwGraph)
+      location <- resourceManager.postGraph(slug, rwwGraph)
     } yield {
       Created.withHeaders("Location" -> location.result.toString,userHeader(location))
     }
   }
 
-  def postBinaryContent(binaryContent: BinaryRwwContent)(implicit request: PlayApi.mvc.Request[RwwContent]) = {
+  private def postBinaryContent(binaryContent: BinaryRwwContent)(implicit request: PlayApi.mvc.Request[RwwContent]) = {
     for {
-      answer <- rwwActor.postBinary(request.path, slug, binaryContent.file, MimeType(binaryContent.mime) )
+      answer <- resourceManager.postBinary(request.path, slug, binaryContent.file, MimeType(binaryContent.mime) )
     } yield {
       Created.withHeaders("Location" -> answer.result.toString,userHeader(answer))
     }
   }
 
-  def postRwwQuery(query: QueryRwwContent[Rdf])(implicit request: PlayApi.mvc.Request[RwwContent]) = {
+  private def postRwwQuery(query: QueryRwwContent[Rdf])(implicit request: PlayApi.mvc.Request[RwwContent]) = {
     for {
-      answer <- rwwActor.postQuery(request.path, query)
+      answer <- resourceManager.postQuery(request.path, query)
     } yield {
       answer.result.fold(
         graph =>
@@ -292,7 +278,7 @@ trait ReadWriteWeb[Rdf <: RDF] {
 
   def delete(path: String) = Action.async { implicit request =>
     val future = for {
-      answer <- rwwActor.delete(request)
+      answer <- resourceManager.delete(request)
     } yield {
       Ok.withHeaders(userHeader(answer))
     }

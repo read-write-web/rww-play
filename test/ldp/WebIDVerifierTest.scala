@@ -17,6 +17,7 @@ import java.security.Principal
 import rww.ldp._
 
 import org.w3.banana.plantain.Plantain
+import rww.ldp.actor.{PlantainLDPCActor, LDPWebActor}
 
 object PlantainWebIDVerifierTest {
   import org.w3.banana.plantain.model.URI

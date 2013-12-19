@@ -6,8 +6,17 @@ import org.w3.banana.RDF
 import java.security.cert.{X509Certificate, Certificate}
 import java.security.Principal
 import net.sf.uadetector.service.UADetectorServiceFactory
-import rww.ldp.auth.{Claim, WebIDVerifier}
+import rww.ldp.auth.{WebIDPrincipal, Claim, WebIDVerifier}
 
+
+case class Subject(principals: List[Principal], authzPrincipals: List[Principal]=List()) {
+  lazy val webIds = principals.flatMap{ p =>
+    p match {
+      case wp: WebIDPrincipal => Some(wp.webid)
+      case _ => None
+    }
+  }
+}
 
 /**
  * Authentication function
@@ -15,6 +24,7 @@ import rww.ldp.auth.{Claim, WebIDVerifier}
 trait AuthN extends (RequestHeader => Future[Subject])
 
 case class AuthenticationError(cause: Throwable) extends Exception(cause)
+
 
 /**
  * WebID Authentication

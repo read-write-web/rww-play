@@ -17,6 +17,7 @@ import akka.actor.Props
 import rww.ldp.auth.WACAuthZ
 import scala.util.Try
 import rww.ldp._
+import rww.ldp.actor.PlantainLDPCActor
 
 object PlantainTest {
   val dir = Files.createTempDirectory("plantain" )

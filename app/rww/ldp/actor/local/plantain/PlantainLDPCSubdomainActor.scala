@@ -1,4 +1,4 @@
-package rww.ldp
+package rww.ldp.actor.plantain
 
 import org.w3.banana.plantain.Plantain
 import java.nio.file.{FileVisitResult, SimpleFileVisitor, Files, Path}
@@ -8,6 +8,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import akka.actor.Props
 import java.net.{URL=>jURL}
 import org.w3.banana.plantain.model.URI
+import rww.ldp.{EmptyAdviceSelector, AdviceSelector}
 
 /**
  * Any collections in a SubdomainActor end up creating subdomains.

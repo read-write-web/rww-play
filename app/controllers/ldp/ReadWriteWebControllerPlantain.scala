@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package controllers
+package controllers.ldp
 
 import rww.play._
 import org.w3.banana.plantain._
@@ -22,16 +22,14 @@ import java.nio.file.Path
 import org.w3.banana._
 import rww.play.rdf.IterateeSelector
 import concurrent.ExecutionContext
-import akka.util.Timeout
-import java.util.concurrent.TimeUnit
 import rww.play.auth.WebIDAuthN
-import akka.actor.Props
 import rww.ldp._
 import rww.ldp.auth.{WACAuthZ, WebIDVerifier}
 import java.net.URL
+import rww.ldp.actor.RWWActorSystemImpl
 
 
-class ReadWriteWebApp(base: URL, path: Path, rww: RWWeb[Plantain])(implicit val ops: RDFOps[Plantain],
+class ReadWriteWebControllerPlantain(base: URL, path: Path, rww: RWWActorSystemImpl[Plantain])(implicit val ops: RDFOps[Plantain],
             sparqlOps: SparqlOps[Plantain],
             graphIterateeSelector: IterateeSelector[Plantain#Graph],
             sparqlIterateeSelector: IterateeSelector[Plantain#Query],
@@ -39,18 +37,14 @@ class ReadWriteWebApp(base: URL, path: Path, rww: RWWeb[Plantain])(implicit val 
             val wsClient: WebClient[Plantain],
             val graphWriterSelector: WriterSelector[org.w3.banana.plantain.Plantain#Graph],
             val solutionsWriterSelector: WriterSelector[Plantain#Solutions],
-            val ec: ExecutionContext) extends ReadWriteWeb[Plantain] {
+            val ec: ExecutionContext) extends ReadWriteWebControllerGeneric[Plantain] {
 
 
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Plantain](base)(ops,sparqlOps,graphIterateeSelector,
     sparqlIterateeSelector,sparqlUpdateSelector,ec)
 
-  lazy val rwwActor =  new ResourceMgr[Plantain](base,rww, new WebIDAuthN(new WebIDVerifier(rww)),
+  lazy val resourceManager =  new ResourceMgr[Plantain](base,rww, new WebIDAuthN(new WebIDVerifier(rww)),
     new WACAuthZ[Plantain](new WebResource[Plantain](rww))(ops))
 
 }
-
-import plantain._
-
-object ReadWriteWebApp extends ReadWriteWebApp(plantain.rwwRoot, plantain.rootContainerPath,rww)

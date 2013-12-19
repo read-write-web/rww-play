@@ -1,9 +1,9 @@
 package test
 
 import org.scalatest.{Matchers, WordSpec}
-import rww.ldp.RWWebActorSubdomains
 import java.net.URI
 import scala.Some
+import rww.ldp.actor.RWWebActorSubdomains
 
 /**
  * Created by hjs on 23/11/2013.

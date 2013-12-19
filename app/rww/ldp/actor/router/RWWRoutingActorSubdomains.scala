@@ -1,12 +1,20 @@
-package rww.ldp
+package rww.ldp.actor.router
 
 import org.w3.banana.{syntax, RDFOps, RDF}
 import akka.util.Timeout
-import akka.actor.{Identify, ActorRef}
-import scalaz.{\/-, -\/}
+import akka.actor.ActorRef
 import java.net.{URI=>jURI}
+import scalaz.-\/
+import scala.Some
+import scalaz.\/-
+import rww.ldp._
+import rww.ldp.actor._
+import rww.ldp.actor.common.{CommonActorMessages, RWWBaseActor}
+import CommonActorMessages._
+import rww.ldp.actor.common.RWWBaseActor
 
-object RWWebActorSubdomains {
+object RWWRoutingActorSubdomains {
+
   case class SubdomainSwitch(subhost: Option[String], path: String)
 
   /**
@@ -20,7 +28,7 @@ object RWWebActorSubdomains {
    */
   def local(u: jURI, base: jURI): Option[SubdomainSwitch] = {
     if (!u.isAbsolute ) {
-      RWWebActor.local(u,base).map(path=>SubdomainSwitch(None,path))
+      RWWRoutingActor.local(u,base).map(path=>SubdomainSwitch(None,path))
     } else {
       val url = u.toURL
       val baseUrl = base.toURL
@@ -32,9 +40,9 @@ object RWWebActorSubdomains {
         else
           Some(url.getHost.substring(0,url.getHost.length - baseUrl.getHost.length-1) )
 
-        if (subhost == None) RWWebActor.local(u, base).map(p=>SubdomainSwitch(None,p))
+        if (subhost == None) RWWRoutingActor.local(u, base).map(p=>SubdomainSwitch(None,p))
         else {
-          val path = RWWebActor.cleanDots(u.getPath)
+          val path = RWWRoutingActor.cleanDots(u.getPath)
           Option(SubdomainSwitch(subhost,path.mkString("/")))
         }
       } else None
@@ -53,42 +61,42 @@ object RWWebActorSubdomains {
  * @param timeout
  * @tparam Rdf
  */
-class RWWebActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
-                          (implicit ops: RDFOps[Rdf], timeout: Timeout) extends BaseLDPActor {
+class RWWRoutingActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
+                          (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RWWBaseActor {
   import syntax.URISyntax.uriW
-  import RWWebActorSubdomains._
+  import RWWRoutingActorSubdomains._
 
   var rootContainer: Option[ActorRef] = None
   var web : Option[ActorRef] = None
 
 
   def receive = returnErrors {
-    case Scrpt(script) => {
+    case ScriptMessage(script) => {
       script.resume match {
-        case command: -\/[LDPCommand[Rdf, LDPCommand.Script[Rdf,_]]] => forwardSwitch(Cmd(command.a))
+        case command: -\/[LDPCommand[Rdf, LDPCommand.Script[Rdf,_]]] => forwardSwitch(CmdMessage(command.a))
         case \/-(res) => sender ! res
       }
     }
-    case cmd: Cmd[Rdf,_] => forwardSwitch(cmd)
-    case WebActor(webActor) => {
+    case cmd: CmdMessage[Rdf,_] => forwardSwitch(cmd)
+    case WebActorSetterMessage(webActor) => {
       log.info(s"setting web actor to <$webActor> ")
       web = Some(webActor)
     }
-    case LDPSActor(ldps) => {
+    case LDPSActorSetterMessage(ldps) => {
       log.info(s"setting rootContainer to <$ldps> ")
       rootContainer = Some(ldps)
     }
   }
 
   /** We in fact ignore the R and A types, since we cannot capture */
-  protected def forwardSwitch[A](cmd: Cmd[Rdf,A]) {
+  protected def forwardSwitch[A](cmd: CmdMessage[Rdf,A]) {
     local(cmd.command.uri.underlying,baseUri.underlying).map { switch =>
       rootContainer match {
         case Some(root) => {
           val pathList = switch.path.split('/').toList
           val p = root.path / switch.subhost.map(_::pathList).getOrElse(pathList)
           val to = context.actorSelection(p)
-          log.info(s"forwarding message $cmd to akka('$switch')=$to ")
+          log.debug(s"forwarding message $cmd to akka('$switch')=$to received from $sender")
           to.tell(cmd,context.sender)
         }
         case None => log.warning("RWWebActor not set up yet: missing rootContainer")
@@ -100,7 +108,7 @@ class RWWebActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
       //     link to this server ) and if so there is no need to go though the external http layer to
       //     fetch graphs
       web.map {
-        log.info(s"sending message $cmd to general web agent <$web>")
+        log.debug(s"sending message $cmd to general web agent <$web>")
         _ forward cmd
       }.getOrElse(log.warning("RWWebActor not set up yet: missing web actor"))
     }

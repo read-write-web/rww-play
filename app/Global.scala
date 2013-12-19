@@ -3,10 +3,10 @@
  * Date: 24/11/2013
  */
 
-import controllers.{RwwConfiguration, routes}
+import controllers.ldp
+import controllers.ldp.ReadWriteWebController
 import play.api._
 import mvc.RequestHeader
-import java.net._
 
 object Global extends GlobalSettings {
   override def onRouteRequest(req: RequestHeader) = {
@@ -19,13 +19,13 @@ object Global extends GlobalSettings {
       super.onRouteRequest(req)
     } else if (uri.getHost != controllers.plantain.host) {
       req.method match {
-        case "GET" => Some(controllers.ReadWriteWebApp.get(req.path))
-        case "POST" => Some(controllers.ReadWriteWebApp.post(req.path))
-        case "PATCH" => Some(controllers.ReadWriteWebApp.patch(req.path))
-        case "MKCOL" => Some(controllers.ReadWriteWebApp.mkcol(req.path))
-        case "HEAD" => Some(controllers.ReadWriteWebApp.head(req.path))
-        case "PUT" =>  Some(controllers.ReadWriteWebApp.put(req.path))
-        case "DELETE" => Some(controllers.ReadWriteWebApp.delete(req.path))
+        case "GET" => Some(ReadWriteWebController.get(req.path))
+        case "POST" => Some(ldp.ReadWriteWebController.post(req.path))
+        case "PATCH" => Some(ldp.ReadWriteWebController.patch(req.path))
+        case "MKCOL" => Some(ldp.ReadWriteWebController.mkcol(req.path))
+        case "HEAD" => Some(ldp.ReadWriteWebController.head(req.path))
+        case "PUT" =>  Some(ldp.ReadWriteWebController.put(req.path))
+        case "DELETE" => Some(ldp.ReadWriteWebController.delete(req.path))
       }
     } else  super.onRouteRequest(req)
   }

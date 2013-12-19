@@ -29,6 +29,16 @@ import rww.ldp._
 import scala.Some
 import rww.ldp.auth.WACAuthZ
 import java.net.{URI=>jURI, URL=>jURL}
+import rww.ldp.actor.RWWActorSystem
+import rww.ldp.LDPExceptions._
+import rww.ldp.model.{LDPR, BinaryResource, NamedResource}
+
+
+// TODO not appropriate place
+object Method extends Enumeration {
+  val Read = Value
+  val Write = Value
+}
 
 /**
  * This permits to transmit a result and to add an User header in the request which contains the URI of the authenticated user's WebID
@@ -43,7 +53,7 @@ case class IdResult[R](id: jURI, result: R)
 import _root_.play.api.mvc.{Request=>PlayRequest, RequestHeader=>PlayRequestHeader}
 
 
-class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
+class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
                              (implicit ops: RDFOps[Rdf], sparqlOps: SparqlOps[Rdf],
                               ec: ExecutionContext) {
 
@@ -93,7 +103,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
             resrc <- getResource(URI(request.getAbsoluteURI.toString))
             x <- resrc match {
               case ldpr: LDPR[Rdf] => updateLDPR(ldpr.location,remove=Seq((ANY,ANY,ANY)),add=grc.graph.toIterable)
-              case _ => throw new Error("yoyo")
+              case other => throw OperationNotSupported(s"Not expected resource type for path $request.getAbsoluteURI.toString, type: $other")
             }
           } yield IdResult[Rdf#URI](id,resrc.location))
         }
@@ -103,10 +113,10 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
               resrc <- getResource(URI(request.getAbsoluteURI.toString))
             //                if (resrc.isInstanceOf[BinaryResource[Rdf]])
             } yield {
-              val b = resrc.asInstanceOf[BinaryResource[Rdf]]
+              val binaryResource = resrc.asInstanceOf[BinaryResource[Rdf]]
               //todo: very BAD. This will block the agent, and so on long files break the collection.
               //this needs to be sent to another agent, or it needs to be rethought
-              Enumerator.fromFile(tmpFile.file)(ec)(b.write)
+              Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
               IdResult(id,resrc.location)
             })
         }
@@ -243,10 +253,17 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
         id <- auth(request, containerUri, Method.Write)
         x <- rww.execute {
           for {
-            b <- createBinary(URI(containerUri), slug, mime)
+            binaryResource <- createBinary(URI(containerUri), slug, mime)
+            meta <- getMeta(binaryResource.location)
+            //locally we know we always have an ACL rel
+            //todo: but this should really be settable in turtle files. For example it may be much better
+            //todo: if every file in a directory just use the acl of the directory. So that would require the
+            //todo: collection to specify how to build up the acls.
+            aclg = (meta.acl.get -- wac.include ->- URI(".acl")).graph
+            _ <- updateLDPR(meta.acl.get, add = aclg.toIterable)
           } yield {
-            Enumerator.fromFile(tmpFile.file)(ec)(b.write)
-            b.location
+            Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
+            binaryResource.location
           }
         }
       } yield IdResult(id, x)

@@ -4,14 +4,13 @@ import _root_.play.api.libs.iteratee._
 import org.w3.banana._
 import scala.concurrent._
 import scala.util.{Failure, Success, Try}
-import scala.Error
 import utils.Iteratees
+import rww.ldp.actor.RWWActorSystem
 
 /** A resource that can be found with its URI, and is linked to other
   * resources through links as URIs
   * 
   * @tparam Rdf an RDF implementation
-  * @tparam LR the kind of resources that can be linked
   */
 trait LinkedResource[Rdf <: RDF] {
 
@@ -38,7 +37,6 @@ trait LinkedResource[Rdf <: RDF] {
 /**
  * A resource with meta data
  * @tparam Rdf
- * @tparam LR
  */
 trait LinkedMeta[Rdf <: RDF] {
 
@@ -49,7 +47,7 @@ trait LinkedMeta[Rdf <: RDF] {
 trait LinkedWebResource[Rdf <: RDF] extends LinkedResource[Rdf] with LinkedMeta[Rdf]
 
 
-class WebResource[Rdf <:RDF](val rww: RWW[Rdf])(implicit ops: RDFOps[Rdf], ec: ExecutionContext) extends LinkedResource[Rdf] {
+class WebResource[Rdf <:RDF](val rww: RWWActorSystem[Rdf])(implicit ops: RDFOps[Rdf], ec: ExecutionContext) extends LinkedResource[Rdf] {
   import LDPCommand._
   import ops._
   import diesel._
