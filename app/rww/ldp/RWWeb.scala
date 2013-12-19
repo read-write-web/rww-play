@@ -39,13 +39,17 @@ class RWWeb[Rdf<:RDF](val baseUri: Rdf#URI)
   logger.info(s"Created rwwActorRef=<$rwwActorRef>")
 
   val listener = system.actorOf(Props(new Actor {
+    system.eventStream.subscribe(self, classOf[DeadLetter])
+
     def receive = {
       case d: DeadLetter if ( d.message.isInstanceOf[Scrpt[_,_]] || d.message.isInstanceOf[Cmd[_,_]] ) ⇒ {
         d.sender !  akka.actor.Status.Failure(ResourceDoesNotExist(s"could not find actor for ${d.recipient}"))
       }
     }
+    override def postStop() {
+      context.system.eventStream.unsubscribe(self)
+    }
   }))
-  system.eventStream.subscribe(listener, classOf[DeadLetter])
 
 
   def execute[A](script: LDPCommand.Script[Rdf, A]) = {
