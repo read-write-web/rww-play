@@ -63,7 +63,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
   val createUserSpaceRequestForm : Form[CreateUserSpaceRequest] = Form(
     mapping(
-      "subdomain" -> nonEmptyText(minLength = 3),
+      "subdomain" -> nonEmptyText(minLength = 3).transform(s => s.toLowerCase,identity[String]),
       "email" -> email
     )(CreateUserSpaceRequest.apply)(CreateUserSpaceRequest.unapply)
   )

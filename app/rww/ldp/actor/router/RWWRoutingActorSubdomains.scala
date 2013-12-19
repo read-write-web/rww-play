@@ -15,23 +15,29 @@ import rww.ldp.actor.common.RWWBaseActor
 
 object RWWRoutingActorSubdomains {
 
-  case class SubdomainSwitch(subhost: Option[String], path: String)
+  /**
+   *
+   * @param subhost Optionally a subhost path
+   * @param path a string that is the path to the actor
+   */
+  case class SubdomainSwitch(subhost: Option[String], path: String) {
+    lazy val lcSubHost = subhost.map ( sh => sh.toLowerCase() )
+  }
 
   /**
    * We compare the uri u to the base URI, and if this uri seems local to the base uri,
    * this means that the uri content can be retrieved on the filesystem, and not on a remote host
    * Thus we return the local path of the resource
-   * TODO add better doc: i think the return is the relative local path
-   * @param u
-   * @param base
-   * @return
+   * @param u the url for which we are seeking the actor name
+   * @param rootLDPCuri the base url of the root LDPC
+   * @return a SubdomainSwitch
    */
-  def local(u: jURI, base: jURI): Option[SubdomainSwitch] = {
+  def local(u: jURI, rootLDPCuri: jURI): Option[SubdomainSwitch] = {
     if (!u.isAbsolute ) {
-      RWWRoutingActor.local(u,base).map(path=>SubdomainSwitch(None,path))
+      RWWRoutingActor.local(u,rootLDPCuri).map(path=>SubdomainSwitch(None,path))
     } else {
       val url = u.toURL
-      val baseUrl = base.toURL
+      val baseUrl = rootLDPCuri.toURL
       if (url.getProtocol == baseUrl.getProtocol &&
         url.getHost.endsWith(baseUrl.getHost) &&
         url.getDefaultPort == baseUrl.getDefaultPort) {
@@ -40,7 +46,7 @@ object RWWRoutingActorSubdomains {
         else
           Some(url.getHost.substring(0,url.getHost.length - baseUrl.getHost.length-1) )
 
-        if (subhost == None) RWWRoutingActor.local(u, base).map(p=>SubdomainSwitch(None,p))
+        if (subhost == None) RWWRoutingActor.local(u, rootLDPCuri).map(p=>SubdomainSwitch(None,p))
         else {
           val path = RWWRoutingActor.cleanDots(u.getPath)
           Option(SubdomainSwitch(subhost,path.mkString("/")))
@@ -94,7 +100,7 @@ class RWWRoutingActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
       rootContainer match {
         case Some(root) => {
           val pathList = switch.path.split('/').toList
-          val p = root.path / switch.subhost.map(_::pathList).getOrElse(pathList)
+          val p = root.path / switch.lcSubHost.map(_::pathList).getOrElse(pathList)
           val to = context.actorSelection(p)
           log.debug(s"forwarding message $cmd to akka('$switch')=$to received from $sender")
           to.tell(cmd,context.sender)
