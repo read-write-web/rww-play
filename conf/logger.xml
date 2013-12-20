@@ -12,11 +12,10 @@
         <appender-ref ref="CONSOLE" />
     </root>
 
-    <!--
+
     <logger name="play" level="debug"/>
 
-    <logger name="application" level="info"/>
-    -->
+    <logger name="application" level="debug"/>
 
 
 </configuration>

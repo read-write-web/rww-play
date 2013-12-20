@@ -122,13 +122,14 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     import SubdomainConfirmationMailUtils._
     import utils.Mailer._
     val linkData = SubdomainConfirmationLinkData(subdomain,email,confirmationPassword)
-    val link = createSignedSubdomainConfirmationLink(routes.Subdomains.confirmSubdomain.url,linkData)
     // TODO remove hardcoded domain
     val temporaryHardcodedDomain = "https://localhost:8443"
-    val linkWithDomain = temporaryHardcodedDomain + link
+    val baseLinkUrl = temporaryHardcodedDomain + routes.Subdomains.confirmSubdomain.url
+    val link = createSignedSubdomainConfirmationLinkPath(baseLinkUrl,linkData)
     // TODO email templating
-    val txt = Txt("Click here: " + linkWithDomain)
-    val html = Html("Click here: <a href=\"" + linkWithDomain + "\"> VALIDATE </a>")
+    val txt = Txt("Click here: " + link)
+    val html = Html("Click here: <a href=\"" + link + "\"> VALIDATE </a>")
+    Logger.info(s"Sending email to validate subdomain $subdomain to email $email with confirmation link $link")
     sendEmail(
       to = email,
       subject = "Subdomain Confirmation email: "+subdomain,
