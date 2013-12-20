@@ -12,6 +12,8 @@ import rww.ldp.actor._
 import rww.ldp.actor.common.{CommonActorMessages, RWWBaseActor}
 import CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
+import java.nio.file.Path
+import rww.ldp.LDPExceptions.ResourceDoesNotExist
 
 object RWWRoutingActorSubdomains {
 
@@ -100,10 +102,16 @@ class RWWRoutingActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
       rootContainer match {
         case Some(root) => {
           val pathList = switch.path.split('/').toList
-          val p = root.path / switch.lcSubHost.map(_::pathList).getOrElse(pathList)
-          val to = context.actorSelection(p)
-          log.debug(s"forwarding message $cmd to akka('$switch')=$to received from $sender")
-          to.tell(cmd,context.sender)
+          val pathListWithSubdomain = switch.lcSubHost.map(_::pathList).getOrElse(pathList)
+          val pathAsString = pathListWithSubdomain.mkString("/")
+          if ( isExistingActor(pathAsString) ) {
+            val actorPath = root.path / pathListWithSubdomain
+            val to = context.actorSelection(actorPath)
+            log.debug(s"forwarding message $cmd to akka('$switch')=$to received from $sender")
+            to.tell(cmd,context.sender)
+          } else {
+            context.sender ! akka.actor.Status.Failure(new ResourceDoesNotExist(s"No resource exist for $pathAsString"))
+          }
         }
         case None => log.warning("RWWebActor not set up yet: missing rootContainer")
       }
@@ -119,6 +127,18 @@ class RWWRoutingActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
       }.getOrElse(log.warning("RWWebActor not set up yet: missing web actor"))
     }
 
+  }
+
+
+  // TODO /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\
+  // TODO remove this hardcoded method with ugly fix of timeout problems, see #65
+  // TODO /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\
+  // This avoids to sending no message at all because the actorSelection does not match any actor at all
+  def isExistingActor(relativePath: String): Boolean = {
+    val absolutePath: Path = controllers.plantain.rootContainerPath.resolve(relativePath) // TODO very bad to have plantain hardcoded here
+    val exist = absolutePath.toFile.exists()
+    log.warning(s"Temporary hack: will check if a file exist at $absolutePath to know if there is a corresponding actor -> answer is=$exist")
+    exist
   }
 
 }
