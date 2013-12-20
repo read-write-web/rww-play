@@ -197,7 +197,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
         actor forward ScriptMessage(scrpt)
       }
       case CreateBinary(_, slugOpt, mime: MimeType, k) => {
-        mimeExt.extension(mime).map { ext =>
+        SupportedBinaryMimeExtensions.extension(mime).map { ext =>
           log.debug(s"Receiving createBinary message for resource with slug $slugOpt. ext=$ext")
           val (uri, path) = mkFile(slugOpt, ext)
           val (actor,iri) = try {

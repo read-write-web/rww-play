@@ -67,9 +67,9 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
    * @param request
    * @return
    */
-  def findReplyContentType(request: PlayApi.mvc.Request[AnyContent]): Try[SupportedMimeType.Value] = {
+  def findReplyContentType(request: PlayApi.mvc.Request[AnyContent]): Try[SupportedRdfMimeType.Value] = {
     import utils.HeaderUtils._
-    request.findReplyContentType(SupportedMimeType.StringSet).map( SupportedMimeType.withName(_) )
+    request.findReplyContentType(SupportedRdfMimeType.StringSet).map( SupportedRdfMimeType.withName(_) )
   }
 
 
@@ -81,7 +81,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
         }
       }
       case Success(replyContentType) => {
-        PlayApi.Logger.debug(s"It seems the best content type to produce for this client is: $replyContentType")
+        Logger.info(s"It seems the best content type to produce for this client is: $replyContentType")
         getAsync(replyContentType)
       }
     }
@@ -90,26 +90,26 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
   /**
    * Will try to get the resource and return it to the client in the given mimeType
    * Note that it does not apply to binary resources but only for RDF resources
-   * @param replyContentType
+   * @param bestReplyContentType
    * @param request
    * @return
    */
-  private def getAsync(replyContentType: SupportedMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+  private def getAsync(bestReplyContentType: SupportedRdfMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
     val getResult = for {
       namedRes <- resourceManager.get(request, request.getAbsoluteURI)
     }
-    yield writeGetResult(replyContentType,namedRes)
+    yield writeGetResult(bestReplyContentType,namedRes)
     getResult recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case rse: ResourceDoesNotExist => NotFound(rse.getMessage + stackTrace(rse))
       case auth: AccessDenied => {
-        replyContentType match {
-          case SupportedMimeType.Html => {
+        bestReplyContentType match {
+          case SupportedRdfMimeType.Html => {
             Unauthorized(
               views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(auth) )
             )
           }
-          case SupportedMimeType.Turtle | SupportedMimeType.RdfXml => {
+          case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
             Unauthorized(auth.message)
           }
         }
@@ -122,16 +122,16 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
 
 
-  private def writeGetResult(replyContentType: SupportedMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
+  private def writeGetResult(bestReplyContentType: SupportedRdfMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
     val link = namedRes.result.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
     namedRes.result match {
       case ldpr: LDPR[Rdf] =>  {
-        replyContentType match {
-          case SupportedMimeType.Html => {
+        bestReplyContentType match {
+          case SupportedRdfMimeType.Html => {
             SeeOther(controllers.routes.RDFViewer.htmlFor(request.getAbsoluteURI.toString).toString()).withHeaders(userHeader(namedRes))
           }
-          case SupportedMimeType.Turtle | SupportedMimeType.RdfXml => {
+          case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
             writerFor[Rdf#Graph](request).map { wr =>
               result(200, wr, Map("Access-Control-Allow-Origin"-> "*",userHeader(namedRes)) ++ link)(ldpr.relativeGraph)
             } getOrElse { throw new RuntimeException("Unexpected: no writer found")}
@@ -139,8 +139,10 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
         }
       }
       case bin: BinaryResource[Rdf] => {
+        val contentType = bin.mime.mime
+        Logger.info(s"Getting binary resource, no [$bestReplyContentType] representation available, so the content type will be [${contentType}}]")
         SimpleResult(
-          header = ResponseHeader(200, Map("Content-Type" -> "todo", userHeader(namedRes)) ++ link),
+          header = ResponseHeader(200, Map("Content-Type" -> contentType, userHeader(namedRes)) ++ link),
           body = bin.readerEnumerator(1024 * 8)
         )
       }

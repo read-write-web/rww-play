@@ -6,8 +6,9 @@ import play.api.libs.iteratee.{Enumerator, Iteratee}
 import java.nio.file.{StandardCopyOption, StandardOpenOption, Files, Path}
 import scala.util.Try
 import java.util.Date
-import utils.Iteratees
+import utils.{FileUtils, Iteratees}
 import com.typesafe.scalalogging.slf4j.Logging
+import rww.ldp.SupportedBinaryMimeExtensions
 
 /**
  * A binary resource does not get direct semantic interpretation.
@@ -42,7 +43,14 @@ case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI)
 
   val size = Try { Files.size(path) }.toOption
 
-  def mime = ???
+  def mime = {
+    (for {
+      extension <- FileUtils.getFileExtension(path)
+      mimeType <- SupportedBinaryMimeExtensions.mime("."+extension)
+    } yield mimeType) getOrElse {
+      throw new IllegalStateException(s"Unexpected: can't get binary file extension for $path")
+    }
+  }
 
   // creates a new BinaryResource, with new time stamp, etc...
   //here I can just write to the file, as that should be a very quick operation, which even if it blocks,

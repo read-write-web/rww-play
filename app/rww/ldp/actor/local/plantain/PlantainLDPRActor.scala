@@ -50,8 +50,6 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   val rdf = RDFPrefix[Plantain]
   val stat = STATPrefix[Plantain]
 
-  val mimeExt = WellKnownMimeExtensions
-
   import org.w3.banana.syntax._
 
   //google cache with soft values: at least it will remove the simplest failures
