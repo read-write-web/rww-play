@@ -7,7 +7,6 @@ import PlayApi.http.Status._
 import PlayApi.libs.iteratee.Enumerator
 import PlayApi.mvc._
 import org.w3.banana._
-import rww.ldp._
 import concurrent.{Future, ExecutionContext}
 import java.net.URLDecoder
 import rww.play.rdf.IterateeSelector
@@ -103,6 +102,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case rse: ResourceDoesNotExist => NotFound(rse.getMessage + stackTrace(rse))
       case auth: AccessDenied => {
+        Logger.warn("Access denied exception",auth)
         bestReplyContentType match {
           case SupportedRdfMimeType.Html => {
             Unauthorized(
@@ -128,9 +128,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     namedRes.result match {
       case ldpr: LDPR[Rdf] =>  {
         bestReplyContentType match {
-          case SupportedRdfMimeType.Html => {
-            SeeOther(controllers.routes.RDFViewer.htmlFor(request.getAbsoluteURI.toString).toString()).withHeaders(userHeader(namedRes))
-          }
+          case SupportedRdfMimeType.Html => Ok(views.html.ldp.rdfToHtml())
           case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
             writerFor[Rdf#Graph](request).map { wr =>
               result(200, wr, Map("Access-Control-Allow-Origin"-> "*",userHeader(namedRes)) ++ link)(ldpr.relativeGraph)

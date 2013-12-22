@@ -1,0 +1,50 @@
+@()
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+<html>
+
+    <head>
+        <title>Primary Html file.</title>
+        <script type="text/javascript" src="/assets/ldp/lib/jquery-1.7.1.min.js"></script>
+        <script type="text/javascript" src="/assets/ldp/lib/underscore.js"></script>
+        <script type="text/javascript" src="/assets/ldp/lib/rdflib.js"></script>
+        <script type="text/javascript" src="/assets/ldp/lib/spin.min.js"></script>
+        <script type="text/javascript" src="/assets/ldp/js/loadScript.js"></script>
+        <script type="text/javascript" src="/assets/ldp/js/loadCSS.js"></script>
+        <script type="text/javascript">
+        var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
+        var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+        var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
+        var WEBAPP = $rdf.Namespace("http://ns.rww.io/wapp#");
+        var FOAF = $rdf.Namespace("http://xmlns.com/foaf/0.1/");
+        var CONTACT = $rdf.Namespace("http://www.w3.org/2000/10/swap/pim/contact#");
+
+        // Global variables.
+        graphsCache = {};
+        baseUri = window.location.href;
+        baseUriSym = $rdf.sym(baseUri);
+        viewerUri = '/assets/ldp/viewer.ttl';
+
+        var graph = graphsCache[baseUri]  = new $rdf.IndexedFormula();
+        var fetch = $rdf.fetcher(graph);
+        fetch.nowOrWhenFetched(baseUri, undefined, function () {
+        // Load the main view and utils.
+        loadScript("/assets/ldp/js/bodyViewer.js", null);
+
+        // Get ressource type.
+        $rdf.types = graph.each( baseUriSym, RDF("type"));
+        rdfDocTypes = graph.each( baseUriSym, RDF("type"));
+
+        // Make the graph cache global.
+        $rdf.graphsCache = graphsCache;
+        $rdf.baseUri = baseUri;
+        });
+        </script>
+    </head>
+
+    <body>
+
+    </body>
+
+</html>

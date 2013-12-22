@@ -33,7 +33,6 @@ trait Setup {
   val logger = Logger("rww")
   val httpsPortKey = "https.port"
   val httpHostnameKey = "http.hostname"
-  val RdfViewerHtmlTemplatePathKey = "rww.rdf.html.viewer.template.path"
   val RootContainerPathKey = "rww.root.container.path"
   val rwwSubDomainsEnabledKey = "rww.subdomains"
   val baseHostnameKey = "http.hostname"
@@ -80,10 +79,6 @@ trait Setup {
   }
 
 
-  val rdfViewerHtmlTemplate: File = getFileForConfigurationKey(RdfViewerHtmlTemplatePathKey)
-
-
-
   val rootContainerPath: Path = {
     val file = getFileForConfigurationKey(RootContainerPathKey)
     require(file.isDirectory,s"The root container ($file) is not a directory")
@@ -97,7 +92,6 @@ trait Setup {
     host = $host
     hostRoot = $hostRoot
     rwwRoot = $rwwRoot
-    rdfViewerHtmlTemplate = $rdfViewerHtmlTemplate
     rww root LDPC path = $rootContainerPath
     with subdomain support = $rwwSubdomainsEnabled
     """)

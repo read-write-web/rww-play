@@ -38,4 +38,3 @@ HEAD          /2013/$file<.*>                          controllers.ldp.ReadWrite
 POST          /srv/certgen                             controllers.ClientCertificateApp.generate
 GET           /srv/certgen                             controllers.ClientCertificateApp.get
 GET           /srv/cors                                controllers.CORSProxy.action(url: Option[String])
-GET           /srv/rdfViewer                           controllers.RDFViewer.htmlFor(url: String)
