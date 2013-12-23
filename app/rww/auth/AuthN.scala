@@ -7,9 +7,20 @@ import java.security.cert.{X509Certificate, Certificate}
 import java.security.Principal
 import net.sf.uadetector.service.UADetectorServiceFactory
 import rww.ldp.auth.{WebIDPrincipal, Claim, WebIDVerifier}
+import net.sf.uadetector.UserAgentFamily
+import com.typesafe.scalalogging.slf4j.Logging
 
 
-case class Subject(principals: List[Principal], authzPrincipals: List[Principal]=List()) {
+/**
+ * The subject of this authentication.
+ * Generally the subject is a single principal which is a WebID.
+ *
+ * But for Henry there may be other corner cases where the principals could contain 2 WebID (multiple webIds can be linked to a certificate)
+ * or some cases where the principals are not WebIDPrincipal instances
+ *
+ * @param principals
+ */
+case class Subject(principals: List[Principal]) {
   lazy val webIds = principals.flatMap{ p =>
     p match {
       case wp: WebIDPrincipal => Some(wp.webid)
@@ -31,12 +42,15 @@ case class AuthenticationError(cause: Throwable) extends Exception(cause)
  * @param verifier verifier for an x509 claim
  * @tparam Rdf Type of RDF library
  */
-class WebIDAuthN[Rdf <: RDF](verifier: WebIDVerifier[Rdf]) extends AuthN {
+class WebIDAuthN[Rdf <: RDF](verifier: WebIDVerifier[Rdf]) extends AuthN with Logging {
   import verifier.ec
 
 
   def apply(headers: RequestHeader): Future[Subject] = {
-    headers.certs(must(headers)).flatMap{ certs: Seq[Certificate]=>
+    val certificateRequired: Boolean = browserDoesNotSupportsTLSWantMode(headers)
+    logger.debug(s"Certificate required (TLS Need mode)? $certificateRequired")
+    headers.certs(certificateRequired) flatMap { certs: Seq[Certificate] =>
+      logger.debug(s"Certificates found=${certs.size}")
       val principals: List[Future[Principal]] =
         certs.headOption.map { cert =>
           cert match {
@@ -74,19 +88,26 @@ class WebIDAuthN[Rdf <: RDF](verifier: WebIDVerifier[Rdf]) extends AuthN {
    *  Note the library we use is based on information from http://user-agent-string.info/parse
    *
    * bertails: could be an implicit class + value class
-   * */
-  def must(req: RequestHeader): Boolean =  {
-    req.headers.get("User-Agent").map{ ua =>
-      val agent = agentParser.parse(ua)
-      import net.sf.uadetector.UserAgentFamily._
-      import net.sf.uadetector.OperatingSystemFamily._
-      val family = agent.getFamily()
-      val res = (family == CURL || family == JAVA || family == SAFARI || family == OPERA ||
-        (family == CHROME && agent.getOperatingSystem.getFamily == OS_X) || //Version 32.0.1700.6 beta on OSX no longer work with WANT ( may be a setup issue )
-        req.headers.get("X-Requested-With").map(_.trim.equalsIgnoreCase("XMLHttpRequest")).getOrElse(false))
-      res
+   */
+  def browserDoesNotSupportsTLSWantMode(req: RequestHeader): Boolean =  {
+    req.headers.get("User-Agent").map { userAgentString =>
+      val userAgent = agentParser.parse(userAgentString)
+      FamiliesNotSupportingTLSWantMode.contains(userAgent.getFamily) || ajaxRequest(req)
     }.getOrElse(false)
   }
+
+
+  private val FamiliesNotSupportingTLSWantMode = Set(
+    UserAgentFamily.CURL,
+    UserAgentFamily.JAVA,
+    UserAgentFamily.SAFARI,
+    UserAgentFamily.OPERA,
+    // see https://github.com/stample/rww-play/issues/74, it seems to work half the time on Chrome with Want mode :(
+    UserAgentFamily.CHROME
+  )
+
+  private def ajaxRequest(req: RequestHeader): Boolean = req.headers.get("X-Requested-With").map(_.trim.equalsIgnoreCase("XMLHttpRequest")).getOrElse(false)
+
 }
 
 

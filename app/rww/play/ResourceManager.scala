@@ -148,17 +148,24 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
    */
   def auth(request: PlayRequestHeader, path: String, mode: Method.Value): Future[jURI] = {
     getAuthFor(URI(path), wacIt(mode)).flatMap { agents =>
-      if (agents.contains(foaf.Agent)) Future.successful(foaf.Agent.underlying)
+      Logger.debug(s"Agents found for $path with mode $mode are: $agents")
+      if (agents.contains(foaf.Agent)) {
+        Logger.info(s"All agents can access with mode $mode on ${request.path}")
+        Future.successful(foaf.Agent.underlying)
+      }
       else if (agents.isEmpty) {
-        Future.failed(AccessDenied(s"no agents allowed access with $mode on ${request.path}"))
+        Future.failed(AccessDenied(s"No agents found is allowed to access with mode $mode on ${request.path}"))
       }
       else {
         authn(request).flatMap { subject =>
           subject.webIds.find{ wid =>
             agents.contains(URI(wid.toString))
           } match {
-            case Some(id) => Future.successful(id)
-            case None => Future.failed(AccessDenied(s"no access for $mode on ${request.path}"))
+            case Some(id) => {
+              Logger.info(s"Access allowed with mode $mode on ${request.path}. Subject $subject has been found on the allowed agents list $agents")
+              Future.successful(id)
+            }
+            case None => Future.failed(AccessDenied(s"No access for $mode on ${request.path}. Subject is $subject and allowed agents are $agents"))
           }
         }
       }

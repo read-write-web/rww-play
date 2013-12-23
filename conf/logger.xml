@@ -17,5 +17,9 @@
 
     <logger name="application" level="debug"/>
 
+    <logger name="rww" level="debug"/>
+
+    <logger name="controllers" level="debug"/>
+
 
 </configuration>
