@@ -77,6 +77,8 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
     }
     futureGraph recover {
       case RemoteException(msg, headers) => ExpectationFailed(msg)
+      case MissingParserException(err) => ExpectationFailed(err)
+      case ParserException(msg,err) => ExpectationFailed(msg+"\n"+err)
       case LocalException(msg) => ExpectationFailed(msg)
     }
   }

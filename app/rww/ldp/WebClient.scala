@@ -77,6 +77,7 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
     //todo, add binary support
     //todo: deal with redirects...
     val response = WS.url(url.toString)
+      .withFollowRedirects(true)
       .withHeaders("Accept" -> "application/rdf+xml,text/turtle,application/xhtml+xml;q=0.8,text/html;q=0.7,text/n3;q=0.2")
       .get
     response.flatMap { response =>
