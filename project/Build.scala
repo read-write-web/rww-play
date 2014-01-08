@@ -10,6 +10,7 @@ object ApplicationBuild extends Build {
   val appVersion = "0.7.2-SNAPSHOT"
 
   val banana = (name: String) => "org.w3" %% name % "2013_10_07-SNAPSHOT" excludeAll (ExclusionRule(organization = "org.scala-stm"))
+  val semargl = (name: String) => "org.semarglproject" % {"semargl-"+name} % "0.6.1"
 
   val iterateeDeps = "com.typesafe.play" %% "play-iteratees" % "2.2.0"
   val scalatest = "org.scalatest" %% "scalatest" % "2.0.RC1-SNAP4"
@@ -21,7 +22,9 @@ object ApplicationBuild extends Build {
       scalatest
     )
 
-  val appDependencies = Seq("banana-sesame", "banana-jena", "banana-rdf", "plantain").map(banana) ++ Seq(
+  val appDependencies = Seq("banana-sesame", "banana-jena", "banana-rdf", "plantain").map(banana) ++
+//  Seq("core",)
+  Seq(
     "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
     "nu.validator.htmlparser" % "htmlparser" % "1.2.1",
     "io.spray" % "spray-http" % "1.0-M8.1",
