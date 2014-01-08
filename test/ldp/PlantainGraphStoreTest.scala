@@ -17,7 +17,10 @@ import akka.actor.Props
 import rww.ldp.auth.WACAuthZ
 import scala.util.Try
 import rww.ldp._
-import rww.ldp.actor.PlantainLDPCActor
+import rww.ldp.actor.{RWWActorSystemImpl, RWWActorSystem}
+import rww.ldp.actor.plantain.PlantainLDPCActor
+import rww.ldp.LDPExceptions._
+import rww.ldp.model.{BinaryResource, LDPR}
 
 object PlantainTest {
   val dir = Files.createTempDirectory("plantain" )
@@ -37,7 +40,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path, rootLDPCActorPr
   import syntax.{graphW,uriW,stringW}
 
   implicit val timeout = Timeout(10,TimeUnit.MINUTES)
-  val rww = new RWWeb[Rdf](baseUri)
+  val rww: RWWActorSystem[Rdf] = new RWWActorSystemImpl[Rdf](baseUri)
   rww.setLDPSActor(rww.system.actorOf(rootLDPCActorProps,"rootContainer"))
   implicit val authz =  new WACAuthZ[Rdf](new WebResource(rww))
   import authz._
@@ -289,7 +292,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path, rootLDPCActorPr
             bin <- createBinary(ldpc, Some(binUri.lastPathSegment), MimeType("text/html"))
           } yield bin
         }
-        it = bin.write
+        it = bin.writeIteratee
         newbin <- Enumerator(helloWorldBinary).apply(it)
         newres <-  newbin.run
       } yield {
@@ -304,7 +307,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path, rootLDPCActorPr
         res <- getResource(binUri)
       } yield {
         res match {
-          case bin: BinaryResource[Rdf] => bin.reader(400).map {
+          case bin: BinaryResource[Rdf] => bin.readerEnumerator(400).map {
             bytes =>
               hw must be(bytes)
           }
@@ -319,7 +322,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path, rootLDPCActorPr
       newRes <- rww.execute(getResource(binUri)) // we get the resource, but we don't use that thread to upload the data
       bin <- newRes match { //rather here we should use the client thread to upload the data ( as it could be very large )
         case br: BinaryResource[Rdf] => for {
-          it <- Enumerator(helloWorldBinary2) |>> br.write
+          it <- Enumerator(helloWorldBinary2) |>> br.writeIteratee
           newres <- it.run
         } yield newres
         case _ => throw new Exception("Object MUST be binary - given that this test is not running in an open world")

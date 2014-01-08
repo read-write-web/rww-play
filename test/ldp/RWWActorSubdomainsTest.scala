@@ -3,13 +3,13 @@ package test
 import org.scalatest.{Matchers, WordSpec}
 import java.net.URI
 import scala.Some
-import rww.ldp.actor.RWWebActorSubdomains
+import rww.ldp.actor.router.RWWRoutingActorSubdomains
 
 /**
  * Created by hjs on 23/11/2013.
  */
 class RWWActorSubdomainsTest extends WordSpec with Matchers {
-  import RWWebActorSubdomains._
+  import RWWRoutingActorSubdomains._
 
   val localBase = new URI("https://localhost:8443/2013/")
 

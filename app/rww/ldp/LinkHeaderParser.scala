@@ -100,7 +100,9 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
   //  lazy val query =
   //  lazy val fragment =
   def parse(input: String): Rdf#Graph = {
+    _root_.play.api.Logger.error("Parser input is " + input)
     val triples = parseAll(links, input).getOrElse(Nil)
     Graph(triples.toIterable)
   }
+
 }

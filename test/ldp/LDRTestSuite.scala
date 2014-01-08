@@ -15,7 +15,9 @@ import scala.concurrent.{ExecutionContext, Await}
 import scala.concurrent.duration.Duration
 import rww.ldp._
 import rww.ldp.auth._
-import rww.ldp.actor.{PlantainLDPCActor, LDPWebActor}
+import rww.ldp.actor.plantain.PlantainLDPCActor
+import rww.ldp.actor.remote.LDPWebActor
+import rww.ldp.actor.{RWWActorSystemImpl, RWWActorSystem}
 
 
 object LDRTestSuite {
@@ -49,7 +51,7 @@ abstract class LDRTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path, rootLDPCActor
   import syntax._
 
   implicit val timeout = Timeout(10,TimeUnit.MINUTES)
-  val rww = new RWWeb[Rdf](baseUri)
+  val rww: RWWActorSystem[Rdf] = new RWWActorSystemImpl[Rdf](baseUri)
   implicit val authz =  new WACAuthZ[Rdf](new WebResource(rww))
   rww.setLDPSActor(rww.system.actorOf(rootLDPCActorProps,"rootContainer"))
   rww.setWebActor( rww.system.actorOf(Props(new LDPWebActor[Rdf](baseUri,testFetcher)),"webActor")  )

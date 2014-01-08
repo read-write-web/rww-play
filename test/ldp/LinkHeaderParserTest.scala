@@ -28,6 +28,13 @@ abstract class LinkHeaderParserTest[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends
   }
 
 
+  "test OOM" in {
+    val p1 = lhp.parse("""<.>; rel="collection"""")
+    val expected = ( URI("") -- link.collection ->- URI(".") ).graph
+    assert (p1.graph isIsomorphicWith expected,s"${p1.graph} must be isomorphic with expected ${expected}")
+  }
+
+
   "test rel with anchor" in {
     val p1 = lhp.parse("""</>; rel=http://xmlns.com/foaf/0.1/homepage; anchor="#me"""")
     val expected = ( URI("#me") -- foaf.homepage ->- URI("/") ).graph
