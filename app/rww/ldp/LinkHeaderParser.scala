@@ -71,14 +71,14 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
 
   lazy val relation_types: Parser[List[String]] = relation_type^^{List(_)} | ("\""~>rep1(relation_type)<~"\"")
   lazy val relation_type = """[^;\s"]+""".r  // we will parse the URI later, no need to write a parser here
-  lazy val quoted_string: Parser[String] = "\""~>rep(qdtext|qdpair)<~"\""^^{ls=>
-      val ls2 = ls.map(s=> if (s.length==2 && s.charAt(0)=='"') s.substring(1) else s )
+  lazy val quoted_string: Parser[String] = "\""~>rep(qdpair|qdtext)<~"\""^^{ls=>
+      val ls2 = ls.map(s=> if (s.length==2 && s.charAt(0)=='\\') s.substring(1) else s )
       ls2.mkString
     }
 
   lazy val uriRef = """[^"]*""".r //very simplified, but should be good enough
 
-  lazy val qdtext = """[^"]*""".r
+  lazy val qdtext = """[^"]+""".r
   lazy val qdpair = """\\\p{ASCII}""".r
   lazy val ext_value: Parser[Rdf#Literal] = (charset~>("'"~>opt(language)<~"'")~valueChars)^^{
     case Some(lang)~str => makeLangLiteral(str,makeLang(lang)) //todo: verify that this is the same sequence RDF uses

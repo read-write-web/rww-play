@@ -78,5 +78,52 @@ abstract class LinkHeaderParserTest[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends
     assert(p4.graph isIsomorphicWith expected,s"${p4.graph} must be isomorphic with expected ${expected}")
   }
 
+  "two relations test tests" in {
+    val pg = lhp.parse("""<http://example.org/>; rel="start http://example.net/relation/other"""")
+    val expected = (
+      URI("")
+        -- link.start ->- URI("http://example.org/")
+        -- URI("http://example.net/relation/other") ->- URI("http://example.org/") ).graph
+    assert (pg isIsomorphicWith expected,s"${pg} must be isomorphic with expected ${expected}")
+  }
+
+  "simple meta rel test that is broken" in {
+    val pg = lhp.parse("""<http://example.org/>; rel="meta"; """)
+    assert (pg.isIsomorphicWith(Graph.empty), s"${pg} should be empty as the Link header is broken")
+// one could argue that this should be the case but it does not I think fit the spec.
+//    val expected = ( URI("") -- link.meta ->- URI("http://example.org/") ).graph
+//    assert (pg isIsomorphicWith expected,s"${pg} must be isomorphic with expected ${expected}")
+  }
+
+  "simple meta rel test that should work" in {
+    val pg = lhp.parse("""<http://example.org/>; rel="meta" """)
+    val expected = ( URI("") -- link.meta ->- URI("http://example.org/") ).graph
+    assert (pg isIsomorphicWith expected,s"${pg} must be isomorphic with expected ${expected}")
+  }
+
+  "rel with title" in {
+    val pg = lhp.parse("""<http://example.org/>; rel="meta"; title="Metadata File"""")
+    val expected = ( URI("") -- link.meta ->- URI("http://example.org/") ).graph union
+      ( URI("http://example.org/") -- dct.title ->- "Metadata File" ).graph
+    assert (pg isIsomorphicWith expected,s"${pg} must be isomorphic with expected ${expected}")
+  }
+
+  "rel with empty title" in {
+    val pg = lhp.parse("""<http://example.org/>; rel="meta"; title=""""")
+    val expected = ( URI("") -- link.meta ->- URI("http://example.org/") ).graph union
+      ( URI("http://example.org/") -- dct.title ->- "" ).graph
+    assert (pg isIsomorphicWith expected,s"${pg} must be isomorphic with expected ${expected}")
+  }
+
+
+  "test white space in name" in {
+    val pg = lhp.parse("""<http://id.myopenlink.net/DAV/VAD/wa/RDFData/All/iid (1030025).rdf,meta>; rel="meta"; title="Metadata File"""")
+    val expected = ( URI("") -- link.meta ->- URI("http://id.myopenlink.net/DAV/VAD/wa/RDFData/All/iid (1030025).rdf,meta") ).graph
+    assert (pg isIsomorphicWith expected,s"${pg} must be isomorphic with expected ${expected}")
+
+  }
+
+
+
 
 }
