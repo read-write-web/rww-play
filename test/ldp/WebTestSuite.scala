@@ -16,7 +16,10 @@ import scala.concurrent.{ExecutionContext, Await}
 import scala.concurrent.duration.Duration
 import rww.ldp.auth.{WebIDPrincipal, WebIDVerifier, WACAuthZ}
 import rww.ldp._
-import rww.ldp.actor.{PlantainLDPCActor, LDPWebActor}
+import rww.ldp.actor.{RWWActorSystemImpl, RWWActorSystem}
+import rww.ldp.actor.plantain.PlantainLDPCActor
+import controllers.plantain.Rdf
+import rww.ldp.actor.remote.LDPWebActor
 
 
 object WebTestSuite {
@@ -27,7 +30,7 @@ object WebTestSuite {
   implicit val timeout = Timeout(10,TimeUnit.MINUTES)
   val dir = Files.createTempDirectory("plantain" )
   val baseUri = URI.fromString("http://example.com/foo/")
-  val rww = new RWWeb[Plantain](baseUri)(Plantain.ops,timeout)
+  val rww: RWWActorSystemImpl[Rdf] = new RWWActorSystemImpl[Rdf](baseUri)
   rww.setLDPSActor(rww.system.actorOf(Props(new PlantainLDPCActor(rww.baseUri, dir)),"rootContainer"))
 }
 
@@ -40,7 +43,7 @@ class PlantainWebTest extends WebTestSuite[Plantain](
  *
  * tests the local and remote LDPR request, creation, LDPC creation, access control, etc...
  */
-abstract class WebTestSuite[Rdf<:RDF](rww: RWW[Rdf], baseUri: Rdf#URI)(
+abstract class WebTestSuite[Rdf<:RDF](rww: RWWActorSystem[Rdf], baseUri: Rdf#URI)(
                                  implicit val ops: RDFOps[Rdf],
                                   sparqlOps: SparqlOps[Rdf],
                                   sparqlGraph: SparqlGraph[Rdf],

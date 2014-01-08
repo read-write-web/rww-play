@@ -103,4 +103,5 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
     val triples = parseAll(links, input).getOrElse(Nil)
     Graph(triples.toIterable)
   }
+
 }
