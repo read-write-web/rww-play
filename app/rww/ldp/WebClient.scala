@@ -56,7 +56,11 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
    */
   def parseHeaders(base: Rdf#URI, headers: FluentCaseInsensitiveStringsMap): PointedGraph[Rdf] = {
     import collection.convert.wrapAsScala._
-    val linkHeaders = Option(headers.get("Link")).map{_.toList}.getOrElse(Nil)
+    // TODO we temporarily disable parsing of link headers because of a banana link header parsing bug:
+    // see https://github.com/w3c/banana-rdf/issues/84
+    // see https://github.com/stample/rww-play/issues/76
+    // val linkHeaders = Option(headers.get("Link")).map{_.toList}.getOrElse(Nil)
+    val linkHeaders = Nil
     val linkgraph = union(linkHeaders.map(parser.parse(_).resolveAgainst(base)))
     PointedGraph(base, linkgraph)
   }
