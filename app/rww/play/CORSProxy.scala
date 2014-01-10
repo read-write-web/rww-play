@@ -16,22 +16,26 @@
 
 package rww.play
 
-import play.api.mvc.{Controller, Action}
-import org.w3.banana.{RDFOps, WriterSelector, RDF}
+import _root_.play.api.mvc.{AnyContent, SimpleResult, Controller, Action,Request => PlayRequest}
+import org.w3.banana.{RDFOps, WriterSelector, RDF,Writer}
 import rww.play.PlayWriterBuilder._
-import akka.util.Timeout
 import akka.actor.ActorSystem
 import rww.ldp._
-import rww.ldp.model.LDPR
+import rww.ldp.model.{NamedResource, LDPR}
+import java.net.{NoRouteToHostException, ConnectException}
+import utils.ThrowableUtils.RootCauseExtractor
+import java.nio.channels.UnresolvedAddressException
+import java.util.concurrent.TimeoutException
+import com.google.common.base.Throwables
 
 /**
-* A <a href="http://www.w3.org/TR/cors/">CORS</a> proxy that allows a client to fetch remote RDF
-* resources that do not have the required CORS headers.
-*
-* Currently this only permits GET operations. It is unclear what PUT, POST, DELETE operations would
-* look like for a CORS proxy.
-*
-*/
+ * A <a href="http://www.w3.org/TR/cors/">CORS</a> proxy that allows a client to fetch remote RDF
+ * resources that do not have the required CORS headers.
+ *
+ * Currently this only permits GET operations. It is unclear what PUT, POST, DELETE operations would
+ * look like for a CORS proxy.
+ *
+ */
 class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
                          (implicit ops: RDFOps[Rdf], writerSelector: WriterSelector[Rdf#Graph])
   extends Controller {
@@ -43,45 +47,63 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
   // turn a header map into an (att,val) sequence
   private implicit def sequentialise(headers: Map[String,Seq[String]]) = headers.toSeq.flatMap(pair=>pair._2.map(v=>(pair._1,v)))
 
-  def get(url: String) = Action.async { request =>
-    val iri = URI(url)
-    implicit val timeout = Timeout(10 * 1000)
-    import PlayWriterBuilder.writerFor
+  private def AllowOriginHeader(origin: String) = ("Access-Control-Allow-Origin" -> "*")
 
-    val futureGraph = for {
-      nr <- wsClient.get(iri)
-    } yield {
-      writerFor(request)(writerSelector).map { wr =>
-        nr match {
-          case ldpr: LDPR[Rdf] => {
-            val hdrs = request.headers.toSimpleMap - "ContentType"
-            //todo: this needs to be refined a lot, and thought through quite a lot more carefully
+  // see https://github.com/stample/rww-play/issues/77
+  // we don't want security warning on browser if there's an error
+  private def errorResult(result: SimpleResult): SimpleResult = result.withHeaders(AllowOriginHeader("*"))
 
-            val corsHeaders = if (!hdrs.contains("Access-Control-Allow-Origin")) {
-              val origin = request.headers.get("Origin")
-              hdrs + ("Access-Control-Allow-Origin" -> origin.getOrElse("*"))
-            } else {
-              hdrs
-            }
-            result(203, wr)(ldpr.graph).withHeaders(corsHeaders.toSeq: _*)
-          }
-          case other => {
-            UnsupportedMediaType("Cannot proxy non rdf resources at present. Request sent " +
-              request.headers.get(play.api.http.HeaderNames.ACCEPT))
-          }
-        }
-      }.getOrElse(
-        UnsupportedMediaType("could not find RDF type of resource at remote location" +
-          request.headers.get(play.api.http.HeaderNames.ACCEPT))
-      )
-    }
-    futureGraph recover {
-      case RemoteException(msg, headers) => ExpectationFailed(msg)
-      case MissingParserException(err) => ExpectationFailed(err)
-      case ParserException(msg,err) => ExpectationFailed(msg+"\n"+err)
-      case LocalException(msg) => ExpectationFailed(msg)
+
+  private val UnresolvedAddressExceptionExtractor = RootCauseExtractor.of[UnresolvedAddressException]
+  private val NoRouteToHostExceptionExtractor = RootCauseExtractor.of[NoRouteToHostException]
+  private val ConnectExceptionExtractor = RootCauseExtractor.of[ConnectException]
+  private val TimeoutExceptionExtractor = RootCauseExtractor.of[TimeoutException]
+
+
+
+  def get(url: String) = Action.async { implicit request =>
+    val futureResponse = for {
+      namedResource <- wsClient.get( URI(url) )
+    } yield createResultForNamedResource(namedResource)
+    futureResponse recover {
+      case RemoteException(msg, headers) => errorResult(ExpectationFailed(msg))
+      case MissingParserException(err) => errorResult(ExpectationFailed(err))
+      case ParserException(msg,err) => errorResult(ExpectationFailed(msg+"\n"+err))
+      case LocalException(msg) => errorResult(ExpectationFailed(msg))
+      // TODO these low level exceptions should rather be handled at the client level and expose other exceptions
+      // because exception introspection (looking for root cause) is bad and create coupling
+      case UnresolvedAddressExceptionExtractor(e) => errorResult(BadGateway(Throwables.getStackTraceAsString(e)))
+      case NoRouteToHostExceptionExtractor(e) => errorResult(BadGateway(Throwables.getStackTraceAsString(e)))
+      case ConnectExceptionExtractor(e) => errorResult(GatewayTimeout(Throwables.getStackTraceAsString(e)))
+      case TimeoutExceptionExtractor(e) => errorResult(GatewayTimeout(Throwables.getStackTraceAsString(e)))
+      case e: Exception => errorResult(InternalServerError(Throwables.getStackTraceAsString(e)))
     }
   }
+
+  private def createResultForNamedResource(namedResource: NamedResource[Rdf])(implicit request: PlayRequest[AnyContent]): SimpleResult = {
+    writerFor(request)(writerSelector).map { writer =>
+      namedResource match {
+        case ldpr: LDPR[Rdf] => createResultForLDPR(ldpr,writer)
+        case other => UnsupportedMediaType(s"Cannot proxy non rdf resources at present. Request sent ${request.headers.get(play.api.http.HeaderNames.ACCEPT)}")
+      }
+    }.getOrElse(UnsupportedMediaType(s"could not find RDF type of resource at remote location ${request.headers.get(play.api.http.HeaderNames.ACCEPT)}"))
+  }
+
+
+  private def createResultForLDPR(ldpr: LDPR[Rdf], writer: Writer[Rdf#Graph, Any])(implicit request: PlayRequest[AnyContent]): SimpleResult = {
+    val hdrs = request.headers.toSimpleMap - "ContentType"
+    //todo: this needs to be refined a lot, and thought through quite a lot more carefully
+    val corsHeaders = if (!hdrs.contains("Access-Control-Allow-Origin")) {
+      val origin = request.headers.get("Origin")
+      hdrs + ("Access-Control-Allow-Origin" -> origin.getOrElse("*"))
+    } else {
+      hdrs
+    }
+    result(203, writer)(ldpr.graph).withHeaders(corsHeaders.toSeq: _*)
+  }
+
+
+
 
 }
 

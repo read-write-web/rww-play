@@ -71,7 +71,7 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
   val cache = new AtomicReference(immutable.HashMap[Rdf#URI,Future[NamedResource[Rdf]]]())
 
   protected def fetch(url: Rdf#URI): Future[NamedResource[Rdf]] = {
-    WebClient.log.info(s"WebProxy: fetching $url")
+    WebClient.log.info(s"WebClient: fetching $url")
     /**
      * note we prefer rdf/xml and turtle over html, as html does not always contain rdfa, and we prefer those over n3,
      * as we don't have a full n3 parser. Better would be to have a list of available parsers for whatever rdf framework is
@@ -86,7 +86,7 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
       .get
     response.flatMap { response =>
       import MimeType._
-      WebClient.log.info(s"Web Proxy fetched content successfully. ${response}")
+      WebClient.log.info(s"WebClient fetched content successfully. ${response}")
       response.header("Content-Type") match {
         case Some(header) => {
           val mt = MimeType(extract(header))
