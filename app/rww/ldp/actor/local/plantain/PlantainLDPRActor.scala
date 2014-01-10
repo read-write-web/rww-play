@@ -1,6 +1,6 @@
 package rww.ldp.actor.plantain
 
-import org.w3.banana.plantain.{PlantainLDPatch, Plantain}
+import org.w3.banana.plantain.{LDPatch, PlantainLDPatch, Plantain}
 import java.nio.file.{Files, Path}
 import org.w3.banana._
 import com.google.common.cache.{CacheLoader, CacheBuilder, LoadingCache}
@@ -35,27 +35,29 @@ import rww.ldp.actor.common.RWWBaseActor
 import rww.ldp.model._
 
 
-class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
-                       (implicit ops: RDFOps[Plantain],
-                        sparqlGraph: SparqlGraph[Plantain],
-                        reader: RDFReader[Plantain,Turtle],
-                        writer: RDFWriter[Plantain,Turtle],
-                        adviceSelector: AdviceSelector[Plantain]= new EmptyAdviceSelector
+class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
+                       (implicit ops: RDFOps[Rdf],
+                        sparqlGraph: SparqlGraph[Rdf],
+                        reader: RDFReader[Rdf,Turtle],
+                        writer: RDFWriter[Rdf,Turtle],
+                        patch: LDPatch[Rdf,Try]
+//                        adviceSelector: AdviceSelector[Rdf]= new EmptyAdviceSelector
                          ) extends RWWBaseActor {
   var ext = ".ttl"
   val acl = ".acl"
+  import ops._
 
-  val ldp = LDPPrefix[Plantain]
-  val rdfs = RDFSPrefix[Plantain]
-  val rdf = RDFPrefix[Plantain]
-  val stat = STATPrefix[Plantain]
+  val ldp = LDPPrefix[Rdf]
+  val rdfs = RDFSPrefix[Rdf]
+  val rdf = RDFPrefix[Rdf]
+  val stat = STATPrefix[Rdf]
 
   import org.w3.banana.syntax._
 
   //google cache with soft values: at least it will remove the simplest failures
-  val resourceCache: LoadingCache[String,Try[LocalNamedResource[Plantain]]] = CacheBuilder.newBuilder()
+  val resourceCache: LoadingCache[String,Try[LocalNamedResource[Rdf]]] = CacheBuilder.newBuilder()
     .softValues()
-    .build(new CacheLoader[String,Try[LocalNamedResource[Plantain]]]() {
+    .build(new CacheLoader[String,Try[LocalNamedResource[Rdf]]]() {
     import scalax.io.{Resource=>xResource}
 
     def load(key: String) = {
@@ -67,11 +69,11 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         if (file.toString.endsWith(ext)) {
           val res = xResource.fromFile(file)
           reader.read(res, iri.toString).map { g =>
-            LocalLDPR[Plantain](iri, g, path, Option(new Date(path.toFile.lastModified())))
+            LocalLDPR[Rdf](iri, g, path, Option(new Date(path.toFile.lastModified())))
           } recover {
             case RDFParseExceptionMatcher(e) => throw UnparsableSource(s"Can't parse resource $iri as an RDF file",e)
           }
-        } else Success(LocalBinaryResource[Plantain](file.toPath, iri))
+        } else Success(LocalBinaryResource[Rdf](file.toPath, iri))
 
       } else Failure(ResourceDoesNotExist(s"no resource for '$key'"))
     }
@@ -112,7 +114,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
    * @return
    */
   @throws[ResourceDoesNotExist]
-  def getResource(name: String): Try[LocalNamedResource[Plantain]] = {
+  def getResource(name: String): Try[LocalNamedResource[Rdf]] = {
     import scalax.io.{Resource=>xResource}
     //todo: the file should be verified to see if it is up to date.
     val resourceGet = resourceCache.get(name) match {
@@ -138,10 +140,10 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
    * @param name
    * @return
    */
-  private def fileAndURIFor(name: String): (File,Plantain#URI) = {
+  private def fileAndURIFor(name: String): (File,Rdf#URI) = {
     //note: this is really simple at present, but is bound to get more complex,...
     val file = fileFrom(name)
-    val uriw =uriW[Plantain](baseUri)
+    val uriw =uriW[Rdf](baseUri)
     val iri = uriw.resolve(name)
     (file,iri)
   }
@@ -158,20 +160,20 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
     else path.resolveSibling(name + ext).toFile
   }
 
-  def setResource(name: String, graph: Plantain#Graph) {
+  def setResource(name: String, graph: Rdf#Graph) {
     import scalax.io.{Resource=>xResource}
     implicit val codec = Codec.UTF8
     val (file,iri) = fileAndURIFor(name)
     file.createNewFile()
-    writer.write(graphW[Plantain](graph).relativize(baseUri),xResource.fromOutputStream(new FileOutputStream(file)),"") match {
+    writer.write(graphW[Rdf](graph).relativize(baseUri),xResource.fromOutputStream(new FileOutputStream(file)),"") match {
       case scala.util.Failure(t) => throw new StoreProblem(t)
       case x => x
     }
-    resourceCache.put(name,Success(LocalLDPR[Plantain](iri,graph, file.toPath, Some(new Date(file.lastModified())))))
+    resourceCache.put(name,Success(LocalLDPR[Rdf](iri,graph, file.toPath, Some(new Date(file.lastModified())))))
   }
 
 
-  def localName(uri: Plantain#URI): String = uriW[Plantain](uri).lastPathSegment
+  def localName(uri: Rdf#URI): String = uriW[Rdf](uri).lastPathSegment
 
   /*
      * Runs a command that can be evaluated on this container.
@@ -179,7 +181,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
      * @tparam A The final return type of the script
      * @return a script for further evaluation
      */
-  def runLocalCmd[A](cmd: LDPCommand[Plantain, LDPCommand.Script[Plantain,A]]) {
+  def runLocalCmd[A](cmd: LDPCommand[Rdf, LDPCommand.Script[Rdf,A]]) {
     log.debug(s"received $cmd")
     cmd match {
       case GetResource(uri, agent, k) => {
@@ -212,13 +214,15 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
       }
       case UpdateLDPR(uri, remove, add, a) => {
         val nme = localName(uri)
+        val urifull = uriW[Rdf](uri).resolveAgainst(baseUri)
         getResource(nme) match {
           case Success(LocalLDPR(_,graph,_,updated)) => {
-            val temp = remove.foldLeft(graph) {
-              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
-            }
-            val resultGraph = add.foldLeft(temp) {
-              (graph, triple) => graph + triple.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
+            if (remove.size>0) throw LocalException("need to upgrade to a later version of banana that supports diffs")
+//            val temp = remove.foldLeft(graph) {
+//              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
+//            }
+            val resultGraph = add.foldLeft(graph) {
+              (graph, triple) => graph union Graph(triple.resolveAgainst(uriW[Rdf](uri).resolveAgainst(baseUri)))
             }
             setResource(nme,resultGraph)
             rwwRouterActor.tell(ScriptMessage(a),context.sender)
@@ -231,7 +235,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
         val nme = localName(uri)
         getResource(nme) match {
           case Success(LocalLDPR(_,graph,_,updated)) => {
-            PlantainLDPatch.executePatch(graph,update,bindings) match {
+            patch.executePatch(graph,update,bindings) match {
               case Success(gr) => {
                 setResource(nme, gr)
                 rwwRouterActor.tell(ScriptMessage(k(true)),context.sender)
@@ -283,7 +287,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
    * @throws NoSuchElementException if the resource does not exist
    * @return
    */
-  final def run[A](sender: ActorRef, script: LDPCommand.Script[Plantain,A]) {
+  final def run[A](sender: ActorRef, script: LDPCommand.Script[Rdf,A]) {
     script.resume match {
       case -\/(cmd) => {
         if(cmd.uri == baseUri) {
@@ -302,7 +306,7 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
   }
 
 
-  def adviceCmd[A](cmd: LDPCommand[Plantain, LDPCommand.Script[Plantain,A]]) {
+  def adviceCmd[A](cmd: LDPCommand[Rdf, LDPCommand.Script[Rdf,A]]) {
     //todo: improve for issues of extensions ( eg. .n3, ... )
     //    val advices = adviceSelector(getResource(fileName))
     //    advices foreach ( _.pre(cmd) map { throw _ } )
@@ -312,10 +316,10 @@ class PlantainLDPRActor(val baseUri: Plantain#URI,path: Path)
 
 
   def receive = returnErrors {
-    case s: ScriptMessage[Plantain,_]  => {
+    case s: ScriptMessage[Rdf,_]  => {
       run(sender, s.script)
     }
-    case cmd: CmdMessage[Plantain,_] => {
+    case cmd: CmdMessage[Rdf,_] => {
       adviceCmd(cmd.command)
     }
   }

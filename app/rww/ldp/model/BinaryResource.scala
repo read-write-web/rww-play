@@ -4,7 +4,7 @@ import org.w3.banana.{PointedGraph, RDFOps, MimeType, RDF}
 import scala.concurrent.ExecutionContext
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 import java.nio.file.{StandardCopyOption, StandardOpenOption, Files, Path}
-import scala.util.Try
+import scala.util.{Success, Try}
 import java.util.Date
 import utils.{FileUtils, Iteratees}
 import com.typesafe.scalalogging.slf4j.Logging
@@ -35,7 +35,7 @@ case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI)
   extends BinaryResource[Rdf] with LocalNamedResource[Rdf] with Logging {
   import ops._
 
-  def meta = PointedGraph(location,Graph.empty)  //todo: need to build it correctly
+  def meta = Success(PointedGraph(location,Graph.empty))  //todo: need to build it correctly
 
 
   // also should be on a metadata trait, since all resources have update times

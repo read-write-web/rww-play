@@ -124,14 +124,16 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
   private def writeGetResult(bestReplyContentType: SupportedRdfMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
-    val link = namedRes.result.acl map (acl => ("Link" -> s"<${acl}>; rel=acl"))
+    val linkOpt = namedRes.result.acl.toOption map (acl => ("Link" -> s"<${acl}>; rel=acl"))
+
     namedRes.result match {
       case ldpr: LDPR[Rdf] =>  {
         bestReplyContentType match {
           case SupportedRdfMimeType.Html => Ok(views.html.ldp.rdfToHtml())
           case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
             writerFor[Rdf#Graph](request).map { wr =>
-              result(200, wr, Map("Access-Control-Allow-Origin"-> "*",userHeader(namedRes)) ++ link)(ldpr.relativeGraph)
+              val headers =  "Access-Control-Allow-Origin"-> "*"::userHeader(namedRes)::linkOpt.toList
+              result(200, wr, Map(headers:_*))(ldpr.relativeGraph)
             } getOrElse { throw new RuntimeException("Unexpected: no writer found")}
           }
         }
@@ -139,8 +141,9 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       case bin: BinaryResource[Rdf] => {
         val contentType = bin.mime.mime
         Logger.info(s"Getting binary resource, no [$bestReplyContentType] representation available, so the content type will be [${contentType}}]")
+        val headers =  "Content-Type" -> contentType::userHeader(namedRes)::linkOpt.toList
         SimpleResult(
-          header = ResponseHeader(200, Map("Content-Type" -> contentType, userHeader(namedRes)) ++ link),
+          header = ResponseHeader(200, Map(headers:_*)),
           body = bin.readerEnumerator(1024 * 8)
         )
       }

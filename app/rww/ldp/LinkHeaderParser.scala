@@ -3,6 +3,7 @@ package rww.ldp
 
 import org.w3.banana.{DCTPrefix, DCPrefix, RDFOps, RDF}
 import scala.util.parsing.combinator.JavaTokenParsers
+import scala.util.Try
 
 /**
  * Parser for HTTP Link headers as defined by RFC5988 http://tools.ietf.org/html/rfc5988#section-5
@@ -99,9 +100,13 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
   //  lazy val hier_part = """//"""
   //  lazy val query =
   //  lazy val fragment =
-  def parse(input: String): Rdf#Graph = {
-    val triples = parseAll(links, input).getOrElse(Nil)
-    Graph(triples.toIterable)
+  def parse(input: String*): Try[Rdf#Graph] =  Try {
+    var graphs = for (line <- input) yield {
+      val triples = parseAll(links, line).getOrElse(Nil)
+      Graph(triples.toIterable)
+    }
+    union(graphs.toList)
   }
+
 
 }

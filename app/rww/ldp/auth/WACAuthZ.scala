@@ -8,9 +8,9 @@ import rww.ldp.{LDPCommand, WebResource}
 import play.api.libs.iteratee.{Enumeratee, Input, Iteratee, Enumerator}
 import scala.Some
 import scala.concurrent.Future
-import scala.util.Try
 import utils.Iteratees
 import com.typesafe.scalalogging.slf4j.Logging
+import scala.util.{Try, Success}
 
 /**
  * WACAuthZ groups methods to find the authorized WebIDs for a particular resource
@@ -86,13 +86,13 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
       val docUri = uri.fragmentLess
       getMeta(docUri).flatMap { m =>
         val x: LDPCommand.Script[Rdf, Option[LinkedDataResource[Rdf]]] = m.acl match {
-          case Some(aclUri) => {
+          case Success(aclUri) => {
             logger.info(s"Resource $uri claims its ACLs are stored at $aclUri")
             getLDPR(aclUri).map { g =>
               Some(LinkedDataResource(aclUri, PointedGraph(aclUri, g)))
             }
           }
-          case None => `return`(None)
+          case _ => `return`(None)
         }
         x
       }

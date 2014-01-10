@@ -6,7 +6,7 @@ import org.w3.banana._
 import java.nio.file._
 import akka.actor._
 import java.net.{URI => jURI}
-import org.w3.banana.plantain.Plantain
+import org.w3.banana.RDF
 import java.nio.file.attribute.BasicFileAttributes
 import java.util
 import java.nio.file.Path
@@ -26,6 +26,7 @@ import rww.ldp.CreateBinary
 import akka.actor.InvalidActorNameException
 import rww.ldp.CreateLDPR
 import rww.ldp.model._
+import org.w3.banana.plantain.LDPatch
 
 
 /**
@@ -37,10 +38,14 @@ import rww.ldp.model._
  * @param ops
  * @param sparqlGraph
  */
-class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
-                                 (implicit ops: RDFOps[Plantain],
-                                     sparqlGraph: SparqlGraph[Plantain],
-                                     adviceSelector: AdviceSelector[Plantain]=new EmptyAdviceSelector) extends PlantainLDPRActor(ldpcUri,root) {
+class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
+                                 (implicit ops: RDFOps[Rdf],
+                                  sparqlGraph: SparqlGraph[Rdf],
+                                  reader: RDFReader[Rdf, Turtle],
+                                  writer: RDFWriter[Rdf, Turtle],
+                                  patch: LDPatch[Rdf, Try]
+//                                  adviceSelector: AdviceSelector[Rdf] = new EmptyAdviceSelector
+                                   ) extends LDPRActor[Rdf](ldpcUri,root) {
   import org.w3.banana.syntax._
   import ops._
 
@@ -65,12 +70,12 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
         override def visitFile(file: Path, attrs: BasicFileAttributes) = {
           val pathSegment = file.getFileName.toString
           if (attrs.isDirectory) {
-            context.actorOf(Props(new PlantainLDPCActor(absoluteUri(pathSegment+"/"),root.resolve(file))),pathSegment)
+            context.actorOf(Props(new LDPCActor[Rdf](absoluteUri(pathSegment+"/"),root.resolve(file))),pathSegment)
           } else if (attrs.isSymbolicLink) {
             //we use symbolic links to point to the file that contains the default representation
             //this is because we may have many different representations, and we don't want an actor
             //for each of the representations.
-            context.actorOf(Props(new PlantainLDPRActor(absoluteUri(pathSegment),root.resolve(file))),pathSegment)
+            context.actorOf(Props(new LDPRActor[Rdf](absoluteUri(pathSegment),root.resolve(file))),pathSegment)
           }
         FileVisitResult.CONTINUE
       }
@@ -78,7 +83,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
   }
 
   override
-  def localName(uri: Plantain#URI): String = {
+  def localName(uri: Rdf#URI): String = {
     val requestedPath = uri.underlying.getPath
     val ldpcPath = ldpcUri.underlying.getPath
     if (ldpcPath.length > requestedPath.length) fileName
@@ -88,16 +93,17 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
   // TODO permits to retrieve metadatas on the file etc...
   // this is relative to LDP spec and may need to be update with newer spec version
   // TODO add better documentation
-  private def descriptionFor(path: Path, attrs: BasicFileAttributes): Plantain#Graph = {
-    def graphFor(uri: Plantain#URI) = {
-      var res = emptyGraph +
-        Triple(ldpcUri, ldp.created, uri) +
+  private def descriptionFor(path: Path, attrs: BasicFileAttributes): Rdf#Graph = {
+    def graphFor(uri: Rdf#URI) = {
+      var res = Graph(
+        Triple(ldpcUri, ldp.created, uri),
         Triple(uri, stat.mtime, TypedLiteral(attrs.lastModifiedTime().toMillis.toString,xsd.integer))
+      )
       if (attrs.isDirectory)
-        res + Triple(uri, rdf.typ, ldp.Container)
+        res union Graph(Triple(uri, rdf.typ, ldp.Container))
       else if (attrs.isSymbolicLink) {
         val target: Path = root.resolve(Files.readSymbolicLink(path))
-        res + Triple(uri, stat.size, TypedLiteral((target.toFile.length()).toString, xsd.integer))
+        res union Graph(Triple(uri, stat.size, TypedLiteral((target.toFile.length()).toString, xsd.integer)))
       } else {
         res
       }
@@ -109,7 +115,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
     } else Graph.empty
   }
 
-  def absoluteUri(pathSegment: String): Plantain#URI =  uriW[Plantain](ldpcUri)/pathSegment
+  def absoluteUri(pathSegment: String): Rdf#URI =  uriW[Rdf](ldpcUri)/pathSegment
 
   /**
    *
@@ -117,12 +123,12 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
    * @throws ResourceDoesNotExist
    * @return
    */
-  override def getResource(name: String): Try[LocalNamedResource[Plantain]] = {
+  override def getResource(name: String): Try[LocalNamedResource[Rdf]] = {
     super.getResource(name) match {
-      case ok @ Success(ldpr: LocalLDPR[Plantain]) => {
+      case ok @ Success(ldpr: LocalLDPR[Rdf]) => {
         if (name == fileName) {
           //if this is the index file, add all the content info
-          var contentGrph = ldpr.graph + Triple(ldpcUri, rdf.typ, ldp.Container)
+          var contentGrph = ldpr.graph union Graph(Triple(ldpcUri, rdf.typ, ldp.Container))
           Files.walkFileTree(root, util.Collections.emptySet(), 1,
             new SimpleFileVisitor[Path] {
 
@@ -136,7 +142,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
                 FileVisitResult.CONTINUE
               }
             })
-          Success(LocalLDPR[Plantain](ldpcUri, contentGrph, root, Some(new Date(Files.getLastModifiedTime(root).toMillis))))
+          Success(LocalLDPR[Rdf](ldpcUri, contentGrph, root, Some(new Date(Files.getLastModifiedTime(root).toMillis))))
         } else ok
       }
       case badContent @ Success(_) =>  Failure(StorageError(s"Data in LDPC must be a graph. "))
@@ -170,30 +176,30 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
    * @return a script for further evaluation
    */
   override
-  def runLocalCmd[A](cmd: LDPCommand[Plantain, LDPCommand.Script[Plantain,A]]) {
+  def runLocalCmd[A](cmd: LDPCommand[Rdf, LDPCommand.Script[Rdf,A]]) {
     log.debug(s"received $cmd")
     cmd match {
       case CreateLDPR(_, slugOpt, graph, k) => {
         val (uri, path) = mkFile(slugOpt, ext)
 
         val (actor, iri) = try {
-          val actor = context.actorOf(Props(new PlantainLDPRActor(uri, path)), path.getFileName.toString)
+          val actor = context.actorOf(Props(new LDPRActor(uri, path)), path.getFileName.toString)
           (actor, uri)
         } catch {
           case e: InvalidActorNameException => {
             val (uri2, path2) = mkFile(slugOpt, ext)
             Files.deleteIfExists(Files.readSymbolicLink(path))
             Files.delete(path)
-            val actor = context.actorOf(Props(new PlantainLDPRActor(uri2, path2)), path2.getFileName.toString)
+            val actor = context.actorOf(Props(new LDPRActor(uri2, path2)), path2.getFileName.toString)
             (actor, uri2)
           }
         }
 
         //todo: move this into the resource created ( it should know on creation how to find the parent )
-        val linkedGraph = graph + Triple(ldpcUri, ldp.created, iri)
+        val linkedGraph = graph union Graph(Triple(ldpcUri, ldp.created, iri))
 
         //todo: should these be in the header?
-        val scrpt = LDPCommand.updateLDPR[Plantain](iri, add = graphToIterable(linkedGraph)).flatMap(_ => k(iri))
+        val scrpt = LDPCommand.updateLDPR[Rdf](iri, add = graphToIterable(linkedGraph)).flatMap(_ => k(iri))
         actor forward ScriptMessage(scrpt)
       }
       case CreateBinary(_, slugOpt, mime: MimeType, k) => {
@@ -201,20 +207,20 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
           log.debug(s"Receiving createBinary message for resource with slug $slugOpt. ext=$ext")
           val (uri, path) = mkFile(slugOpt, ext)
           val (actor,iri) = try {
-            val actor = context.actorOf(Props(new PlantainLDPRActor(uri,path)),path.getFileName.toString)
+            val actor = context.actorOf(Props(new LDPRActor(uri,path)),path.getFileName.toString)
             (actor,uri)
           } catch {
             case e: InvalidActorNameException => {
               val (uri2,path2) = mkFile(slugOpt,ext)
               Files.deleteIfExists(Files.readSymbolicLink(path))
               Files.delete(path)
-              val actor = context.actorOf(Props(new PlantainLDPRActor(uri2,path2)),path2.getFileName.toString)
+              val actor = context.actorOf(Props(new LDPRActor(uri2,path2)),path2.getFileName.toString)
               (actor, uri2)
             }
           }
-          val s = LDPCommand.getResource[Plantain,NamedResource[Plantain]](iri)
+          val s = LDPCommand.getResource[Rdf,NamedResource[Rdf]](iri)
           actor forward ScriptMessage(s.flatMap{
-            case br: BinaryResource[Plantain] => k(br)
+            case br: BinaryResource[Rdf] => k(br)
             case x => throw UnsupportedMediaType("was looking for a BinaryResource but received a "+x.getClass)//todo: not the right error code
           })
           //todo: make sure the uri does not end in ";aclPath" or whatever else the aclPath standard will be
@@ -223,16 +229,16 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
       case CreateContainer(_,slugOpt,graph,k) => {
         val (uri, pathSegment) = mkDir(slugOpt)
         val p = root.resolve(pathSegment)
-        val dirUri = uriW[Plantain](uri) / ""
-        val ldpc = context.actorOf(Props(new PlantainLDPCActor(dirUri, p)), pathSegment.getFileName.toString)
+        val dirUri = uriW[Rdf](uri) / ""
+        val ldpc = context.actorOf(Props(new LDPCActor(dirUri, p)), pathSegment.getFileName.toString)
         val creationRel = Triple(ldpcUri, ldp.created, dirUri)
-        val linkedGraph = graph + creationRel
+        val linkedGraph = graph union Graph(creationRel)
         //todo: should these be in the header?
-        val scrpt = LDPCommand.updateLDPR[Plantain](dirUri, add = graphToIterable(linkedGraph)).flatMap(_ => k(dirUri))
+        val scrpt = LDPCommand.updateLDPR[Rdf](dirUri, add = graphToIterable(linkedGraph)).flatMap(_ => k(dirUri))
         ldpc forward ScriptMessage(scrpt)
       }
       case DeleteResource(uri, a) => {
-//        val name = uriW[Plantain](uri).lastPathSegment
+//        val name = uriW[Rdf](uri).lastPathSegment
         log.info(s"DeleteResource($uri,$a) Resource is a Container")
         if (context.children.size == 0 ) { //delete all special directory files
           Files.walkFileTree(root,new SimpleFileVisitor[Path]() {
@@ -266,7 +272,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
   }
 
 
-  protected def mkFile[A](slugOpt: Option[String], ext: String): (Plantain#URI, Path) = {
+  protected def mkFile[A](slugOpt: Option[String], ext: String): (Rdf#URI, Path) = {
     val slug = slugOpt.getOrElse(generateRandomString)
     mkFile(slug,ext)
   }
@@ -276,7 +282,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
    * @param slug
    * @param ext for the extension of the file, should not be the "" string
    **/
-  protected def mkFile[A](slug: String, ext: String): (Plantain#URI, Path) = {
+  protected def mkFile[A](slug: String, ext: String): (Rdf#URI, Path) = {
     assert (ext != "")
     val safeSlug = slug.replaceAll("[/.]+", "_")
     val slugLink = root.resolve(safeSlug)
@@ -292,7 +298,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
       Files.createFile(slugAcl)
       log.debug(s"Created file $slugFile with acl file $slugAcl")
       val symPath = Files.createSymbolicLink(slugLink, slugFile.getFileName)
-      val uri = uriW[Plantain](ldpcUri) / symPath.getFileName.toString
+      val uri = uriW[Rdf](ldpcUri) / symPath.getFileName.toString
       (uri, symPath)
     }
   }
@@ -306,7 +312,7 @@ class PlantainLDPCActor(ldpcUri: Plantain#URI, root: Path)
    * creates a dir/collection from the slug, and returns the URI and path for it.
    * @param slugOpt, optional file name
    **/
-  protected def mkDir[A](slugOpt: Option[String]): (Plantain#URI, Path) = {
+  protected def mkDir[A](slugOpt: Option[String]): (Rdf#URI, Path) = {
     val path = slugOpt match {
       case None =>  Files.createTempDirectory(root,"d")
       case Some(slug) => {

@@ -8,9 +8,9 @@ import rww.ldp._
 import java.io.File
 import java.nio.file.Path
 import akka.util.Timeout
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{Executors, ExecutorService, TimeUnit}
 import rww.ldp.actor._
-import rww.ldp.actor.plantain.{PlantainLDPCSubdomainActor, PlantainLDPCActor}
+import rww.ldp.actor.plantain.{LDPCSubdomainActor, LDPCActor}
 
 import java.net.URL
 import rww.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
@@ -20,6 +20,7 @@ import org.w3.banana._
 import org.w3.banana.plantain._
 import rww.play.rdf.IterateeSelector
 import rww.ldp.actor.remote.LDPWebActor
+import scala.util.Try
 
 
 /**
@@ -98,37 +99,29 @@ trait Setup {
 }
 
 
-
 object plantain extends Setup {
   type Rdf = Plantain
 
   implicit val ops = Plantain.ops
   implicit val sparqlOps = Plantain.sparqlOps
   val blockingIteratee = new PlantainBlockingRDFIteratee
-  implicit val writerSelector : RDFWriterSelector[Plantain] =
-     RDFWriterSelector[Plantain, Turtle] combineWith RDFWriterSelector[Plantain, RDFXML]
+  implicit val writerSelector : RDFWriterSelector[Rdf] =
+     RDFWriterSelector[Rdf, Turtle] combineWith RDFWriterSelector[Rdf, RDFXML]
 
   implicit val solutionsWriterSelector = Plantain.solutionsWriterSelector
+  implicit val patch: LDPatch[Rdf,Try] = PlantainLDPatch
+  implicit val timeout = Timeout(30,TimeUnit.SECONDS)
 
   //we don't have an iteratee selector for Plantain
-  implicit val iterateeSelector: IterateeSelector[Plantain#Graph] = blockingIteratee.BlockingIterateeSelector
-  implicit val sparqlSelector:  IterateeSelector[Plantain#Query] =  PlantainSparqlQueryIteratee.sparqlSelector
-  implicit val sparqlupdateSelector:  IterateeSelector[Plantain#UpdateQuery] =  PlantainSparqlUpdateIteratee.sparqlSelector
+  implicit val iterateeSelector: IterateeSelector[Rdf#Graph] = blockingIteratee.BlockingIterateeSelector
+  implicit val sparqlSelector:  IterateeSelector[Rdf#Query] =  PlantainSparqlQueryIteratee.sparqlSelector
+  implicit val sparqlupdateSelector:  IterateeSelector[Rdf#UpdateQuery] =  PlantainSparqlUpdateIteratee.sparqlSelector
   implicit val webClient: WebClient[Plantain] = new WSClient(Plantain.readerSelector,Plantain.turtleWriter)
 
-  val rww: RWWActorSystemImpl[Plantain] = {
-    val w = new RWWActorSystemImpl[Plantain](ops.URI(rwwRoot.toString))(ops,Timeout(30,TimeUnit.SECONDS))
-    val rootActor = if (plantain.rwwSubdomainsEnabled)
-      Props(new PlantainLDPCSubdomainActor(w.baseUri, rootContainerPath))
-    else Props(new PlantainLDPCActor(w.baseUri, rootContainerPath))
-    //, path,Some(Props(new PlantainWebProxy(base,Plantain.readerSelector))))
-    val localActor = w.system.actorOf(rootActor,"rootContainer")
-    w.setLDPSActor(localActor)
-    val baseUri = ops.URI(rwwRoot.toString)
-
-    val webActor = w.system.actorOf(Props(new LDPWebActor[Plantain](baseUri,webClient)),"webActor")
-    w.setWebActor(webActor)
-    w
+  val rww: RWWActorSystem[Plantain] = {
+    val rootURI = ops.URI(rwwRoot.toString)
+    if (plantain.rwwSubdomainsEnabled) RWWActorSystemImpl.withSubdomains[Plantain](rootURI, rootContainerPath, webClient)
+    else RWWActorSystemImpl.withSubdomains[Plantain](rootURI, rootContainerPath, webClient)
   }
 
 

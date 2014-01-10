@@ -3,6 +3,7 @@ package rww.ldp.model
 import org.w3.banana.RDF
 import java.nio.file.Path
 import org.w3.banana.syntax.URISyntax
+import scala.util.Try
 
 /**
  * A resource on the server ( Resource is already taken. )
@@ -36,7 +37,7 @@ trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
 
   def path: Path
 
-  lazy val acl: Option[Rdf#URI]= Some{
+  lazy val acl: Try[Rdf#URI]= Try{
     var loc=location.toString
     if (loc.endsWith(".acl")) {
       location

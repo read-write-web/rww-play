@@ -1,28 +1,81 @@
 package rww.ldp.actor
 
 import org.slf4j.LoggerFactory
-import org.w3.banana.{RDFOps, RDF}
+import org.w3.banana._
 import java.nio.file.Path
 import akka.actor._
 import akka.util.Timeout
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import akka.pattern.ask
-import akka.actor.DeadLetter
 import rww.ldp._
 import rww.ldp.actor.router._
-import rww.ldp.actor.common.CommonActorMessages
-import CommonActorMessages._
-import rww.ldp.LDPExceptions._
+import rww.ldp.actor.remote.LDPWebActor
+import rww.ldp.actor.common.CommonActorMessages.ScriptMessage
+import akka.actor.DeadLetter
+import rww.ldp.LDPExceptions.ResourceDoesNotExist
+import rww.ldp.actor.common.CommonActorMessages.LDPSActorSetterMessage
+import rww.ldp.actor.common.CommonActorMessages.CmdMessage
+import rww.ldp.actor.common.CommonActorMessages.WebActorSetterMessage
+import rww.ldp.actor.plantain.LDPCActor
+import rww.ldp.actor.common.CommonActorMessages.ScriptMessage
+import akka.actor.DeadLetter
+import rww.ldp.LDPExceptions.ResourceDoesNotExist
+import rww.ldp.actor.common.CommonActorMessages.LDPSActorSetterMessage
+import rww.ldp.actor.common.CommonActorMessages.CmdMessage
+import rww.ldp.actor.common.CommonActorMessages.WebActorSetterMessage
+import rww.ldp.actor.common.CommonActorMessages.ScriptMessage
+import akka.actor.DeadLetter
+import rww.ldp.LDPExceptions.ResourceDoesNotExist
+import rww.ldp.actor.common.CommonActorMessages.LDPSActorSetterMessage
+import rww.ldp.actor.common.CommonActorMessages.CmdMessage
+import rww.ldp.actor.common.CommonActorMessages.WebActorSetterMessage
+import org.w3.banana.plantain.LDPatch
+import scala.util.Try
 
 object RWWActorSystemImpl {
 
   val logger = LoggerFactory.getLogger(this.getClass)
 
 
-  def apply[Rdf<:RDF](baseUri: Rdf#URI, root: Path, cache: Option[Props])
-                     (implicit ops: RDFOps[Rdf], timeout: Timeout = Timeout(5000)): RWWActorSystemImpl[Rdf] =
-    new RWWActorSystemImpl(baseUri)
+  /**
+   * Convenience function to start a RWWActor with a root subdomains LDPC
+   * @param baseUri the base uri of the root LDPC
+   * @param baseDir the base directory for the root LDPC
+   * @param fetcher the web fetcher
+   * @param ops RDF ops for the given Rdf
+   * @param sparqlGraph sparql operations on graphs
+   * @param ec execution context
+   * @param timeout timeout for the requests ( I think, check ... )
+   * @tparam Rdf an implementation of RDF
+   * @return the rww actor system through which all requests can be made
+   */
+  def withSubdomains[Rdf<:RDF](baseUri: Rdf#URI, baseDir: Path, fetcher: WebClient[Rdf])(implicit
+                                                 ops: RDFOps[Rdf],
+                                                 sparqlGraph: SparqlGraph[Rdf],
+                                                 reader: RDFReader[Rdf, Turtle],
+                                                 writer: RDFWriter[Rdf, Turtle],
+                                                 patch: LDPatch[Rdf, Try],
+                                                 ec: ExecutionContext,
+                                                 timeout: Timeout): RWWActorSystem[Rdf] = {
+    val rwwActor =  new RWWActorSystemImpl(baseUri,Props(new RWWRoutingActorSubdomains(baseUri)))
+    rwwActor.setWebActor(rwwActor.system.actorOf(Props(new LDPWebActor[Rdf](baseUri, fetcher)), "webActor"))
+    rwwActor.setLDPSActor(rwwActor.system.actorOf(Props(new LDPCActor[Rdf](baseUri, baseDir)),"rootContainer"))
+    return rwwActor
+  }
 
+  def plain[Rdf<:RDF](baseUri: Rdf#URI, baseDir: Path, fetcher: WebClient[Rdf])(implicit
+                                        ops: RDFOps[Rdf],
+                                        sparqlGraph: SparqlGraph[Rdf],
+                                        reader: RDFReader[Rdf, Turtle],
+                                        writer: RDFWriter[Rdf, Turtle],
+                                        patch: LDPatch[Rdf, Try],
+                                        ec: ExecutionContext,
+                                        timeout: Timeout): RWWActorSystem[Rdf] = {
+    val rwwActor = new RWWActorSystemImpl(baseUri,Props(new RWWRoutingActor(baseUri)))
+    rwwActor.setWebActor(rwwActor.system.actorOf(Props(new LDPWebActor[Rdf](baseUri, fetcher)), "webActor"))
+    rwwActor.setLDPSActor(rwwActor.system.actorOf(Props(new LDPCActor[Rdf](baseUri, baseDir)),"rootContainer"))
+    return rwwActor
+  }
 
 }
 
@@ -33,11 +86,11 @@ object RWWActorSystemImpl {
  * @param timeout
  * @tparam Rdf
  */
-class RWWActorSystemImpl[Rdf<:RDF](val baseUri: Rdf#URI)
+class RWWActorSystemImpl[Rdf<:RDF](val baseUri: Rdf#URI, routingActor: Props)
                      (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RWWActorSystem[Rdf] {
   import RWWActorSystem._
   val system = ActorSystem(systemPath)
-  val rwwActorRef = system.actorOf(Props(new RWWRoutingActorSubdomains(baseUri)),name="router")
+  val rwwActorRef = system.actorOf(routingActor,name="router")
   import RWWActorSystemImpl.logger
 
   logger.info(s"Created rwwActorRef=<$rwwActorRef>")

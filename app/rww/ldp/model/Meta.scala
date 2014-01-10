@@ -2,6 +2,7 @@ package rww.ldp.model
 
 import org.w3.banana.{RDFOps, PointedGraph, RDF}
 import java.util.Date
+import scala.util.Try
 
 /**
  *   Metadata about the representation of a resource, or about the state of a resource ( not sure which yet )
@@ -18,7 +19,7 @@ trait Meta[Rdf <: RDF] {
   def location: Rdf#URI
 
   //move all the metadata to this, and have the other functions
-  def meta: PointedGraph[Rdf]
+  def meta: Try[PointedGraph[Rdf]]
 
   def ops: RDFOps[Rdf]
 
@@ -33,7 +34,7 @@ trait Meta[Rdf <: RDF] {
   /**
    * location of initial ACL for this resource
    **/
-  def acl: Option[Rdf#URI]
+  def acl: Try[Rdf#URI]
 
   //other metadata candidates:
   // - owner

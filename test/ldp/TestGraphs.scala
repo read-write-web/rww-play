@@ -11,6 +11,7 @@ import org.w3.banana
 import org.scalatest.{Suite, BeforeAndAfter}
 import rww.ldp._
 import rww.ldp.model.{LDPR, NamedResource}
+import scala.util.{Try, Success}
 
 /**
  * Build up a set of Graphs with representing some realistic scenarios that can then be used
@@ -205,13 +206,13 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
       /**
        * location of initial ACL for this resource
        **/
-      def acl = Some{
+      def acl = Try {
         if (location.toString.endsWith(";wac")) location
         else ops.URI(location.toString+";wac")
       }
 
       //move all the metadata to this, and have the other functions
-      def meta = PointedGraph(location,metaGraph)
+      def meta = Success(PointedGraph(location,metaGraph))
 
       def size = None
     }

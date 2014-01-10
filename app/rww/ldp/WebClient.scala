@@ -54,15 +54,15 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
    * following RFC5988 http://tools.ietf.org/html/rfc5988
    * todo: map all the other headers to RDF graphs where it makes sense
    */
-  def parseHeaders(base: Rdf#URI, headers: FluentCaseInsensitiveStringsMap): PointedGraph[Rdf] = {
+  def parseHeaders(base: Rdf#URI, headers: FluentCaseInsensitiveStringsMap): Try[PointedGraph[Rdf]] = {
     import collection.convert.wrapAsScala._
     // TODO we temporarily disable parsing of link headers because of a banana link header parsing bug:
     // see https://github.com/w3c/banana-rdf/issues/84
     // see https://github.com/stample/rww-play/issues/76
-    // val linkHeaders = Option(headers.get("Link")).map{_.toList}.getOrElse(Nil)
-    val linkHeaders = Nil
-    val linkgraph = union(linkHeaders.map(parser.parse(_).resolveAgainst(base)))
-    PointedGraph(base, linkgraph)
+    // val linkHeaders = Option().map{_.toList}.getOrElse(Nil)
+    parser.parse(headers.get("Link"):_*).map{ graph =>
+      PointedGraph(base,graph.resolveAgainst(base))
+    }
   }
 
   //todo: the HashMap does not give enough information on how the failure occurred. It should contain metadata on the

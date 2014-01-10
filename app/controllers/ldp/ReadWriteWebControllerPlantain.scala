@@ -26,10 +26,10 @@ import rww.play.auth.WebIDAuthN
 import rww.ldp._
 import rww.ldp.auth.{WACAuthZ, WebIDVerifier}
 import java.net.URL
-import rww.ldp.actor.RWWActorSystemImpl
+import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
 
 
-class ReadWriteWebControllerPlantain(base: URL, path: Path, rww: RWWActorSystemImpl[Plantain])(implicit val ops: RDFOps[Plantain],
+class ReadWriteWebControllerPlantain(base: URL, path: Path, rww: RWWActorSystem[Plantain])(implicit val ops: RDFOps[Plantain],
             sparqlOps: SparqlOps[Plantain],
             graphIterateeSelector: IterateeSelector[Plantain#Graph],
             sparqlIterateeSelector: IterateeSelector[Plantain#Query],

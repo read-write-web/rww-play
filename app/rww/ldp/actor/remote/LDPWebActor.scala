@@ -35,8 +35,9 @@ import rww.ldp.model.{LDPR, Meta}
 * @tparam Rdf
 */
 class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
-                           (implicit ops: RDFOps[Rdf], sparqlGraph: SparqlGraph[Rdf], ec: ExecutionContext,
-                            turtleWriter: RDFWriter[Rdf,Turtle]) extends RWWBaseActor {
+                           (implicit ops: RDFOps[Rdf], sparqlGraph: SparqlGraph[Rdf],
+                            writer: Writer[Rdf#Graph,Turtle],
+                            ec: ExecutionContext) extends RWWBaseActor {
 
   import ops._
   import org.w3.banana.syntax._
@@ -232,9 +233,9 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
 
 
   /**
-   * @param script
-   * @param t
-   * @tparam A
+   * @param sender the sender of the script
+   * @param script the script sent
+   * @tparam A  the return value of the script
    * @throws NoSuchElementException if the resource does not exist
    */
   final def run[A](sender: ActorRef, script: LDPCommand.Script[Rdf,A]) {

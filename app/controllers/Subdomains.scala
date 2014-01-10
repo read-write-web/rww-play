@@ -22,7 +22,7 @@ import play.api.mvc.SimpleResult
 import play.api.mvc.ResponseHeader
 import utils.subdomain.SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
 import java.security.interfaces.RSAPublicKey
-import rww.ldp.actor.RWWActorSystemImpl
+import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
 
 case class CreateUserSpaceForm(subdomain: String, key: PublicKey, email: String)
 
@@ -34,7 +34,7 @@ case class CreateUserSpaceRequest(subdomain: String, email: String)
 /**
  *
  */
-class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Path, rww: RWWActorSystemImpl[Rdf])
+class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Path, rww: RWWActorSystem[Rdf])
                           (implicit ops: RDFOps[Rdf]) {
 
   import play.api.libs.concurrent.Execution.Implicits.defaultContext

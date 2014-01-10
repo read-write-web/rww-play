@@ -1,65 +1,44 @@
 package test.ldp
 
-import akka.actor.Props
-import akka.util.Timeout
-import java.net.{URL => jURL, URI => jURI}
-import java.nio.file.Files
+import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import org.scalatest.matchers.MustMatchers
-import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, WordSpec}
+import org.scalatest.WordSpec
 import org.w3.banana._
 import rww.ldp.LDPCommand._
-import org.w3.banana.plantain.Plantain
+import org.w3.banana.plantain.{LDPatch, Plantain}
 import play.api.libs.iteratee._
-import scala.Some
-import scala.concurrent.{ExecutionContext, Await}
-import scala.concurrent.duration.Duration
-import rww.ldp.auth.{WebIDPrincipal, WebIDVerifier, WACAuthZ}
+import rww.ldp.auth.{WebIDVerifier, WACAuthZ}
 import rww.ldp._
-import rww.ldp.actor.{RWWActorSystemImpl, RWWActorSystem}
-import rww.ldp.actor.plantain.PlantainLDPCActor
-import controllers.plantain.Rdf
-import rww.ldp.actor.remote.LDPWebActor
+import rww.ldp.actor.RWWActorSystem
+import scala.Some
+import rww.ldp.auth.WebIDPrincipal
+import scala.util.Try
+import akka.util.Timeout
 
 
-object WebTestSuite {
-
-  import org.w3.banana.plantain.model.URI
-  implicit val ec = ExecutionContext.Implicits.global
-
-  implicit val timeout = Timeout(10,TimeUnit.MINUTES)
-  val dir = Files.createTempDirectory("plantain" )
-  val baseUri = URI.fromString("http://example.com/foo/")
-  val rww: RWWActorSystemImpl[Rdf] = new RWWActorSystemImpl[Rdf](baseUri)
-  rww.setLDPSActor(rww.system.actorOf(Props(new PlantainLDPCActor(rww.baseUri, dir)),"rootContainer"))
-}
-
-class PlantainWebTest extends WebTestSuite[Plantain](
-  WebTestSuite.rww,WebTestSuite.baseUri)(
-  Plantain.ops,Plantain.sparqlOps,Plantain.sparqlGraph,
-  Plantain.recordBinder,Plantain.turtleWriter,Plantain.rdfxmlReader)
-
+class PlantainWebTest extends WebTestSuite[Plantain](baseUri,dir)
 /**
  *
  * tests the local and remote LDPR request, creation, LDPC creation, access control, etc...
  */
-abstract class WebTestSuite[Rdf<:RDF](rww: RWWActorSystem[Rdf], baseUri: Rdf#URI)(
-                                 implicit val ops: RDFOps[Rdf],
-                                  sparqlOps: SparqlOps[Rdf],
-                                  sparqlGraph: SparqlGraph[Rdf],
-                                 val recordBinder: binder.RecordBinder[Rdf],
-                                 turtleWriter: RDFWriter[Rdf,Turtle],
-                                 reader: RDFReader[Rdf, RDFXML])
+abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
+                                     (implicit val ops: RDFOps[Rdf],
+                                      sparqlOps: SparqlOps[Rdf],
+                                      sparqlGraph: SparqlGraph[Rdf],
+                                      val recordBinder: binder.RecordBinder[Rdf],
+                                      turtleWriter: RDFWriter[Rdf,Turtle],
+                                      reader: RDFReader[Rdf, Turtle],
+                                      patch: LDPatch[Rdf,Try])
     extends WordSpec with MustMatchers  with TestHelper with TestGraphs[Rdf]  {
 
     import diesel._
     import ops._
     import syntax._
 
+  implicit val timeout = Timeout(1, TimeUnit.MINUTES)
+  val rww: RWWActorSystem[Rdf] = actor.RWWActorSystemImpl.plain[Rdf](baseUri, dir, testFetcher)
 
-  implicit val ec = ExecutionContext.Implicits.global
-
-  rww.setWebActor( rww.system.actorOf(Props(new LDPWebActor[Rdf](baseUri,testFetcher)),"webActor")  )
   val webidVerifier = new WebIDVerifier(rww)
   implicit val authz: WACAuthZ[Rdf] =  new WACAuthZ[Rdf](new WebResource(rww))(ops)
 

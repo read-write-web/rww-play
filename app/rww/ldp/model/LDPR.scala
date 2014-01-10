@@ -4,6 +4,8 @@ import org.w3.banana._
 import java.nio.file.Path
 import java.util.Date
 import scala.Some
+import scala.util.{Failure, Try, Success}
+import rww.ldp.LDPExceptions.InformationNotFound
 
 /**
  * todo: naming
@@ -41,11 +43,11 @@ case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
                               (implicit val ops: RDFOps[Rdf])
   extends LDPR[Rdf] with LocalNamedResource[Rdf]{
   import ops._
-  def meta = PointedGraph(location,Graph.empty)  //todo: build up aclPath from local info
+  def meta = Success(PointedGraph(location,Graph.empty))  //todo: build up aclPath from local info
   def size = None
 }
 
-case class RemoteLDPR[Rdf<:RDF](location: Rdf#URI, graph: Rdf#Graph, meta: PointedGraph[Rdf], updated: Option[Date])
+case class RemoteLDPR[Rdf<:RDF](location: Rdf#URI, graph: Rdf#Graph, meta: Try[PointedGraph[Rdf]], updated: Option[Date])
                                (implicit val ops: RDFOps[Rdf]) extends LDPR[Rdf] {
   import org.w3.banana.diesel._
 
@@ -54,6 +56,12 @@ case class RemoteLDPR[Rdf<:RDF](location: Rdf#URI, graph: Rdf#Graph, meta: Point
   /**
    * location of initial ACL for this resource
    **/
-  lazy val acl: Option[Rdf#URI] = (meta/link.acl).collectFirst{ case PointedGraph(p: Rdf#URI,g) => p }
+  lazy val acl: Try[Rdf#URI] = meta.flatMap{ m=>
+    val acls = m/link.acl
+    val optURI = acls.collectFirst[Try[Rdf#URI]]{
+      case PointedGraph(p,g) if (ops.foldNode(p)(uri=>true,b=>false,lit=>false)) => Success(p.asInstanceOf[Rdf#URI])
+    }
+    optURI.getOrElse(Failure(new InformationNotFound("No acl to be found in Link headers")))
+  }
   def size = None
 }

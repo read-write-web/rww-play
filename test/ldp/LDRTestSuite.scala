@@ -1,60 +1,44 @@
 package test.ldp
 
-import akka.actor.Props
 import akka.util.Timeout
 import java.net.{URL => jURL, URI => jURI}
-import java.nio.file.{Path, Files}
+import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import org.scalatest.matchers.MustMatchers
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.w3.banana._
 import rww.ldp.LDPCommand._
-import org.w3.banana.plantain.Plantain
+import org.w3.banana.plantain.{LDPatch, Plantain}
 import play.api.libs.iteratee._
-import scala.concurrent.{ExecutionContext, Await}
+import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import rww.ldp._
 import rww.ldp.auth._
-import rww.ldp.actor.plantain.PlantainLDPCActor
-import rww.ldp.actor.remote.LDPWebActor
-import rww.ldp.actor.{RWWActorSystemImpl, RWWActorSystem}
+import rww.ldp.actor.RWWActorSystem
+import scala.Some
+import scala.util.Try
 
 
-object LDRTestSuite {
-
-  import org.w3.banana.plantain.model.URI
-
-  val dir: Path = Files.createTempDirectory("plantain" )
-  val baseUri = URI.fromString("http://example.com/foo/")
-  val rootLDPCActorProps = Props(new PlantainLDPCActor(baseUri, dir))
-}
-
-class PlantainLDRTest extends LDRTestSuite[Plantain](LDRTestSuite.baseUri, LDRTestSuite.dir, LDRTestSuite.rootLDPCActorProps)(
-  Plantain.ops,Plantain.sparqlOps,Plantain.sparqlGraph,
-  Plantain.recordBinder,Plantain.turtleWriter,
-  Plantain.rdfxmlReader)
-
+class PlantainLDRTest extends LDRTestSuite[Plantain](baseUri, dir)
 /**
  * test the LinkedResource ~ and ~> implementations
  */
-abstract class LDRTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path, rootLDPCActorProps: Props )(
+abstract class LDRTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)(
   implicit val ops: RDFOps[Rdf],
   sparqlOps: SparqlOps[Rdf],
   sparqlGraph: SparqlGraph[Rdf],
   val recordBinder: binder.RecordBinder[Rdf],
   turtleWriter: RDFWriter[Rdf,Turtle],
-  reader: RDFReader[Rdf, RDFXML])
+  reader: RDFReader[Rdf, Turtle],
+  patch: LDPatch[Rdf,Try])
   extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
 
-  import diesel._
   import ops._
   import syntax._
 
-  implicit val timeout = Timeout(10,TimeUnit.MINUTES)
-  val rww: RWWActorSystem[Rdf] = new RWWActorSystemImpl[Rdf](baseUri)
+  implicit val timeout = Timeout(1,TimeUnit.MINUTES)
+  val rww: RWWActorSystem[Rdf] = actor.RWWActorSystemImpl.plain[Rdf](baseUri,dir,testFetcher)
   implicit val authz =  new WACAuthZ[Rdf](new WebResource(rww))
-  rww.setLDPSActor(rww.system.actorOf(rootLDPCActorProps,"rootContainer"))
-  rww.setWebActor( rww.system.actorOf(Props(new LDPWebActor[Rdf](baseUri,testFetcher)),"webActor")  )
 
   val webidVerifier = new WebIDVerifier(rww)
 
