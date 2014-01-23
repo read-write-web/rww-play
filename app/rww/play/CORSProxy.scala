@@ -16,6 +16,7 @@
 
 package rww.play
 
+import _root_.play.api.Logger
 import _root_.play.api.mvc.{AnyContent, SimpleResult, Controller, Action,Request => PlayRequest}
 import org.w3.banana.{RDFOps, WriterSelector, RDF,Writer}
 import rww.play.PlayWriterBuilder._
@@ -51,7 +52,11 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
 
   // see https://github.com/stample/rww-play/issues/77
   // we don't want security warning on browser if there's an error
-  private def errorResult(result: SimpleResult): SimpleResult = result.withHeaders(AllowOriginHeader("*"))
+  private def errorResult(result: SimpleResult,t: Throwable)(implicit url:String): SimpleResult = {
+    val rez = result.withHeaders(AllowOriginHeader("*"))
+    Logger.warn(s"CORS proxy error!\n[URL]=$url\n[Result]=${rez}",t)
+    rez
+  }
 
 
   private val UnresolvedAddressExceptionExtractor = RootCauseExtractor.of[UnresolvedAddressException]
@@ -65,18 +70,19 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
     val futureResponse = for {
       namedResource <- wsClient.get( URI(url) )
     } yield createResultForNamedResource(namedResource)
+    implicit var implicitUrl = url
     futureResponse recover {
-      case RemoteException(msg, headers) => errorResult(ExpectationFailed(msg))
-      case MissingParserException(err) => errorResult(ExpectationFailed(err))
-      case ParserException(msg,err) => errorResult(ExpectationFailed(msg+"\n"+err))
-      case LocalException(msg) => errorResult(ExpectationFailed(msg))
+      case e @ RemoteException(msg, headers) => errorResult(ExpectationFailed(msg),e)
+      case e @ MissingParserException(err) => errorResult(ExpectationFailed(err),e)
+      case e @ ParserException(msg,err) => errorResult(ExpectationFailed(msg+"\n"+err),e)
+      case e @ LocalException(msg) => errorResult(ExpectationFailed(msg),e)
       // TODO these low level exceptions should rather be handled at the client level and expose other exceptions
       // because exception introspection (looking for root cause) is bad and create coupling
-      case UnresolvedAddressExceptionExtractor(e) => errorResult(BadGateway(Throwables.getStackTraceAsString(e)))
-      case NoRouteToHostExceptionExtractor(e) => errorResult(BadGateway(Throwables.getStackTraceAsString(e)))
-      case ConnectExceptionExtractor(e) => errorResult(GatewayTimeout(Throwables.getStackTraceAsString(e)))
-      case TimeoutExceptionExtractor(e) => errorResult(GatewayTimeout(Throwables.getStackTraceAsString(e)))
-      case e: Exception => errorResult(InternalServerError(Throwables.getStackTraceAsString(e)))
+      case e @ UnresolvedAddressExceptionExtractor(rootE) => errorResult(BadGateway(Throwables.getStackTraceAsString(e)),e)
+      case e @ NoRouteToHostExceptionExtractor(rootE) => errorResult(BadGateway(Throwables.getStackTraceAsString(e)),e)
+      case e @ ConnectExceptionExtractor(rootE) => errorResult(GatewayTimeout(Throwables.getStackTraceAsString(e)),e)
+      case e @ TimeoutExceptionExtractor(rootE) => errorResult(GatewayTimeout(Throwables.getStackTraceAsString(e)),e)
+      case e: Exception => errorResult(InternalServerError(Throwables.getStackTraceAsString(e)),e)
     }
   }
 

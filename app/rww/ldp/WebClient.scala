@@ -56,7 +56,11 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
    */
   def parseHeaders(base: Rdf#URI, headers: FluentCaseInsensitiveStringsMap): Try[PointedGraph[Rdf]] = {
     import collection.convert.wrapAsScala._
-    parser.parse(headers.get("Link"):_*).map{ graph =>
+    WebClient.log.info(s"Link headers (temporary disabled) are: ${headers.get("Link")}")
+    val linkHeaders = Nil
+    // TODO, put back link header parsing when https://github.com/stample/rww-play/issues/80 is fixed !!!
+    //val linkHeaders = headers.get("Link")
+    parser.parse(linkHeaders:_*).map{ graph =>
       PointedGraph(base,graph.resolveAgainst(base))
     }
   }
