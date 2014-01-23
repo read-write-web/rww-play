@@ -147,7 +147,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
    * @return
    */
   def auth(request: PlayRequestHeader, path: String, mode: Method.Value): Future[jURI] = {
-    getAuthFor(URI(path), wacIt(mode)).flatMap { agents =>
+    getAuthorizedWebIDsFor(URI(path), wacIt(mode)).flatMap { agents =>
       Logger.debug(s"Agents found for $path with mode $mode are: $agents")
       if (agents.contains(foaf.Agent)) {
         Logger.info(s"All agents can access with mode $mode on ${request.path}")

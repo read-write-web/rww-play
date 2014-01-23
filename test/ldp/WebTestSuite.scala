@@ -2,7 +2,7 @@ package test.ldp
 
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-import org.scalatest.matchers.MustMatchers
+import org.scalatest.ShouldMatchers
 import org.scalatest.WordSpec
 import org.w3.banana._
 import rww.ldp.LDPCommand._
@@ -30,7 +30,7 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
                                       turtleWriter: RDFWriter[Rdf,Turtle],
                                       reader: RDFReader[Rdf, Turtle],
                                       patch: LDPatch[Rdf,Try])
-    extends WordSpec with MustMatchers  with TestHelper with TestGraphs[Rdf]  {
+    extends WordSpec with ShouldMatchers  with TestHelper with TestGraphs[Rdf]  {
 
     import diesel._
     import ops._
@@ -49,8 +49,8 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
       val ex = authz.acl(henryCard)
       val aclsFuture = ex.run(Iteratee.fold(List[LinkedDataResource[Rdf]]()){case (lst,ldr)=> ldr::lst })
       val res = aclsFuture.map{ res =>
-        res.size must be(1)
-        res(0).location must be(henryCardAcl)
+        res.size should be(1)
+        res(0).location should be(henryCardAcl)
         assert(res(0).resource.graph isIsomorphicWith henryCardAclGraph.resolveAgainst(henryCard))
       }
       res.getOrFail()
@@ -67,8 +67,8 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
 
     "Who can access Henry's WebID profile?" in {
       val ex = for {
-          read <- authz.getAuthFor(henryCard,wac.Read)
-          write <- authz.getAuthFor(henryCard,wac.Write)
+          read <- authz.getAuthorizedWebIDsFor(henryCard,wac.Read)
+          write <- authz.getAuthorizedWebIDsFor(henryCard,wac.Write)
          } yield {
            assert(read.contains(henry))
            assert(read.contains(foaf.Agent))
@@ -78,6 +78,24 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
       ex.getOrFail()
     }
 
+    "What methods does Henry's WebID profile permit an anonymous user" in {
+      val ex = authz.getAllowedMethodsForAgent(henryCard,List())
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read))
+    }
+
+    "What methods does Henry's WebID profile permit Henry to access" in {
+      val ex = authz.getAllowedMethodsForAgent(henryCard,List(henry))
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read,wac.Write))
+    }
+
+    "What methods does Henry's WebID profile acl permit Henry to access" in {
+      val ex = authz.getAllowedMethodsForAgent(henryCardAcl,List(henry))
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read,wac.Write))
+    }
+
     "henry creates his foaf list ( no ACL here )" in {
       testFetcher.synMap -= henryFoaf
       val ex = rww.execute{
@@ -85,7 +103,7 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
           foaf <- createLDPR(henryColl,Some("foaf"),henryFoafGraph)
           collGr <- getLDPR(henryColl)
         } yield {
-          foaf must be(henryFoaf)
+          foaf should be(henryFoaf)
           assert{
             (PointedGraph(henryColl,collGr)/rdfs.member).exists(_.pointer == henryFoaf)
           }
@@ -97,8 +115,8 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
     "Who can access Henry's foaf profile?" in {
       val ex =
         for {
-          read <- authz.getAuthFor(henryFoaf,wac.Read)
-         write <- authz.getAuthFor(henryFoaf,wac.Write)
+          read <- authz.getAuthorizedWebIDsFor(henryFoaf,wac.Read)
+         write <- authz.getAuthorizedWebIDsFor(henryFoaf,wac.Write)
         } yield {
           assert(read.contains(timbl),"timbl can read")
           assert(read.contains(bertails),"alex can read")
@@ -110,6 +128,32 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
 
       ex.getOrFail()
     }
+
+
+    "What methods does Henry's foaf profile permit an anonymous user" in {
+      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List())
+      val modes = ex.getOrFail()
+      modes should be(Set())
+    }
+
+    "What methods does Henry's foaf profile permit Henry to access" in {
+      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List(henry))
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read,wac.Write))
+    }
+
+    "What methods does Henry's foaf profile acl permit Henry to access" in {
+      val ex = authz.getAllowedMethodsForAgent(henryFoafWac,List(henry))
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read,wac.Write))
+    }
+
+    "What methods does Henry's foaf profile acl permit TimBL to access" in {
+      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List(timbl))
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read))
+    }
+
   }
 
 
@@ -128,8 +172,8 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
         aclGraph <- getLDPR(cardMeta.acl.get)
         containerAclGraph <- getLDPR(ldpcMeta.acl.get)
       } yield {
-        ldpc must be(bertailsContainer)
-        cardMeta.acl.get must be(bertailsCardAcl)
+        ldpc should be(bertailsContainer)
+        cardMeta.acl.get should be(bertailsCardAcl)
         assert(rGraph isIsomorphicWith (bertailsCardGraph union containsRel).resolveAgainst(bertailsCard))
         assert(aclGraph isIsomorphicWith bertailsCardAclGraph.resolveAgainst(bertailsCardAcl))
         assert(containerAclGraph isIsomorphicWith bertailsContainerAclGraph.resolveAgainst(bertailsContainerAcl))
@@ -148,8 +192,8 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
 
     "can Access Alex's profile" in {
       val ex = for {
-          read <- authz.getAuthFor(bertailsCard,wac.Read)
-          write <- authz.getAuthFor(bertailsCard,wac.Write)
+          read <- authz.getAuthorizedWebIDsFor(bertailsCard,wac.Read)
+          write <- authz.getAuthorizedWebIDsFor(bertailsCard,wac.Write)
         } yield {
           assert(read.contains(bertails))
           assert(read.contains(foaf.Agent))
@@ -162,8 +206,8 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
 
     "can Access other resources in Alex's container" in {
       val ex = for {
-        read <- authz.getAuthFor(bertailsCard, wac.Read)
-        write <- authz.getAuthFor(bertailsCard, wac.Write)
+        read <- authz.getAuthorizedWebIDsFor(bertailsCard, wac.Read)
+        write <- authz.getAuthorizedWebIDsFor(bertailsCard, wac.Write)
       } yield {
         assert(read.contains(bertails))
         assert(read.contains(foaf.Agent))
@@ -172,6 +216,31 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
       }
       ex.getOrFail()
     }
+
+    "What methods does Alex's profile permit an anonymous user" in {
+      val ex = authz.getAllowedMethodsForAgent(bertailsCard,List())
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read))
+    }
+
+    "What methods does Alex's profile permit Henry to access" in {
+      val ex = authz.getAllowedMethodsForAgent(bertailsCard,List(henry))
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read))
+    }
+
+    "What methods does Alex's profile acl permit Henry to access" in {
+      val ex = authz.getAllowedMethodsForAgent(bertailsCard,List(bertails))
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read,wac.Write))
+    }
+
+    "What methods does Alex's profile acl permit TimBL to access" in {
+      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List(timbl))
+      val modes = ex.getOrFail()
+      modes should be(Set(wac.Read))
+    }
+
 
   }
 
@@ -189,8 +258,8 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
           tpacGroup <- createLDPR(tpac, Some("group"), tpacGroupGraph)
           graph <- getLDPR(tpacGroup)
         } yield {
-          tpac must be(tpacColl)
-          tpacGroup must be(tpacGroupDoc)
+          tpac should be(tpacColl)
+          tpacGroup should be(tpacGroupDoc)
           assert(graph.relativize(tpacGroupDoc) isIsomorphicWith (tpacGroupGraph))
         }
       }

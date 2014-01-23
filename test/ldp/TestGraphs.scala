@@ -60,6 +60,16 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
     URI("#i") -- foaf.name ->- "Tim Berners-Lee"
     ).graph
 
+  val henrySpaceAcl = URI("http://bblfish.net/;wac")
+  lazy val henrySpaceAclGraph : Rdf#Graph = (
+    bnode("t1")
+      -- wac.accessToClass ->- ( bnode() -- wac.regex ->- "http://bblfish.net/.*;wac" )
+      -- wac.agent ->- henry
+      -- wac.mode ->- wac.Read
+      -- wac.mode ->- wac.Write
+    ).graph
+
+
   val henryCard = URI("http://bblfish.net/people/henry/card")
   val henry =  URI(henryCard.toString+"#me")
   val henryGraph : Rdf#Graph = (
@@ -79,6 +89,8 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
       -- wac.accessTo ->- henryCard
       -- wac.agentClass ->- foaf.Agent
       -- wac.mode ->- wac.Read
+    ).graph union (
+       henryCardAcl -- wac.include ->- henrySpaceAcl
     ).graph
 
   val henryFoaf = URI("http://bblfish.net/people/henry/foaf")
@@ -182,6 +194,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
     ).graph
 
   val defaultSynMap = Seq(
+    henrySpaceAcl -> henrySpaceAclGraph,
     henryColl -> henryCollGraph,
     henryCollWac -> henryCollWacGraph,
     henryCard -> henryGraph,

@@ -6,6 +6,7 @@ import scala.concurrent._
 import scala.util.{Failure, Success, Try}
 import utils.Iteratees
 import rww.ldp.actor.RWWActorSystem
+import controllers.plantain.Rdf
 
 /** A resource that can be found with its URI, and is linked to other
   * resources through links as URIs
@@ -19,7 +20,7 @@ trait LinkedResource[Rdf <: RDF] {
 
   /**
    * todo: could the fetchCond be better be done by an Enumeratee?
-   *   ( eg if one could have an enumeratee that could transform an enumerator, by fetching the remote resource?
+   *   ( e.g. if one could have an enumeratee that could transform an enumerator, by fetching the remote resource?
    *     but then one would want order not to be important !)
    *
    * @param lr
@@ -150,18 +151,6 @@ class WebResource[Rdf <:RDF](val rww: RWWActorSystem[Rdf])(implicit ops: RDFOps[
 
 
 
-
-// TODO is this used somewhere? or planed to be?
-/** A [[org.w3.banana.LinkedDataResource]] is obviously a [[rww.ldp.LinkedResource]] */
-class LDRLinkedResource[Rdf <: RDF]()(implicit ops: RDFOps[Rdf]) extends LinkedResource[Rdf] {
-
-  def ~(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]] = ???
-
-  def ~> (lr: LinkedDataResource[Rdf], predicate: Rdf#URI)(cond: PointedGraph[Rdf]=>Boolean): Enumerator[LinkedDataResource[Rdf]] = ???
-
-  /** follow the predicate in reverse order  */
-  def <~(lr: LinkedDataResource[Rdf], predicate: Rdf#URI)(fetchCond: PointedGraph[Rdf] => Boolean) = ???
-}
 
 /** Resources within a same RDF graph are linked together */
 //class PointedGraphLinkedResource[Rdf <: RDF](pg: PointedGraph[Rdf])(implicit ops: RDFOps[Rdf]) extends LinkedResource[Rdf, PointedGraph[Rdf]] {

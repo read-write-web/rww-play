@@ -2,22 +2,19 @@ package test.ldp
 
 import org.w3.banana._
 import org.w3.banana.plantain._
-import org.w3.banana.plantain.model._
 import org.scalatest._
 import org.scalatest.matchers._
 import rww.ldp.LDPCommand._
-import java.nio.file.{Path, Files}
+import java.nio.file.Path
 import play.api.libs.iteratee.Enumerator
-import scala.concurrent.{ExecutionContext, Await}
+import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import java.util.concurrent.{TimeoutException, TimeUnit}
-import akka.util.Timeout
+import java.util.concurrent.TimeUnit
 import scala.Some
-import akka.actor.Props
 import rww.ldp.auth.WACAuthZ
 import scala.util.Try
 import rww.ldp._
-import rww.ldp.actor.{RWWActorSystemImpl, RWWActorSystem}
+import rww.ldp.actor.RWWActorSystem
 import rww.ldp.LDPExceptions._
 import rww.ldp.model.{BinaryResource, LDPR}
 
@@ -253,7 +250,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path)
 
 
     val authZ1 = for {
-      athzd <- getAuthFor(betehessCard, wac.Read)
+      athzd <- getAuthorizedWebIDsFor(betehessCard, wac.Read)
     } yield {
       athzd.contains(foaf.Agent)
     }
@@ -262,7 +259,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path)
     authZ1.getOrFail()
 
     val authZ2 = for {
-      athzd <- getAuthFor(betehessCard, wac.Write)
+      athzd <- getAuthorizedWebIDsFor(betehessCard, wac.Write)
     } yield {
       assert(athzd.contains(betehess))
     }
