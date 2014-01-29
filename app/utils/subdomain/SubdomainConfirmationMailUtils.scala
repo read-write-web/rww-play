@@ -25,7 +25,7 @@ object SubdomainConfirmationMailUtils {
    * @param linkData
    * @return
    */
-  def createSignedSubdomainConfirmationLink(baseUrl: String, linkData: SubdomainConfirmationLinkData): String = {
+  def createSignedSubdomainConfirmationLinkPath(baseUrl: String, linkData: SubdomainConfirmationLinkData): String = {
     val queryString = QueryStrings.toQueryString(Map(
       SubdomainQueryParam -> linkData.subdomain,
       EmailQueryParam -> linkData.email,

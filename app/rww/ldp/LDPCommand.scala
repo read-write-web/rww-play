@@ -5,6 +5,7 @@ import scalaz.{ Free, Functor }
 import scalaz.Free.Suspend
 import scalaz.Free.Return
 import java.security.Principal
+import rww.ldp.model.{LDPR, BinaryResource, Meta, NamedResource}
 
 sealed trait LDPCommand[Rdf <: RDF, +A]{
   //the uri on which the action is applied.
@@ -138,6 +139,9 @@ object LDPCommand {
         case obj => throw OperationNotSupported("cannot do this operation on a "+obj.getClass)
       }
     }
+
+  case class OperationNotSupported(msg: String) extends Exception(msg)
+
 
   def getMeta[Rdf <: RDF,A](uri: Rdf#URI): Script[Rdf, Meta[Rdf]] =
     suspend[Rdf,Meta[Rdf]](GetMeta(uri, ldpr => `return`(ldpr)))

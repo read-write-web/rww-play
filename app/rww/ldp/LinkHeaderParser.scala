@@ -3,6 +3,7 @@ package rww.ldp
 
 import org.w3.banana.{DCTPrefix, DCPrefix, RDFOps, RDF}
 import scala.util.parsing.combinator.JavaTokenParsers
+import scala.util.Try
 
 /**
  * Parser for HTTP Link headers as defined by RFC5988 http://tools.ietf.org/html/rfc5988#section-5
@@ -71,14 +72,14 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
 
   lazy val relation_types: Parser[List[String]] = relation_type^^{List(_)} | ("\""~>rep1(relation_type)<~"\"")
   lazy val relation_type = """[^;\s"]+""".r  // we will parse the URI later, no need to write a parser here
-  lazy val quoted_string: Parser[String] = "\""~>rep(qdtext|qdpair)<~"\""^^{ls=>
-      val ls2 = ls.map(s=> if (s.length==2 && s.charAt(0)=='"') s.substring(1) else s )
+  lazy val quoted_string: Parser[String] = "\""~>rep(qdpair|qdtext)<~"\""^^{ls=>
+      val ls2 = ls.map(s=> if (s.length==2 && s.charAt(0)=='\\') s.substring(1) else s )
       ls2.mkString
     }
 
   lazy val uriRef = """[^"]*""".r //very simplified, but should be good enough
 
-  lazy val qdtext = """[^"]*""".r
+  lazy val qdtext = """[^"]+""".r
   lazy val qdpair = """\\\p{ASCII}""".r
   lazy val ext_value: Parser[Rdf#Literal] = (charset~>("'"~>opt(language)<~"'")~valueChars)^^{
     case Some(lang)~str => makeLangLiteral(str,makeLang(lang)) //todo: verify that this is the same sequence RDF uses
@@ -99,8 +100,13 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
   //  lazy val hier_part = """//"""
   //  lazy val query =
   //  lazy val fragment =
-  def parse(input: String): Rdf#Graph = {
-    val triples = parseAll(links, input).getOrElse(Nil)
-    Graph(triples.toIterable)
+  def parse(input: String*): Try[Rdf#Graph] =  Try {
+    var graphs = for (line <- input) yield {
+      val triples = parseAll(links, line).getOrElse(Nil)
+      Graph(triples.toIterable)
+    }
+    union(graphs.toList)
   }
+
+
 }

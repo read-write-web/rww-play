@@ -11,7 +11,11 @@
 #GET     /test/webid/:rg             controllers.BasicApp.webId(rg)
 
 #Home page with doc
-GET           /                                        controllers.Subdomains.index
+GET           /                                        controllers.MainController.index
+GET           /2013                                    controllers.MainController.about
+
+
+
 GET           /srv/createSubdomain                     controllers.Subdomains.createSubdomain
 POST          /srv/createUserSpaceRequest              controllers.Subdomains.createUserSpaceRequest
 GET           /srv/subdomainWaitingConfirmation        controllers.Subdomains.subdomainWaitingConfirmation
@@ -22,16 +26,15 @@ GET           /srv/createCertificate                   controllers.Subdomains.cr
 # Map static resources from the /public folder to the /assets URL path
 GET           /assets/*file                            controllers.Assets.at(path="/public", file)
 
-GET           /2013                                    controllers.ReadWriteWebApp.about
-GET           /2013/$file<.*>                          controllers.ReadWriteWebApp.get(file)
-PUT           /2013/$file<.*>                          controllers.ReadWriteWebApp.put(file)
-POST          /2013/$file<.*>                          controllers.ReadWriteWebApp.post(file)
-DELETE        /2013/$file<.*>                          controllers.ReadWriteWebApp.delete(file)
+GET           /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.get(file)
+PUT           /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.put(file)
+POST          /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.post(file)
+DELETE        /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.delete(file)
 #MKCOL        /2013/$file<.*>                          controllers.ReadWriteWebApp.mkcol(file)
-PATCH         /2013/$file<.*>                          controllers.ReadWriteWebApp.patch(file)
-HEAD          /2013/$file<.*>                          controllers.ReadWriteWebApp.head(file)
+PATCH         /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.patch(file)
+HEAD          /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.head(file)
+
 
 POST          /srv/certgen                             controllers.ClientCertificateApp.generate
 GET           /srv/certgen                             controllers.ClientCertificateApp.get
-GET           /srv/cors                                controllers.CORSProxy.action(url: Option[String])
-GET           /srv/rdfViewer                           controllers.RDFViewer.htmlFor(url: String)
+GET           /srv/cors                                controllers.CORSProxyController.action(url: Option[String])

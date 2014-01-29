@@ -1,6 +1,5 @@
 package controllers
 
-import rww.ldp.RWWeb
 import org.w3.banana._
 import play.api.mvc.Action
 import play.api.mvc.Results._
@@ -14,15 +13,16 @@ import play.api.data.Forms._
 import play.api.Logger
 import java.security.PublicKey
 import play.api.libs.iteratee.Enumerator
-import play.api.mvc.SimpleResult
-import play.api.mvc.ResponseHeader
-import scala.Some
-import utils.subdomain.{SubdomainConfirmationMailUtils, SubdomainGraphUtils}
-import SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
+import utils.subdomain.{SubdomainAdminGraphWrapper, SubdomainConfirmationMailUtils, SubdomainGraphUtils}
 import java.nio.file.Path
 import play.api.templates.{Html, Txt}
-import utils.subdomain.SubdomainGraphUtils
 import utils.ActionUtils.SignedQueryStringAction
+import scala.Some
+import play.api.mvc.SimpleResult
+import play.api.mvc.ResponseHeader
+import utils.subdomain.SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
+import java.security.interfaces.RSAPublicKey
+import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
 
 case class CreateUserSpaceForm(subdomain: String, key: PublicKey, email: String)
 
@@ -34,7 +34,7 @@ case class CreateUserSpaceRequest(subdomain: String, email: String)
 /**
  *
  */
-class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Path, rww: RWWeb[Rdf])
+class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Path, rww: RWWActorSystem[Rdf])
                           (implicit ops: RDFOps[Rdf]) {
 
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
@@ -57,20 +57,13 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
 
 
-
-
-  // TODO to move: not specially related to subdomains
-  def index = Action {
-    Ok(views.html.index())
-  }
-
   def createSubdomain = Action {
     Ok(views.html.subdomain.createSubdomain(createUserSpaceRequestForm))
   }
 
   val createUserSpaceRequestForm : Form[CreateUserSpaceRequest] = Form(
     mapping(
-      "subdomain" -> nonEmptyText(minLength = 3),
+      "subdomain" -> nonEmptyText(minLength = 3).transform(s => s.toLowerCase,identity[String]),
       "email" -> email
     )(CreateUserSpaceRequest.apply)(CreateUserSpaceRequest.unapply)
   )
@@ -102,7 +95,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
   private
   def createSubdomainAdminResource(subdomain: String, email: String, confirmationPassword: SubdominConfirmationPassword): Future[(Rdf#URI)] = {
-    val graph = subdomainGraphUtils.createSubdomainAdminGraph(subdomain,email): Rdf#Graph
+    val graph = subdomainGraphUtils.createSubdomainAdminGraph(subdomain,email,confirmationPassword): Rdf#Graph
     // TODO how to check the admin resource does not already exist?
     // TODO we don't want to "override" an existing subdomain neither create
     // TODO Should we use a "script" do to that?
@@ -129,13 +122,14 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     import SubdomainConfirmationMailUtils._
     import utils.Mailer._
     val linkData = SubdomainConfirmationLinkData(subdomain,email,confirmationPassword)
-    val link = createSignedSubdomainConfirmationLink(routes.Subdomains.confirmSubdomain.url,linkData)
     // TODO remove hardcoded domain
     val temporaryHardcodedDomain = "https://localhost:8443"
-    val linkWithDomain = temporaryHardcodedDomain + link
+    val baseLinkUrl = temporaryHardcodedDomain + routes.Subdomains.confirmSubdomain.url
+    val link = createSignedSubdomainConfirmationLinkPath(baseLinkUrl,linkData)
     // TODO email templating
-    val txt = Txt("Click here: " + linkWithDomain)
-    val html = Html("Click here: <a href=\"" + linkWithDomain + "\"> VALIDATE </a>")
+    val txt = Txt("Click here: " + link)
+    val html = Html("Click here: <a href=\"" + link + "\"> VALIDATE </a>")
+    Logger.info(s"Sending email to validate subdomain $subdomain to email $email with confirmation link $link")
     sendEmail(
       to = email,
       subject = "Subdomain Confirmation email: "+subdomain,
@@ -166,27 +160,72 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
   private
   def doConfirmSubdomain(linkData: SubdomainConfirmationLinkData): Future[SubdomainCreated] = {
-    Logger.warn("TODO Confirming domain with data " + linkData)
-    // TODO check the one time password
-    // TODO check subdomain doesn't already exist
-    createSubdomain(linkData.subdomain,linkData.email)
+    getAdminResource(linkData.subdomain) flatMap { adminResourceWrapper =>
+      getConfirmationDataMatchError(adminResourceWrapper,linkData) match {
+        case Some(error) => throw new IllegalStateException(error)
+        case None => {
+          // TODO check the one time password
+          // TODO check subdomain doesn't already exist
+          createSubdomain(linkData.subdomain,linkData.email) map { createdSubdomain =>
+
+            createdSubdomain
+          }
+        }
+      }
+    }
   }
 
   private
-  def createSubdomain(subdomain: String, email: String): Future[SubdomainCreated] = {
-    import syntax.GraphSyntax._
-    // TODO this should not be a slug normally because it may create another domain if the asked domain is already taken or invalid domain name etc...
-    val subdomainSlug = Some(subdomain)
-    rww.execute {
-      for {
-        subdomain <- createContainer(subDomainContainerUri, subdomainSlug, container)
-        subdomainMeta <- getMeta(subdomain)
-        _ <- updateLDPR(subdomainMeta.acl.get, add = subdomainGraphUtils.domainAcl(subdomain.toString).toIterable )
-        card <- subdomainGraphUtils.createAndSetAcl(subdomain, "card", subdomainGraphUtils.createSubdomainWebIdCardGraph(email))
-        calendar <- subdomainGraphUtils.createAndSetAcl(subdomain,calendar, subdomainGraphUtils.calendarEventEmptyGraph)
-      } yield SubdomainCreated(subdomain,card)
+  def getConfirmationDataMatchError(adminResourceWrapper: SubdomainAdminGraphWrapper[Rdf],linkData: SubdomainConfirmationLinkData): Option[String] = {
+    if ( adminResourceWrapper.emailConfirmed ) {
+      // TODO in this case we should provide the possibility for an user to generate a new certificate
+      Some(s"The email is already confirmed. The subdomain may probably already exist or has already been confirmed: ${linkData.subdomain}}")
+    } else if ( adminResourceWrapper.email != linkData.email ) {
+      Some(s"The email you try to confirm (${linkData.email}) is unknown")
+    } else if ( adminResourceWrapper.password != linkData.password ) {
+      Some(s"The validation password you sent (${linkData.password}) is wrong")
+    } else {
+      None
     }
   }
+
+  // TODO not sure this is the best way to get the adminResourceURI
+  private
+  def getAdminResourceURI(subdomain: String) = URI(subDomainContainerUri.toString + createSubdomainAdminResourceName(subdomain))
+
+  private
+  def getAdminResource(subdomain: String): Future[SubdomainAdminGraphWrapper[Rdf]] = {
+    val adminResourceURI = getAdminResourceURI(subdomain)
+    rww.execute {
+      for {
+        adminGraph <- getLDPR(adminResourceURI)
+      } yield {
+        Logger.info(s"AdminResourceURI $adminResourceURI yield = resource graoh $adminGraph")
+        SubdomainAdminGraphWrapper(adminResourceURI,adminGraph)
+      }
+    }
+  }
+
+
+  private
+  def createSubdomain(subdomainName: String, email: String): Future[SubdomainCreated] = {
+    import syntax.GraphSyntax._
+    // TODO this should not be a slug normally because it may create another domain if the asked domain is already taken or invalid domain name etc...
+    val subdomainSlug = Some(subdomainName)
+    rww.execute {
+      for {
+        subdomainC <- createContainer(subDomainContainerUri, subdomainSlug, container)
+        subdomainMeta <- getMeta(subdomainC)
+        _ <- updateLDPR(subdomainMeta.acl.get, add = subdomainGraphUtils.domainAcl(subdomainName.toString).toIterable )
+        card <- subdomainGraphUtils.createAndSetAcl(subdomainC, "card", subdomainGraphUtils.createSubdomainWebIdCardGraph(email))
+        calendar <- subdomainGraphUtils.createAndSetAcl(subdomainC,calendar, subdomainGraphUtils.calendarEventEmptyGraph)
+        adminResource <- updateLDPR(getAdminResourceURI(subdomainName), add=subdomainGraphUtils.getSubdomainValidationTriples(subdomainC,card).toIterable)
+      } yield SubdomainCreated(subdomainC,card)
+    }
+  }
+
+
+
 
   val createCertificateRequestForm : Form[CreateCertificateRequest] = Form(
     mapping(
@@ -202,7 +241,8 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
         request.session.get(SessionGenerateCertificateForSubdomain) match {
           case None => Future.successful(BadRequest("Can't find the subdomain for which you want to create a certificate")) // TODO redirect to appropriate page
           case Some(subdomain) => {
-            appendCertificateToSubdomainOwnerCard(subdomain,form.key) map { certificate =>
+            val rsaPublicKey = form.key.asInstanceOf[RSAPublicKey] // TODO unsafe? check with henry
+            doCreateCertificate(subdomain,rsaPublicKey) map { certificate =>
               SimpleResult(
                 //https://developer.mozilla.org/en-US/docs/NSS_Certificate_Download_Specification
                 header = ResponseHeader(200, Map("Content-Type" -> "application/x-x509-user-cert")),
@@ -215,15 +255,33 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     )
   }
 
-  def appendCertificateToSubdomainOwnerCard(subdomain: String, key: PublicKey): Future[X509Certificate] = {
-    // TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    Logger.info(s"Adding new certificate for owner of domain $subdomain")
-    val name = "todo"
-    val webIdUrl = "https://www.toto.webid"
-    val certReq = CertReq(name+"@"+subdomain,List(new jURL(webIdUrl)),key,ClientCertificateApp.tenMinutesAgo,ClientCertificateApp.yearsFromNow(2))
-    Future.successful(certReq.certificate)
+  def doCreateCertificate(subdomain: String,publicKey: RSAPublicKey): Future[X509Certificate] = {
+    getAdminResource(subdomain) flatMap { adminResourceWrapper =>
+    // TODO check the subdomain and webid have been created ?
+      val cardUri = adminResourceWrapper.webIdCardCreated.get
+      val webidUri = URI(cardUri.toString+"#i") // TODO remove hardcoded
+      val certificate = createX509Certificate(webidUri,subdomain,publicKey)
+      addPublicKeyToCard(cardUri,publicKey) map { unit =>
+        certificate
+      }
+    }
   }
 
+  def createX509Certificate(webid: Rdf#URI,subdomain: String, key: PublicKey): X509Certificate = {
+    Logger.info(s"Adding new certificate for owner of domain $subdomain")
+    val webIdUrl = new jURL(webid.toString)
+    val commonName = webid.toString // TODO what to put as certificate CN?
+    val certReq = CertReq(commonName,List(webIdUrl),key,ClientCertificateApp.tenMinutesAgo,ClientCertificateApp.yearsFromNow(2))
+    certReq.certificate
+  }
+
+  def addPublicKeyToCard(cardURI: Rdf#URI,publicKey: RSAPublicKey): Future[Unit] = {
+    rww.execute {
+      for {
+        card <- updateLDPR(cardURI,add=subdomainGraphUtils.getCardPublicKeyTriples(publicKey))
+      } yield card
+    }
+  }
 
 
 
