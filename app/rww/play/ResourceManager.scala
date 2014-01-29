@@ -102,7 +102,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
           rww.execute(for {
             resrc <- getResource(URI(request.getAbsoluteURI.toString))
             x <- resrc match {
-              case ldpr: LDPR[Rdf] => updateLDPR(ldpr.location,remove=Seq((ANY,ANY,ANY)),add=grc.graph.toIterable)
+              case ldpr: LDPR[Rdf] => putLDPR(ldpr.location,grc.graph)
               case other => throw OperationNotSupported(s"Not expected resource type for path $request.getAbsoluteURI.toString, type: $other")
             }
           } yield IdResult[Rdf#URI](id,resrc.location))

@@ -274,6 +274,11 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
       }
     }
 
+    override def put[S](url: Rdf#URI, graph: Rdf#Graph, syntax: banana.Syntax[S])(implicit writer: Writer[Rdf#Graph, S]) = {
+      synMap.put(url,graph)
+      Future.successful(())
+    }
+
     def delete(url: Rdf#URI): Future[Unit] = {
       val old = synMap.remove(url.fragmentLess)
       old.fold{
@@ -285,6 +290,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
         Future.successful[Unit](())
       }
     }
+
   }
 
 

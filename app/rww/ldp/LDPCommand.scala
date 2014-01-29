@@ -57,6 +57,9 @@ case class GetResource[Rdf <: RDF, A](uri: Rdf#URI,
 
 case class DeleteResource[Rdf <: RDF, A](uri: Rdf#URI, a: A) extends LDPCommand[Rdf, A]
 
+case class PutLDPR[Rdf <: RDF, A](uri: Rdf#URI,
+                                  graph: Rdf#Graph,
+                                  a: A) extends LDPCommand[Rdf, A]
 
 case class UpdateLDPR[Rdf <: RDF, A](uri: Rdf#URI,
                                      remove: Iterable[TripleMatch[Rdf]],
@@ -157,6 +160,11 @@ object LDPCommand {
                              add: Iterable[Rdf#Triple]=Iterable.empty): Script[Rdf, Unit] =
     suspend(UpdateLDPR(uri, remove, add, nop))
 
+  def putLDPR[Rdf <: RDF](uri: Rdf#URI,
+                          graph: Rdf#Graph): Script[Rdf, Unit] =
+    suspend(PutLDPR(uri, graph,nop))
+
+
   def selectLDPR[Rdf <: RDF](uri: Rdf#URI, query: Rdf#SelectQuery, bindings: Map[String, Rdf#Node]): Script[Rdf, Rdf#Solutions] =
     suspend(SelectLDPR(uri, query, bindings, solutions => `return`(solutions)))
 
@@ -193,6 +201,7 @@ object LDPCommand {
           case GetMeta(uri, k) => GetMeta(uri, x => f(k(x)))
           case DeleteResource(uri, a) =>  DeleteResource(uri, f(a))
           case UpdateLDPR(uri, remove, add, a) => UpdateLDPR(uri, remove, add, f(a))
+          case PutLDPR(uri,graph,a) => PutLDPR(uri,graph,f(a))
           case SelectLDPR(uri, query, bindings, k) => SelectLDPR(uri, query, bindings, x => f(k(x)))
           case ConstructLDPR(uri, query, bindings, k) => ConstructLDPR(uri, query, bindings, x => f(k(x)))
           case AskLDPR(uri, query, bindings, k) => AskLDPR(uri, query, bindings, x => f(k(x)))

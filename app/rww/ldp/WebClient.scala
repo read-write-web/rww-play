@@ -25,6 +25,7 @@ trait WebClient[Rdf<:RDF] {
   def post[S](url: Rdf#URI, slug: Option[String], graph: Rdf#Graph,syntax: Syntax[S])
              (implicit writer: Writer[Rdf#Graph,S]): Future[Rdf#URI]
   def delete(url: Rdf#URI): Future[Unit]
+  def put[S](url: Rdf#URI, graph: Rdf#Graph, syntax: Syntax[S])(implicit writer: Writer[Rdf#Graph, S]): Future[Unit]
   def patch(uri: Rdf#URI, remove: Iterable[TripleMatch[Rdf]], add: Iterable[Rdf#Triple]): Future[Void]  = ???
 }
 
@@ -165,6 +166,20 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
     }
   }
 
+  override
+  def put[S](url: Rdf#URI, graph: Rdf#Graph, syntax: Syntax[S])
+            (implicit writer: Writer[Rdf#Graph, S]): Future[Unit] = {
+    val headers = ("Content-Type" -> syntax.mime)::Nil
+    val futureResp = WS.url(url.toString).withHeaders(headers: _*).put(graph, syntax)
+    futureResp.flatMap { resp =>
+      if (resp.status == 200) {
+         Future.successful(())
+      } else {
+        Future.failed(RemoteException.netty("Resource creation failed", resp))
+      }
+    }
+
+  }
 }
 
 

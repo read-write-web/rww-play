@@ -83,7 +83,19 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           }
         }
       }
-//      case CreateBinary(_, slugOpt, mime: MimeType, k) => {
+      case PutLDPR(uri, graph, a) => {
+        val sender = context.sender  //very important. Calling in function onComplete will return deadLetter
+        val result = webc.put(uri,graph,Syntax.Turtle)
+        result.onComplete{ tryres =>
+          tryres match {
+            case Success(url) => rwwRouterActor.tell(ScriptMessage(a),sender)
+            case Failure(e) => failMsg(e, sender,s"failure PUTing LDPR  on remote resource <$uri>")
+          }
+        }
+
+      }
+
+      //      case CreateBinary(_, slugOpt, mime: MimeType, k) => {
       //        val (uri, pathSegment) = deconstruct(slugOpt)
       //        //todo: make sure the uri does not end in ";aclPath" or whatever else the aclPath standard will be
       //        val bin = PlantainBinary(root, uri)
@@ -143,6 +155,9 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
             case Failure(e) => failMsg(e, sender,s"failure DELETing remote resource <$uri>")
           }
         }
+      }
+      case PutLDPR(uri,graph,a) => {
+
       }
       case UpdateLDPR(uri, remove, add, a) => {
         val sender = context.sender

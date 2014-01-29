@@ -60,6 +60,13 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     getAsync(request)
   }
 
+  def options(file: String) = Action.async { request =>
+    // need to get the authentication level of the user
+
+    //find the methods allowed for the user
+    null
+  }
+
 
   /**
    * Returns the content type to use to answer to the given request

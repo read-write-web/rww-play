@@ -214,7 +214,6 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       }
       case UpdateLDPR(uri, remove, add, a) => {
         val nme = localName(uri)
-        val urifull = uriW[Rdf](uri).resolveAgainst(baseUri)
         getResource(nme) match {
           case Success(LocalLDPR(_,graph,_,updated)) => {
             if (remove.size>0) throw LocalException("need to upgrade to a later version of banana that supports diffs")
@@ -230,6 +229,11 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
           case Success(_) => throw RequestNotAcceptable(s"$uri does not contain a GRAPH, cannot Update")
           case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
         }
+      }
+      case PutLDPR(uri, graph, a) => {
+        val nme = localName(uri)
+        setResource(nme,graph)
+        rwwRouterActor.tell(ScriptMessage(a),context.sender)
       }
       case PatchLDPR(uri, update, bindings, k) => {
         val nme = localName(uri)

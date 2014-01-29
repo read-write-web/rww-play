@@ -220,7 +220,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path)
       for {
         ldpcUri <- createContainer(baseLdpc, Some("bertails"), Graph.empty)
         ldpc <- getResource(ldpcUri)
-        _ <- updateLDPR(ldpc.acl.get, None, graphCollectionACL.toIterable)
+        _ <- putLDPR(ldpc.acl.get, graphCollectionACL)
         acl <- getLDPR(ldpc.acl.get)
       } yield {
         ldpc.acl.get must be(ldpcMetaFull)
@@ -233,7 +233,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path)
       for {
         rUri <- createLDPR(ldpcUri, Some(betehessCard.lastPathSegment), graph)
         cardRes <- getResource(rUri)
-        x <- updateLDPR(cardRes.acl.get, add = graphCardACL.toIterable)
+        x <- putLDPR(cardRes.acl.get,  graphCardACL)
         acl <- getLDPR(cardRes.acl.get)
       } yield {
         cardRes.location must be(betehessCard)
