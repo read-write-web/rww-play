@@ -10,6 +10,8 @@ import org.w3.play.api.libs.ws.ResponseHeaders
 import org.w3.banana
 import org.scalatest.{Suite, BeforeAndAfter}
 import rww.ldp._
+import rww.ldp.model.{LDPR, NamedResource}
+import scala.util.{Try, Success}
 
 /**
  * Build up a set of Graphs with representing some realistic scenarios that can then be used
@@ -58,6 +60,16 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
     URI("#i") -- foaf.name ->- "Tim Berners-Lee"
     ).graph
 
+  val henrySpaceAcl = URI("http://bblfish.net/;wac")
+  lazy val henrySpaceAclGraph : Rdf#Graph = (
+    bnode("t1")
+      -- wac.accessToClass ->- ( bnode() -- wac.regex ->- "http://bblfish.net/.*;wac" )
+      -- wac.agent ->- henry
+      -- wac.mode ->- wac.Read
+      -- wac.mode ->- wac.Write
+    ).graph
+
+
   val henryCard = URI("http://bblfish.net/people/henry/card")
   val henry =  URI(henryCard.toString+"#me")
   val henryGraph : Rdf#Graph = (
@@ -77,6 +89,8 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
       -- wac.accessTo ->- henryCard
       -- wac.agentClass ->- foaf.Agent
       -- wac.mode ->- wac.Read
+    ).graph union (
+       henryCardAcl -- wac.include ->- henrySpaceAcl
     ).graph
 
   val henryFoaf = URI("http://bblfish.net/people/henry/foaf")
@@ -180,6 +194,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
     ).graph
 
   val defaultSynMap = Seq(
+    henrySpaceAcl -> henrySpaceAclGraph,
     henryColl -> henryCollGraph,
     henryCollWac -> henryCollWacGraph,
     henryCard -> henryGraph,
@@ -204,13 +219,13 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
       /**
        * location of initial ACL for this resource
        **/
-      def acl = Some{
+      def acl = Try {
         if (location.toString.endsWith(";wac")) location
         else ops.URI(location.toString+";wac")
       }
 
       //move all the metadata to this, and have the other functions
-      def meta = PointedGraph(location,metaGraph)
+      def meta = Success(PointedGraph(location,metaGraph))
 
       def size = None
     }

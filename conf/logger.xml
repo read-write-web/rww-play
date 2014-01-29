@@ -1,0 +1,25 @@
+<configuration debug="false">
+
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%d{HH:mm:ss}][%highlight(%-5level)][%cyan(%logger{0})][%X{akkaSource}] %boldMagenta(>>>) %msg%n</pattern>
+        </encoder>
+        <withJansi>true</withJansi>
+    </appender>
+
+    <root level="debug">
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+
+    <logger name="play" level="debug"/>
+
+    <logger name="application" level="debug"/>
+
+    <logger name="rww" level="debug"/>
+
+    <logger name="controllers" level="debug"/>
+
+
+</configuration>

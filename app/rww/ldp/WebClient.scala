@@ -3,7 +3,6 @@ package rww.ldp
 import com.ning.http.client.FluentCaseInsensitiveStringsMap
 import com.ning.http.util.DateUtil
 import concurrent.{ExecutionContext, Future}
-import java.net.URL
 import org.slf4j.LoggerFactory
 import org.w3.banana._
 import org.w3.play.api.libs.ws.{Response, ResponseHeaders, WS}
@@ -11,6 +10,7 @@ import scala.Some
 import util.{Try, Success, Failure}
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.immutable
+import rww.ldp.model._
 
 /**
  * A Web Client interacts directly with http resources on the web.
@@ -54,11 +54,13 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
    * following RFC5988 http://tools.ietf.org/html/rfc5988
    * todo: map all the other headers to RDF graphs where it makes sense
    */
-  def parseHeaders(base: Rdf#URI, headers: FluentCaseInsensitiveStringsMap): PointedGraph[Rdf] = {
+  def parseHeaders(base: Rdf#URI, headers: FluentCaseInsensitiveStringsMap): Try[PointedGraph[Rdf]] = {
     import collection.convert.wrapAsScala._
-    val linkHeaders = Option(headers.get("Link")).map{_.toList}.getOrElse(Nil)
-    val linkgraph = union(linkHeaders.map(parser.parse(_).resolveAgainst(base)))
-    PointedGraph(base, linkgraph)
+    WebClient.log.info(s"Link headers (temporary disabled) are: ${headers.get("Link")}")
+    val linkHeaders = headers.get("Link")
+    parser.parse(linkHeaders:_*).map{ graph =>
+      PointedGraph(base,graph.resolveAgainst(base))
+    }
   }
 
   //todo: the HashMap does not give enough information on how the failure occurred. It should contain metadata on the
@@ -67,7 +69,7 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
   val cache = new AtomicReference(immutable.HashMap[Rdf#URI,Future[NamedResource[Rdf]]]())
 
   protected def fetch(url: Rdf#URI): Future[NamedResource[Rdf]] = {
-    WebClient.log.info(s"WebProxy: fetching $url")
+    WebClient.log.info(s"WebClient: fetching $url")
     /**
      * note we prefer rdf/xml and turtle over html, as html does not always contain rdfa, and we prefer those over n3,
      * as we don't have a full n3 parser. Better would be to have a list of available parsers for whatever rdf framework is
@@ -77,11 +79,12 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
     //todo, add binary support
     //todo: deal with redirects...
     val response = WS.url(url.toString)
+      .withFollowRedirects(true)
       .withHeaders("Accept" -> "application/rdf+xml,text/turtle,application/xhtml+xml;q=0.8,text/html;q=0.7,text/n3;q=0.2")
       .get
     response.flatMap { response =>
       import MimeType._
-      WebClient.log.info(s"Web Proxy fetched content successfully. ${response}")
+      WebClient.log.info(s"WebClient fetched content successfully. ${response}")
       response.header("Content-Type") match {
         case Some(header) => {
           val mt = MimeType(extract(header))

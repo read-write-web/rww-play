@@ -2,14 +2,14 @@ package test.ldp
 
 import org.scalatest.WordSpec
 import org.scalatest.Matchers
-import rww.ldp.RActor
 import java.net.{URI, URL}
+import rww.ldp.actor.router._
 
 /**
  * Created by hjs on 12/11/2013.
  */
 class RWWebActorTest extends WordSpec with Matchers {
-  import rww.ldp.RWWebActor._
+  import RWWRoutingActor._
 
   val localBase = new URI("https://localhost:8443/2013/")
 

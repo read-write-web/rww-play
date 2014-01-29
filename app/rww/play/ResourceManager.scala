@@ -16,6 +16,7 @@
 
 package rww.play
 
+import _root_.play.api.Logger
 import org.w3.banana._
 import rww.ldp.LDPCommand._
 import concurrent.{Future, ExecutionContext}
@@ -28,7 +29,23 @@ import rww.ldp._
 import scala.Some
 import rww.ldp.auth.WACAuthZ
 import java.net.{URI=>jURI, URL=>jURL}
+import rww.ldp.actor.RWWActorSystem
+import rww.ldp.LDPExceptions._
+import rww.ldp.model.{LDPR, BinaryResource, NamedResource}
 
+
+// TODO not appropriate place
+object Method extends Enumeration {
+  val Read = Value
+  val Write = Value
+}
+
+/**
+ * This permits to transmit a result and to add an User header in the request which contains the URI of the authenticated user's WebID
+ * @param id
+ * @param result
+ * @tparam R
+ */
 case class IdResult[R](id: jURI, result: R)
 
 //the idea of this class was to not be reliant on Play! We need RequestHeader in order to do authentication
@@ -36,7 +53,7 @@ case class IdResult[R](id: jURI, result: R)
 import _root_.play.api.mvc.{Request=>PlayRequest, RequestHeader=>PlayRequestHeader}
 
 
-class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
+class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
                              (implicit ops: RDFOps[Rdf], sparqlOps: SparqlOps[Rdf],
                               ec: ExecutionContext) {
 
@@ -65,7 +82,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     val path = request.path
     content match {
       case updatedQuery: PatchRwwContent[Rdf] => for {
-        id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+        id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
         x <- rww.execute(patchLDPR(URI(path), updatedQuery.query, Map()))
       } yield IdResult(id,x)
       case _ => Future.failed(new Exception("PATCH requires application/sparql-update message content"))
@@ -78,7 +95,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     val (collection, file) = split(path)
     if ("" == file) Future.failed(new Exception("Cannot do a PUT on a collection"))
     else for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       f <- content match {
         //todo: arbitrarily for the moment we only allow a PUT of same type things graphs on graphs, and other on other
         case grc: GraphRwwContent[Rdf] => {
@@ -86,7 +103,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
             resrc <- getResource(URI(request.getAbsoluteURI.toString))
             x <- resrc match {
               case ldpr: LDPR[Rdf] => updateLDPR(ldpr.location,remove=Seq((ANY,ANY,ANY)),add=grc.graph.toIterable)
-              case _ => throw new Error("yoyo")
+              case other => throw OperationNotSupported(s"Not expected resource type for path $request.getAbsoluteURI.toString, type: $other")
             }
           } yield IdResult[Rdf#URI](id,resrc.location))
         }
@@ -96,10 +113,10 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
               resrc <- getResource(URI(request.getAbsoluteURI.toString))
             //                if (resrc.isInstanceOf[BinaryResource[Rdf]])
             } yield {
-              val b = resrc.asInstanceOf[BinaryResource[Rdf]]
+              val binaryResource = resrc.asInstanceOf[BinaryResource[Rdf]]
               //todo: very BAD. This will block the agent, and so on long files break the collection.
               //this needs to be sent to another agent, or it needs to be rethought
-              Enumerator.fromFile(tmpFile.file)(ec)(b.write)
+              Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
               IdResult(id,resrc.location)
             })
         }
@@ -108,13 +125,16 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     } yield f
   }
 
+
+
+
   //    val res = store.execute(Command.PUT(LinkedDataResource(resourceURI, PointedGraph(resourceURI, model))))
   //    res
   //  }
 
   def wacIt(mode: Method.Value) = mode match {
-    case Method.read => wac.Read
-    case Method.write => wac.Write
+    case Method.Read => wac.Read
+    case Method.Write => wac.Write
   }
 
 
@@ -127,18 +147,25 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
    * @return
    */
   def auth(request: PlayRequestHeader, path: String, mode: Method.Value): Future[jURI] = {
-    getAuthFor(URI(path), wacIt(mode)).flatMap { agents =>
-      if (agents.contains(foaf.Agent)) Future.successful(foaf.Agent.underlying)
+    getAuthorizedWebIDsFor(URI(path), wacIt(mode)).flatMap { agents =>
+      Logger.debug(s"Agents found for $path with mode $mode are: $agents")
+      if (agents.contains(foaf.Agent)) {
+        Logger.info(s"All agents can access with mode $mode on ${request.path}")
+        Future.successful(foaf.Agent.underlying)
+      }
       else if (agents.isEmpty) {
-        Future.failed(AccessDenied(s"no agents allowed access with $mode on ${request.path}"))
+        Future.failed(AccessDenied(s"No agents found is allowed to access with mode $mode on ${request.path}"))
       }
       else {
         authn(request).flatMap { subject =>
           subject.webIds.find{ wid =>
             agents.contains(URI(wid.toString))
           } match {
-            case Some(id) => Future.successful(id)
-            case None => Future.failed(AccessDenied(s"no access for $mode on ${request.path}"))
+            case Some(id) => {
+              Logger.info(s"Access allowed with mode $mode on ${request.path}. Subject $subject has been found on the allowed agents list $agents")
+              Future.successful(id)
+            }
+            case None => Future.failed(AccessDenied(s"No access for $mode on ${request.path}. Subject is $subject and allowed agents are $agents"))
           }
         }
       }
@@ -148,7 +175,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
 
   def get(request: PlayRequestHeader, uri: java.net.URI): Future[IdResult[NamedResource[Rdf]]] = {
    for {
-      id <- auth(request, uri.toString, Method.read)
+      id <- auth(request, uri.toString, Method.Read)
       x <- rww.execute {
         getResource(URI(uri.toString), None)
       }
@@ -159,7 +186,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
               (implicit request: PlayRequestHeader): Future[IdResult[Rdf#URI]] = {
     val uric: Rdf#URI = URI(request.getAbsoluteURI.toString)
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       x <- rww.execute(
         for {
           r <- createLDPR(uric, slug, content)
@@ -204,7 +231,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
   def makeCollection(coll: String, slug: Option[String], content: Option[Rdf#Graph])
                     (implicit request: PlayRequestHeader): Future[IdResult[Rdf#URI]] = {
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       x <- rww.execute {
         for {
           c <- createContainer(URI(request.getAbsoluteURI.toString), slug,
@@ -226,24 +253,34 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
                 ( implicit request: PlayRequestHeader ): Future[IdResult[Rdf#URI]] = {
     val (collection, file) = split(path)
     if ("" != file) Future.failed(WrongTypeException("Can only POST binary on a Collection"))
-    else
+    else {
+      val containerUri = request.getAbsoluteURI.toString
+      Logger.debug(s"Will post binary on containerUri=$containerUri with slug=$slug and mimeType=$mime")
       for {
-        id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+        id <- auth(request, containerUri, Method.Write)
         x <- rww.execute {
           for {
-            b <- createBinary(URI(request.getAbsoluteURI.toString), slug, mime)
+            binaryResource <- createBinary(URI(containerUri), slug, mime)
+            meta <- getMeta(binaryResource.location)
+            //locally we know we always have an ACL rel
+            //todo: but this should really be settable in turtle files. For example it may be much better
+            //todo: if every file in a directory just use the acl of the directory. So that would require the
+            //todo: collection to specify how to build up the acls.
+            aclg = (meta.acl.get -- wac.include ->- URI(".acl")).graph
+            _ <- updateLDPR(meta.acl.get, add = aclg.toIterable)
           } yield {
-            Enumerator.fromFile(tmpFile.file)(ec)(b.write)
-            b.location
+            Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
+            binaryResource.location
           }
         }
       } yield IdResult(id, x)
+    }
   }
 
 
   def delete(implicit request: PlayRequestHeader): Future[IdResult[Unit]] = {
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       e <- rww.execute(deleteResource(URI(request.getAbsoluteURI.toString)))
     } yield IdResult(id,e)
     //    rww.execute{
@@ -262,7 +299,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     import sparqlOps._
     //clearly the queries could be simplified here.
     for {
-      id <- auth(request,request.getAbsoluteURI.toString, Method.write)
+      id <- auth(request,request.getAbsoluteURI.toString, Method.Write)
       e <-rww.execute {
         if ("" != file)
           fold(query.query)(
@@ -280,6 +317,8 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWW[Rdf], authn: AuthN, authz: WA
     } yield IdResult(id,e)
 
   }
+
+
 
 
 }

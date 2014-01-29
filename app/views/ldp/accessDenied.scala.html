@@ -1,0 +1,20 @@
+@(resourceUri:String,errorMessage: String)
+
+    @title = {
+        Access Denied
+    }
+
+@main(title) {
+
+
+    <p>
+        <b>The access to resource @resourceUri is not allowed.</b>
+    </p>
+
+    <p>
+        <b>Error message:</b><br/>
+        @errorMessage
+    </p>
+
+
+}

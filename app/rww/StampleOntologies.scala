@@ -1,6 +1,6 @@
 package rww
 
-import org.w3.banana.{PrefixBuilder, RDFSPrefix, RDFOps, RDF}
+import org.w3.banana._
 
 /**
  * Permits to group custom ontologies used in this platform
@@ -24,6 +24,9 @@ object StampleOntologies {
   class StampleAdminPrefix[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("stampleAdmin", "http://ont.stample.co/2013/admin#")(ops) {
     val claimedInbox = apply("claimedInbox")
     val claimedInboxConfirmationPassword = apply("claimedInboxConfirmationPassword")
+    val claimedInboxConfirmed = apply("claimedInboxConfirmed")
+    val subdomainCreated = apply("subdomainCreated")
+    val webIdCardCreated = apply("webIdCardCreated")
   }
 
 
@@ -39,5 +42,4 @@ object StampleOntologies {
   }
 
 }
-
 

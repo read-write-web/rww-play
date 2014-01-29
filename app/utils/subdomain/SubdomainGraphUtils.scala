@@ -3,12 +3,12 @@ package utils.subdomain
 import org.w3.banana._
 import java.net.URL
 import java.nio.file.Path
-import rww.ldp.RWWeb
 import java.security.interfaces.RSAPublicKey
 import org.w3.banana.diesel
 import rww.StampleOntologies
 import rww.ldp.LDPCommand._
 import scala.Some
+import rww.ldp.actor.RWWActorSystemImpl
 
 
 /**
@@ -19,6 +19,8 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
 
   import ops._
   import org.w3.banana.syntax.URISyntax._
+  import org.w3.banana.diesel._
+  import syntax.GraphSyntax._
 
   val ldp = LDPPrefix[Rdf]
   val cert = CertPrefix[Rdf]
@@ -31,16 +33,17 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
 
   val calendar = "calendar"
 
+  // for now we hardcode the person fragment in the card graph
+  // TODO we should instead try to find the foaf primaryTopic or something?
+  val personFragment = "#i"
 
 
 
-  def createSubdomainAdminGraph(subdomain: String,email: String): Rdf#Graph = {
-    import diesel._
-    val oneTimePassword = java.util.UUID.randomUUID().toString.substring(0,8)
+  def createSubdomainAdminGraph(subdomain: String,email: String, emailConfirmationPassword: String): Rdf#Graph = {
     val pg: PointedGraph[Rdf] = (
       URI("").a(foaf.OnlineAccount)
         -- stampleAdmin.claimedInbox ->- TypedLiteral(email, xsd.string)
-        -- stampleAdmin.claimedInboxConfirmationPassword ->- TypedLiteral(oneTimePassword, xsd.string)
+        -- stampleAdmin.claimedInboxConfirmationPassword ->- TypedLiteral(emailConfirmationPassword, xsd.string)
       )
     pg.graph
   }
@@ -53,7 +56,7 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
     val pg: PointedGraph[Rdf] = (
       URI("") -- rdf.typ ->- foaf.PersonalProfileDocument
         -- foaf.primaryTopic ->- (
-        URI("#i") -- cert.key ->- (
+        URI(personFragment) -- cert.key ->- (
           bnode() -- cert.exponent ->- TypedLiteral(key.getPublicExponent.toString(10), xsd.integer)
             -- cert.modulus ->- TypedLiteral(key.getModulus.toString(16), xsd.hexBinary)
           )
@@ -74,13 +77,11 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
   */
 
   def createSubdomainWebIdCardGraph(email: String): Rdf#Graph = {
-    import org.w3.banana.diesel._
-    import syntax.GraphSyntax._
 
     val pg: PointedGraph[Rdf] = (
       URI("").a(foaf.PersonalProfileDocument)
         -- foaf.primaryTopic ->- (
-        URI("#i") -- foaf.mbox ->- URI("mailto:" + email)
+        URI(personFragment) -- foaf.mbox ->- URI("mailto:" + email)
         )
       )
 
@@ -95,17 +96,35 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
     ))
   }
 
+  def getSubdomainValidationTriples(subdomainUri: Rdf#URI, webidUri: Rdf#URI): Iterable[Rdf#Triple] = {
+    (
+      URI("") -- stampleAdmin.claimedInboxConfirmed ->- TypedLiteral("true",xsd.boolean)
+        -- stampleAdmin.subdomainCreated ->- subdomainUri
+        -- stampleAdmin.webIdCardCreated ->- webidUri
+      ).graph.toIterable
+  }
 
-
+  /**
+   * As the card is created initially without any certificate, this method permits to append a public certificate to a Person
+   * @param cardgraph
+   * @param key
+   * @return
+   */
+  def getCardPublicKeyTriples(key: RSAPublicKey): Iterable[Rdf#Triple] = {
+    val pg = URI(personFragment) -- cert.key ->- (
+      bnode() -- cert.exponent ->- TypedLiteral(key.getPublicExponent.toString(10), xsd.integer)
+        -- cert.modulus ->- TypedLiteral(key.getModulus.toString(16), xsd.hexBinary)
+      )
+    pg.graph.toIterable
+  }
 
 
   def domainAcl(domain: String): Rdf#Graph = {
-    import diesel._
     val pg: PointedGraph[Rdf] = ( bnode() -- wac.accessToClass ->- (
-      bnode() -- wac.regex ->- TypedLiteral(domain + ".*"))
+      bnode() -- wac.regex ->- TypedLiteral("https://"+domain + ".*"))
       -- wac.mode ->- wac.Read
       -- wac.mode ->- wac.Write
-      -- wac.agent ->- URI("card#i")
+      -- wac.agent ->- URI("card"+personFragment)
       )
 
     pg.graph
@@ -114,7 +133,6 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
   def calendarEventEmptyGraph: Rdf#Graph = Graph(Triple(URI(""),rdf.typ, stampleDisplay.EventsDocument))
 
   def createAndSetAcl(container: Rdf#URI, slug: String, graph: Rdf#Graph) = {
-    import syntax.GraphSyntax._
     for {
       ldpr <- createLDPR(container, Some(slug), graph)
       meta <- getMeta(ldpr)
