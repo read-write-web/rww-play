@@ -36,9 +36,9 @@ To start Play in secure mode with lightweight client certificate verification (f
 
 ```bash
  $ Play20/play
- > idea with-sources=yes // if you want to run intelliJ
- > compile
- > run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
+ [RWWeb] $ idea with-sources=yes // if you want to run intelliJ
+ [RWWeb] $ compile
+ [RWWeb] $ run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
 ```
 
 _Experimental_: You can also start the server so that it only accepts WebID certificates - which we will currently
@@ -46,8 +46,22 @@ assume are those signed by an agent named "CN=WebID,O=∅". This is experimental
 
 ```bash
  $ Play20/play
- > run  -Dhttps.port=8443 -Dhttps.trustStore=webid.WebIDTrustManager
+ [RWWeb] $ run  -Dhttps.port=8443 -Dhttps.trustStore=webid.WebIDTrustManager
 ```
+
+Subdomains
+----------
+
+If you want to run ldp on a server where the root directory turns into subdomains you
+need to start your server with
+
+```bash
+[RWWeb] $ run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true
+```
+
+Of course this requires you to have a TLS certificate that allows subdomains, and to set up routing
+correctly.
+
 
 Documentation
 -------------
