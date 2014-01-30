@@ -16,7 +16,6 @@ object Global extends GlobalSettings {
 
     if (
       uri.getPath.startsWith("/assets/")
-      || uri.getPath.startsWith("/platform-apps/")
       || uri.getPath.startsWith("/srv/")
       || uri.getHost().startsWith("www")
     ) {
