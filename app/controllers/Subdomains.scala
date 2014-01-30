@@ -122,9 +122,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     import SubdomainConfirmationMailUtils._
     import utils.Mailer._
     val linkData = SubdomainConfirmationLinkData(subdomain,email,confirmationPassword)
-    // TODO remove hardcoded domain
-    val temporaryHardcodedDomain = "https://localhost:8443"
-    val baseLinkUrl = temporaryHardcodedDomain + routes.Subdomains.confirmSubdomain.url
+    val baseLinkUrl = plantain.hostRoot.toString + routes.Subdomains.confirmSubdomain.url
     val link = createSignedSubdomainConfirmationLinkPath(baseLinkUrl,linkData)
     // TODO email templating
     val txt = Txt("Click here: " + link)
@@ -142,7 +140,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     getSubdomainConfirmationLinkData(request) map { linkData =>
       doConfirmSubdomain(linkData) map { subdomainCreated =>
         Logger.info(s"Subdomain has been created: $subdomainCreated")
-        val subdomainURL = "https://"+linkData.subdomain+".localhost:8443/" // TODO url of subdomain non hardcoded
+        val subdomainURL = plantain.hostRootSubdomain(linkData.subdomain).toString
         // TODO maybe the session is not the best way to transmit the domain info to the next request???
         Ok(views.html.subdomain.subdomainConfirmation(linkData.subdomain,subdomainURL))
           .withSession(SessionGenerateCertificateForSubdomain -> linkData.subdomain)
