@@ -251,7 +251,7 @@ function getUserAttributes(graph, uriSym, callback) {
 
 	// Add image if available
 	var img = findFirst(FOAF('img'), FOAF('depiction'));
-    tab.imgUrl=img.uri;
+	tab.imgUrl=img.uri;
 
 	// Add name
 	var nam = findFirst(FOAF('name'));

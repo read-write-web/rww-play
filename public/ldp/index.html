@@ -3,42 +3,79 @@
 <html>
 
 <head>
-	<title>Primary Html file.</title>
- 	<script type="text/javascript" src="/assets/ldp/lib/jquery-1.7.1.min.js"></script>
-	<script type="text/javascript" src="/assets/ldp/lib/underscore.js"></script>
-	<script type="text/javascript" src="/assets/ldp/lib/rdflib.js"></script>
-	<script type="text/javascript" src="/assets/ldp/lib/pointedGraph.js"></script>
-	<script type="text/javascript" src="/assets/ldp/lib/rx.js"></script>
-	<script type="text/javascript" src="/assets/ldp/lib/spin.min.js"></script>
+    <title>Primary Html file.</title>
+    <script type="text/javascript" src="/assets/ldp/lib/jquery-1.7.1.min.js"></script>
+    <script type="text/javascript" src="/assets/ldp/lib/underscore.js"></script>
+    <script type="text/javascript" src="/assets/ldp/lib/rsvp-latest.js"></script>
+    <script type="text/javascript" src="/assets/ldp/lib/rdflib.js"></script>
+    <script type="text/javascript" src="/assets/ldp/lib/pointedGraph.js"></script>
+    <script type="text/javascript" src="/assets/ldp/lib/fetcherWithPromise.js"></script>
+    <script type="text/javascript" src="/assets/ldp/lib/rx.js"></script>
+    <script type="text/javascript" src="/assets/ldp/lib/rx.async.js"></script>
+    <script type="text/javascript" src="/assets/ldp/lib/spin.min.js"></script>
     <script type="text/javascript" src="/assets/ldp/js/loadScript.js"></script>
     <script type="text/javascript" src="/assets/ldp/js/loadCSS.js"></script>
-	<script type="text/javascript">
-		var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
-		var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
-		var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
-		var WEBAPP = $rdf.Namespace("http://ns.rww.io/wapp#");
-		var FOAF = $rdf.Namespace("http://xmlns.com/foaf/0.1/");
-		var CONTACT = $rdf.Namespace("http://www.w3.org/2000/10/swap/pim/contact#");
+    <script type="text/javascript">
+        var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
+        var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+        var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
+        var WEBAPP = $rdf.Namespace("http://ns.rww.io/wapp#");
+        var FOAF = $rdf.Namespace("http://xmlns.com/foaf/0.1/");
+        var CONTACT = $rdf.Namespace("http://www.w3.org/2000/10/swap/pim/contact#");
+        var GEOLOC = $rdf.Namespace("http://www.w3.org/2003/01/geo/wgs84_pos#");
 
-		// Global variables.
-		graphsCache = {};
-		baseUriGlobal = window.location.href;
-		baseUriSymGlobal = $rdf.sym(baseUriGlobal);
-		baseUriSym = $rdf.sym(baseUriGlobal);
-		viewerUri = '/assets/ldp/viewer.ttl';
-		rdfTypesGlobals = null;
+        // Define proxy.
+        $rdf.Fetcher.crossSiteProxyTemplate = "http://data.fm/proxy?uri={uri}";
+        //$rdf.Fetcher.crossSiteProxyTemplate = window.location.origin+"/srv/cors?url={uri}";
 
-		var graph = graphsCache[baseUriGlobal]  = new $rdf.graph();
-		var fetch = $rdf.fetcher(graph);
-		fetch.nowOrWhenFetched(baseUriGlobal, undefined, function () {
-			// Load the main view and utils.
-			loadScript("/assets/ldp/js/bodyViewer.js", null);
+        // Global variables.
+        graphsCache = {};
+        storeGlobal = new $rdf.IndexedFormula();
+        baseUriGlobal = window.location.href;
+        baseUriSymGlobal = $rdf.sym(baseUriGlobal);
+        baseUriSym = $rdf.sym(baseUriGlobal);
+        routerUri = window.location.origin + '/assets/ldp/viewer.ttl';
+        routerUriSym = $rdf.sym(routerUri);
 
-			// Get ressource type.
-			rdfTypesGlobal = graph.each(baseUriSymGlobal, RDF("type"));
-		});
+        // Fetch the basic graphs.
+        var f1 = $rdf.fetcher(storeGlobal);
+        var f2 = $rdf.fetcher(storeGlobal);
 
-	</script>
+        // Create related promises.
+        baseGraphPromise = f1.fetch(baseUriGlobal, baseUriGlobal, false);
+        routerPromise = f2.fetch(routerUri, routerUri, false);
+
+        RSVP.all([baseGraphPromise, routerPromise]).then(
+                function(results) {
+                    // Get the type of the ressource in the graph.
+                    var basicGraphPg = results[0];
+                    var routerPg = results[1];
+                    var routerTypes = _.chain(results[0].rel(RDF("type")))
+                            .map(function(pg) {
+                                var pg2 = new $rdf.PointedGraph(routerPg.graph,pg.pointer,routerPg.graphName)
+                                var res = pg2.rel(STAMPLE("view"));
+                                return res
+                            })
+                            .flatten()
+                            .map(function(pg){
+                                return pg.pointer
+                            }).value();
+
+                    // Load viewer.
+                    if (routerTypes && routerTypes.length > 0) {
+                        var viewerJsUri = routerTypes[0].uri;
+                        // Load viewer app.
+                        loadScript(viewerJsUri, function() {
+                            App.initialize(basicGraphPg);
+                        });
+                    }
+                    else
+                        throw new Error('no viewer can render any of the RDF document types: ' + routerTypes);
+
+                }
+        );
+
+    </script>
 </head>
 
 <body>

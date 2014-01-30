@@ -1,126 +1,145 @@
-<div class="userProfile">
-	<div id="userProfileWrapper">
-
-		<div id= "imgWrapper">
-			<img class="depiction" src="<%= imgUrl %>" alt="User avatar">
-			<div id= "nameText" class="p5">
-				<span><%= name %></span>
-			</div>
-		</div>
-
-		<div id="contact">
-			<div class="name info" id="name">
-				<div class="labelContainer">
-					<label>Name</label>
-				</div>
-				<span class="labelText"><%= name %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-			<div class="nickname info" id="nick">
-				<div class="labelContainer">
-				<label>Nickname</label>
-				</div>
-				<span class="labelText"><%= nickname %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-			<div class="email info" id="mbox">
-				<div class="labelContainer">
-				<label>Email</label>
-				</div>
-				<span class="labelText"><%= email %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-			<div class="phone info" id="phone">
-				<div class="labelContainer">
-				<label>Phone</label>
-				</div>
-				<span class="labelText"><%= phone %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-		</div>
-
-		<div id="address">
-			<div class="city info" id="city">
-				<div class="labelContainer">
-				<label>City</label>
-				</div>
-				<span class="labelText"><%= city %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-			<div class="country info" id="country">
-				<div class="labelContainer">
-				<label>Country</label>
-				</div>
-				<span class="labelText"><%= country %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-			<div class="postalCode info" id="postalCode">
-				<div class="labelContainer">
-				<label>PostalCode</label>
-				</div>
-				<span class="labelText"><%= postalCode %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-			<div class="street info" id="street">
-				<div class="labelContainer">
-				<label>Street</label>
-				</div>
-				<span class="labelText"><%= street %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-		</div>
-
-		<div id="basics">
-			<div class="birthday info" id="birthday">
-				<div class="labelContainer">
-				<label>Birthday</label>
-				</div>
-				<span class="labelText"><%= birthday %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-			<div class="gender info" id="gender">
-				<div class="labelContainer">
-				<label>Gender</label>
-				</div>
-				<span class="labelText"><%= gender %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-			<div class="website info" id="homepage">
-				<div class="labelContainer">
-				<label>Website</label>
-				</div>
-				<span class="labelText"><%= website %></span>
-				<a href="#" role="button" class="editLink">
-					<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
-				</a>
-			</div>
-		</div>
-
-		<!--div id="education"></div-->
-
-		<div id="friends">
-			<label>Show contacts</label>
-		</div>
-
+<div id="background"></div>
+<div id="topnav" class="topnav center width-900">
+	<img src="/assets/ldp/images/logo.svg" class="logo-icon left" /><span class="title" title="Home"><a href="https://stample.io">STAMPLE.I/O</a></span>
+	<div class="login">
+                <span class="login-links"><a class="white" href="#">WebID Login</a>
+                <br/><a class="white" href="#">Get a WebID</a></span>
+		<img class="login-photo" src="/assets/ldp/images/nouser.png" />
 	</div>
 </div>
+<div id="menuContainer" class="center width-900"></div>
+<div id="main" class="center width-900">
+
+	<div class="userProfile">
+			<div id="userProfileWrapper">
+
+				<div id= "imgWrapper">
+					<img class="depiction" src="<%= imgUrl %>" alt="User avatar">
+					<div id= "nameText" class="p5">
+						<span><%= name %></span>
+					</div>
+				</div>
+
+				<div id="contact">
+					<div class="name info" id="name">
+						<div class="labelContainer">
+							<label>Name</label>
+						</div>
+						<span class="labelText"><%= name %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+					<div class="nickname info" id="nick">
+						<div class="labelContainer">
+							<label>Nickname</label>
+						</div>
+						<span class="labelText"><%= nickname %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+					<div class="email info" id="mbox">
+						<div class="labelContainer">
+							<label>Email</label>
+						</div>
+						<span class="labelText"><%= email %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+					<div class="phone info" id="phone">
+						<div class="labelContainer">
+							<label>Phone</label>
+						</div>
+						<span class="labelText"><%= phone %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+				</div>
+
+				<div id="address">
+					<div class="city info" id="city">
+						<div class="labelContainer">
+							<label>City</label>
+						</div>
+						<span class="labelText"><%= city %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+					<div class="country info" id="country">
+						<div class="labelContainer">
+							<label>Country</label>
+						</div>
+						<span class="labelText"><%= country %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+					<div class="postalCode info" id="postalCode">
+						<div class="labelContainer">
+							<label>PostalCode</label>
+						</div>
+						<span class="labelText"><%= postalCode %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+					<div class="street info" id="street">
+						<div class="labelContainer">
+							<label>Street</label>
+						</div>
+						<span class="labelText"><%= street %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+				</div>
+
+				<div id="basics">
+					<div class="birthday info" id="birthday">
+						<div class="labelContainer">
+							<label>Birthday</label>
+						</div>
+						<span class="labelText"><%= birthday %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+					<div class="gender info" id="gender">
+						<div class="labelContainer">
+							<label>Gender</label>
+						</div>
+						<span class="labelText"><%= gender %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+					<div class="website info" id="homepage">
+						<div class="labelContainer">
+							<label>Website</label>
+						</div>
+						<span class="labelText"><%= website %></span>
+						<a href="#" role="button" class="editLink">
+							<img class="editLinkImg" src="/assets/ldp/images/edit-icon-bw.png">
+						</a>
+					</div>
+				</div>
+
+				<!--div id="education"></div-->
+
+				<div id="friends">
+					<label>Show contacts</label>
+				</div>
+
+			</div>
+		</div>
+
+	<div id="userbar" class="width-200"></div>
+</div>
+
+
+
+

@@ -1,3 +1,406 @@
+var App = {
+	attr: {
+		"name":"-",
+		"imgUrl":"/assets/ldp/images/user_background.png",
+		"nickname":"-",
+		"email":"-",
+		"phone":"-",
+		"city":"-",
+		"country":"-",
+		"postalCode":"-",
+		"street":"-",
+		"birthday":"-",
+		"gender":"-",
+		"website":"-"
+	},
+
+	initialize: function(pointedGraph){
+		var self = this;
+		var templateUri = "/assets/ldp/templates/userProfileTemplate.html";
+		console.log('initialise user profile view');
+
+		// Load necessary CSS and Scripts files
+		this.loadVariousFiles();
+
+		// Get current user relative URI.
+		this.pointedGraph = this.getPersonToDisplay(pointedGraph);
+		this.baseGraph = pointedGraph.graph;
+		this.baseUri = pointedGraph.graphName;
+
+        console.log("Person to display:" );
+        console.log(this.pointedGraph);
+
+        // Attach a model to the view
+        /*loadScript("/assets/ldp/js/models/userModel.js", function() {
+            self.model = UserModel.initialize(pointedGraph);
+            self.model = {
+                name: ST.observable()
+            }
+            self.model.fetch();
+            console.log("User model !!!!")
+            console.log(self.model)
+        });*/
+
+		// Get corresponding template.
+		$.get(templateUri, function(template) {
+			loadScript("/assets/ldp/js/menuViewer.js", function() {
+				// Create menu.
+				MenuView.initialize();
+
+				// Set template.
+				self.template = template;
+
+				// And render.
+				self.render();
+			});
+		});
+
+		// useful Define templates.
+		this.formTemplate =
+			'<form id="form">' +
+				'<input id="input" style="">' +
+				'<div class="savePrompt">Save changes?' +
+				'<span class="yesSave submit">Yes</span>' +
+				'<span class="noCancel cancel">No</span>' +
+				'</div>'+
+				'</form>';
+
+		// Bind events to DOM.
+		this.bindEventsToDom();
+	},
+
+	// Load Css and utils files.
+	loadVariousFiles: function() {
+		// Load related CSS.
+		loadCSS("/assets/ldp/css/blueprint.css");
+		loadCSS("/assets/ldp/css/common.css");
+		loadCSS("/assets/ldp/css/font-awesome.min.css");
+		loadCSS("/assets/ldp/css/buttons.css");
+		loadCSS("/assets/ldp/css/style.css");
+
+		// Load utils js.
+		loadScript("/assets/ldp/js/utils.js", null);
+		loadScript("/assets/ldp/js/utils/appUtils.js", null);
+        loadScript("/assets/ldp/js/utils/foafUtils.js", null);
+	},
+
+	// Pointed graph on current user.
+	getPersonToDisplay:function (pg) {
+		var pgPrims = pg.rel(FOAF('primaryTopic'))
+		if (pgPrims.length>0) {
+			return pgPrims[0]
+		}else {
+			var pgPersons = $rdf.pointedGraph(pg.graph,FOAF("Person"),pg.graphName).rev(RDF("type"))
+			if (pgPersons.length === 0) {
+				throw "No person to display in this card: " + this.baseUri;
+			} else {
+				return pgPersons[0]; //todo return list
+			}
+		}
+	},
+
+ 	loadUser:function (pg) {
+		 var self = this;
+		 console.log(pg);
+
+		 // Get related person.
+
+		 // Fills user attributes.
+		 var attr = this.getUserAttributesPg(pg);
+
+		 // Define view template.
+		 var html = _.template(this.template, attr);
+
+		 // Append in the DOM.
+		 $('body').find('.userProfile').remove();
+		 $('body').append(html);
+
+		 // Bind events to View elements.
+		 this.bindEventsToView();
+	},
+
+	//
+	getUserAttributes:function () {
+		var userPg = this.pointedGraph;
+		console.log("getUserAttributes");
+		console.log(userPg);
+
+		/*
+		* Foaf information.
+		* */
+        var userFoafInfo = foafUtils.getPersonInfo(userPg);
+		if (userFoafInfo) {
+ 			if (userFoafInfo.img) this.attr.imgUrl = userFoafInfo.img;
+			if (userFoafInfo.name) this.attr.name = userFoafInfo.name;
+			if (userFoafInfo.nick) this.attr.nickname = userFoafInfo.nick;
+			if (userFoafInfo.mbox) this.attr.email = userFoafInfo.mbox;
+			if (userFoafInfo.phone) this.attr.phone = userFoafInfo.phone;
+			if (userFoafInfo.birthday) this.attr.birthday = userFoafInfo.birthday;
+			if (userFoafInfo.gender) this.attr.gender = userFoafInfo.gender;
+			if (userFoafInfo.homepage) this.attr.website = userFoafInfo.homepage;
+		}
+		/*
+		 * Location information.
+		 * */
+//		var userLocationInfo = userPg.getLocationInfo();
+//		if (userLocationInfo) {
+//			if (userLocationInfo.country) this.attr.country = userLocationInfo.country;
+//			if (userLocationInfo.city) this.attr.city = userLocationInfo.city;
+//			if (userLocationInfo.street) this.attr.street = userLocationInfo.street;
+//			if (userLocationInfo.postalCode) this.attr.postalCode = userLocationInfo.postalCode;
+//		}
+	},
+
+	getUserAttributesPg:function (userPg) {
+		console.log("getUserAttributes : ");
+		console.log(userPg);
+		var attr = {
+				"name":"-",
+				"imgUrl":"/assets/ldp/images/user_background.png",
+				"nickname":"-",
+				"email":"-",
+				"phone":"-",
+				"city":"-",
+				"country":"-",
+				"postalCode":"-",
+				"street":"-",
+				"birthday":"-",
+				"gender":"-",
+				"website":"-"
+			};
+
+		// add name
+		var namesPg = userPg.rel(FOAF('name'));
+		var names =
+			_.chain(namesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (names && names.length > 0 ) attr.name = names[0].value;
+
+		// Add image if available
+		var imgsPg1 = userPg.rel(FOAF('img'));
+		var imgsPg2 = userPg.rel(FOAF('depiction'));
+		var imgs =
+			_.chain(imgsPg1.concat(imgsPg2))
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (imgs && imgs.length > 0 ) attr.imgUrl = imgs[0].value;
+
+		// Add nickname
+		var nicknamesPg = userPg.rel(FOAF('nick'));
+		var nicknames =
+			_.chain(nicknamesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (nicknames && nicknames.length > 0 ) attr.nickname = nicknames[0].value;
+
+		// Add email if available
+		var emailsPg = userPg.rel(FOAF('mbox'));
+		var emails =
+			_.chain(emailsPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'symbol';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (emails && emails.length > 0 ) attr.email = emails[0].value;
+
+		// Add phone if available
+		var phonesPg = userPg.rel(FOAF('phone'));
+		var phones =
+			_.chain(phonesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'symbol';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (phones && phones.length > 0 ) attr.phone = phones[0].value;
+
+		// Add website if available
+		var websitesPg = userPg.rel(FOAF('homepage'));
+		var websites =
+			_.chain(websitesPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'symbol';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (websites && websites.length > 0 ) attr.website = websites[0].value;
+
+		// Add bday if available
+		var gendersPg = userPg.rel(FOAF('gender'));
+		var genders =
+			_.chain(gendersPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (genders && genders.length > 0 ) attr.gender = genders[0].value;
+
+
+		// Add bday if available
+		var birthdaysPg = userPg.rel(FOAF('birthday'));
+		var birthdays =
+			_.chain(birthdaysPg)
+				.filter(function (pg) {
+					return pg.pointer.termType == 'literal';
+				})
+				.map(function (pg) {
+					return pg.pointer
+				})
+				.value();
+		if (birthdays && birthdays.length > 0 ) attr.birthday = birthdays[0].value;
+
+		return attr;
+	},
+
+	// Define handlers.
+	handlerClickOnEditLink:function (e) {
+		console.log("handlerClickOnEditLink");
+        var self = e.data.ref;
+        var parent, parentId , $labelText, $editLink, $form, $input, formerValue;
+
+		// Get target.
+		parent = $(e.target).parent().parent();
+		parentId = parent.attr('id');
+
+		// Hide name and Open form editor.
+		$labelText = parent.find(".labelText");
+		$editLink = parent.find(".editLink");
+		formerValue = $labelText.html();
+		$labelText.hide();
+		$editLink.hide();
+
+		// Insert template in the DOM.
+		$(self.formTemplate).insertAfter(parent.find(".labelContainer"));
+
+		// Store useful references.
+		$form = parent.find("#form");
+		$input = parent.find("#input");
+
+		// Give the form the focus.
+		$input
+			.val(formerValue)
+			.show()
+			.focus();
+
+		parent.find(".submit").on("click", function () {
+            //var pred = ' foaf:' + parentId;
+            var pred = FOAF(parentId)
+            console.log('submit !');
+            console.log(pred)
+
+			// Get the new value.
+			var newValue = $input.val();
+
+			//
+            var promise = self.pointedGraph.update(pred, formerValue, newValue);
+            promise.then(
+                function(res) {
+                    console.log('Success!')
+                    // Change value in label.
+                    $labelText.html(newValue);
+
+                    // Re-initiliaze the form.
+                    $form.remove();
+                    $labelText.show();
+                    $editLink.show();
+                },
+                function(err) {
+                    console.log('Error!')
+                    // Re-initiliaze the form.
+                    $form.remove();
+                    $labelText.show();
+                    $editLink.show();
+                }
+            )
+
+		});
+		parent.find(".cancel").on("click", function () {
+			console.log('cancel');
+			$form.remove();
+			$labelText.show();
+			$editLink.show();
+		});
+	},
+
+	handlerClickOnfriends:function (e) {
+		var self = e.data.ref;
+
+		console.log('handlerClickOnfriends');
+		if ($('#userbar').css('display') == 'none') {
+			// Show contacts Bar.
+			loadScript("/assets/ldp/js/contactsViewer.js", function () {
+				ContactsView.initialize(self.pointedGraph);
+				$("#friends").find('label').html('Hide Contacts')
+			});
+		}
+		else {
+			$('#userbar').css('display', 'none');
+			$('#userbar').find("#userBarContent").remove();
+			$("#friends").find('label').html('Show Contacts')
+		}
+
+	},
+
+	bindEventsToView: function() {
+		var self = this;
+
+		// Bind click for on view elements.
+		$(".editLinkImg").on("click", {ref:this}, this.handlerClickOnEditLink);
+		$("#friends").on("click", {ref:this}, this.handlerClickOnfriends);
+		$(".showContacts").on("click", this.handlerClickOnEditLink);
+	},
+
+	bindEventsToDom: function() {},
+
+	render: function(){
+		// Fills user attributes.
+		this.getUserAttributes();
+
+		// Define view template.
+		var html = _.template(this.template, this.attr);
+        //var html = _.template(this.model.TOJSON());
+
+		// Append in the DOM.
+		$('body').append(html);
+
+		// Bind events to View elements.
+		this.bindEventsToView();
+	}
+};
+
+
+
+
+
+
+
+
+
+/*
+
 // Define templates.
 var templateURI = "/assets/ldp/templates/userProfileTemplate.html";
 var formTemplate =
@@ -38,10 +441,7 @@ $.get(templateURI, function(data) {
 	console.log("Person to display:" + currentUserGlobal);
 
 	// Create a PG.
-	pointedGraphGlobal = new $rdf.PointedGraph(baseGraph, $rdf.sym(currentUserGlobal), $rdf.sym(baseUri));
-
-	// Create a list of PGs for each FOAF knows results.
-	//pointedGraph.rel(FOAF('knows'));
+	pointedGraphGlobal = new $rdf.pointedGraph(baseGraph, $rdf.sym(currentUserGlobal), $rdf.sym(baseUri));
 
 	// Load current user.
 	loadUser(currentUserGlobal, function() {
@@ -84,9 +484,11 @@ function getPersonToDisplay(g) {
 }
 
 
+*/
 /*
 * Define handlers.
-* */
+* *//*
+
 function handlerClickOnEditLink(e) {
 	console.log("handlerClickOnEditLink");
 	var parent, parentId , $labelText, $editLink, $form, $input, formerValue;
@@ -194,10 +596,12 @@ function handlerClickOnfriends(e) {
 }
 
 
+*/
 /*
 * Clean URI.
 * i.e. : look for hashbang in URL and remove it and anything after it
-* */
+* *//*
+
 function cleanUri(uri) {
 	var docURI, indexOf = uri.indexOf('#');
 	if (indexOf >= 0)
@@ -207,9 +611,11 @@ function cleanUri(uri) {
 }
 
 
+*/
 /*
 * Load a given user (get attributes and render).
-* */
+* *//*
+
 function loadUser(webId, callback) {
 	console.log("loadUser");
 
@@ -239,10 +645,12 @@ function loadUser(webId, callback) {
 	}
 }
 
+*/
 /*
  * Clean URI.
  * i.e. : look for hashbang in URL and remove it and anything after it
- * */
+ * *//*
+
 function cleanUri(uri) {
 	var docURI, indexOf = uri.indexOf('#');
 	if (indexOf >= 0)
@@ -251,9 +659,11 @@ function cleanUri(uri) {
 	return docURI;
 }
 
+*/
 /**
  * Get attributes of given user by querrying the graph.
- */
+ *//*
+
 function getUserAttributes2(graph, uriSym, callback) {
 	console.log("getUserAttributes");
 	// Helper to select the first existing element of a series of arguments
@@ -298,9 +708,11 @@ function getUserAttributes2(graph, uriSym, callback) {
 	var bday = graph.any(uriSym, FOAF('birthday'));
 	if(bday && bday.value) tab.birthday=bday.value;
 
-	/*
+	*/
+/*
 	* Get Contact.
-	* */
+	* *//*
+
 
 	// Define a SPARQL query to fetch the address
 	var sparqlQuery = "PREFIX contact:  <http://www.w3.org/2000/10/swap/pim/contact#> \n" +
@@ -335,11 +747,13 @@ function getUserAttributes2(graph, uriSym, callback) {
 	graph.query(addressQuery, onResult, undefined, onDone);
 }
 
+*/
 /**
  *
- * @param userPG pointed graph with pointer pointing on user
+ * @param userPG pointed graph with pointer pointing on user.
  * @param callback
- */
+ *//*
+
 function getUserAttributes(userPg, callback) {
 	console.log("getUserAttributes");
 
@@ -353,25 +767,24 @@ function getUserAttributes(userPg, callback) {
 	tab.name = (names && names.length >0 )? names[0].value : "No value";
 	console.log(tab.name);
 
+	// Add image if available
+	var imgsPg1 = userPg.rel(FOAF('img'));
+	var imgsPg2 = userPg.rel(FOAF('depiction'));
+	console.log(imgsPg1);
+	console.log(imgsPg2);
+	var imgs =
+		_.chain(imgsPg1.concat(imgsPg2))
+		.map(function(pg) {return pg.pointer})
+		.value();
+	tab.imgUrl = (imgs && imgs.length >0 )? imgs[0].value : "No profile picture";
 
-	// Test Observables.
-	var source = userPg.observableRel(FOAF('knows'));
-	var subscription = source.subscribe(
-		function(value) {
-			console.log("onNext : " + value.isLocalPointer());
-			updateAttributesPg(value) ;
-		},
-		function(err) {
-			console.log("onError : " );
-			console.log( err.message);
-		},
-		function() {
-			console.log('Completed !!!')
-		}
-	)
+	// Render callback.
+	if (callback) callback();
 }
 
 
 function updateAttributesPg(value) {
 
 }
+*/
+

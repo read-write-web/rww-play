@@ -1,3 +1,77 @@
+var BodyView = {
+	initialize: function(viewerJsUri, pointedGraph) {
+		var self = this;
+		var templateURI = "/assets/ldp/templates/bodyTemplate.html";
+		console.log('initialize Appview');
+
+		// Load necessary CSS and Scripts files
+		this.loadVariousFiles();
+
+		// Load the template.
+		$.get(templateURI, function(template) {
+			// Set the template.
+			self.template = template;
+
+			// Render.
+			self.render();
+
+			// Load viewer app.
+			loadScript(viewerJsUri, function() {
+				App.initialize(pointedGraph);
+			});
+		});
+
+		// Bind events to DOM elements.
+		this.bindEventsToDom();
+	},
+
+	removeView: function(){
+
+	},
+
+	// Load Css and utils files.
+	loadVariousFiles: function() {
+		// Load related CSS.
+		loadCSS("/assets/ldp/css/blueprint.css");
+		loadCSS("/assets/ldp/css/common.css");
+		loadCSS("/assets/ldp/css/font-awesome.min.css");
+		loadCSS("/assets/ldp/css/buttons.css");
+		loadCSS("/assets/ldp/css/style.css");
+
+		// Load utils js.
+		loadScript("/assets/ldp/js/utils.js", null);
+		loadScript("/assets/ldp/js/utils/appUtils.js", null);
+	},
+
+	bindEventsToDom: function() {},
+
+	bindEventsToView: function() {},
+
+	// Render.
+	render: function() {
+		console.log('render Appview');
+
+		// Define template.
+		var html = _.template(this.template, {});
+
+		// Append to DOM.
+		$('body').append(html);
+
+		// Bind events to view elements.
+		this.bindEventsToView();
+	}
+};
+
+
+
+
+
+
+
+
+
+
+/*
 var templateURI = "/assets/ldp/templates/bodyTemplate.html";
 var tab = {};
 $.get(templateURI, function(data) {
@@ -47,8 +121,5 @@ $.get(templateURI, function(data) {
 			throw new Error('no viewer can render any of the RDF document types: ' + rdfTypesGlobal);
 
 	});
-
-
-
-
 }, 'html');
+*/
