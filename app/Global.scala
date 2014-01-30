@@ -14,7 +14,9 @@ object Global extends GlobalSettings {
 
     val uri = req.getAbsoluteURI
 
-    if (uri.getPath.startsWith("/assets/")
+    if (
+      uri.getPath.startsWith("/assets/")
+      || uri.getPath.startsWith("/platform-apps/")
       || uri.getPath.startsWith("/srv/")
       || uri.getHost().startsWith("www")
     ) {
