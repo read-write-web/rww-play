@@ -17,7 +17,7 @@
     </head>
     <body>
         
-        <div class="topbar">
+        <!--div class="topbar">
             <div class="fill">
                 <div class="container">
                     <ul class="nav">
@@ -33,14 +33,19 @@
                     </ul>
                 </div>
             </div>
-        </div>
+        </div-->
 
         <div class="container">
 
+            <section id="logoStample">
+                <img src="@routes.Assets.at("images/logo.png")" alt="Stample">
+                <div id="companyName">Stample</div>
+            </section>
+
             <div class="content">
-                
                 <div class="page-header">
-                    <h1>@title</h1>
+                    <div class="description">Stample helps you, your team and your clients innovate together
+                        by creating collaborative workspaces for research and discussion.</div>
                 </div>
 
                 <div class="row">
@@ -48,13 +53,10 @@
                         @content
                     </div>
                 </div>
-                
             </div>
 
-            <footer>
-                <p>
-                    <a href="https://stample.io/">Stample.IO</a>
-                </p>
+            <footer id="logoWedib">
+                <img src="@routes.Assets.at("images/webid.png")" alt="Stample">
             </footer>
 
         </div>

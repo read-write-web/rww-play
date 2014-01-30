@@ -38,7 +38,7 @@ $.get(templateURI, function(data) {
 	console.log("Person to display:" + currentUserGlobal);
 
 	// Create a PG.
-	pointedGraphGlobal = new $rdf.pointedGraph(baseGraph, $rdf.sym(currentUserGlobal), $rdf.sym(baseUri));
+	pointedGraphGlobal = new $rdf.PointedGraph(baseGraph, $rdf.sym(currentUserGlobal), $rdf.sym(baseUri));
 
 	// Create a list of PGs for each FOAF knows results.
 	//pointedGraph.rel(FOAF('knows'));
