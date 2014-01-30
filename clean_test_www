@@ -1,0 +1,14 @@
+#!/bin/bash
+
+echo "######################################################"
+git clean -f -d -n test_www/
+echo "######################################################"
+read -r -p "Are you sure? [y/N] " response
+echo "######################################################"
+if [[ $response =~ ^[Yy]$ ]]
+then
+    git clean -f -d test_www/
+else
+    echo "Not removing anything" 
+fi
+echo "######################################################"
