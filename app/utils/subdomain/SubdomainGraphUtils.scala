@@ -76,14 +76,22 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
   }
   */
 
+
+
   def createSubdomainWebIdCardGraph(email: String): Rdf#Graph = {
 
     val pg: PointedGraph[Rdf] = (
       URI("").a(foaf.PersonalProfileDocument)
         -- foaf.primaryTopic ->- (
-        URI(personFragment) -- foaf.mbox ->- URI("mailto:" + email)
+        URI(personFragment)
+          -- foaf.mbox ->- URI("mailto:" + email)
+          // TODO temporary
+          // for now we add some "default friends" because there's no way to discover people on a new account
+          -- foaf.knows ->- URI("http://bblfish.net/people/henry/card#me")
+          -- foaf.knows ->- URI("https://my-profile.eu/people/deiu/card#me")
         )
       )
+
 
     val ldcal = URI("#ld-cal")
     // TODO this is temporary webapp test and will be removed
