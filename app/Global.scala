@@ -14,8 +14,10 @@ object Global extends GlobalSettings {
 
     val uri = req.getAbsoluteURI
 
-    if (uri.getPath.startsWith("/assets/") ||
-        uri.getPath.startsWith("/srv/")) {
+    if (uri.getPath.startsWith("/assets/")
+      || uri.getPath.startsWith("/srv/")
+      || uri.getHost().startsWith("www")
+    ) {
       super.onRouteRequest(req)
     } else if (uri.getHost != controllers.plantain.host) {
       req.method match {
