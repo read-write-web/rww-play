@@ -85,7 +85,7 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
       .get
     response.flatMap { response =>
       import MimeType._
-      WebClient.log.info(s"WebClient fetched content successfully. ${response}")
+      WebClient.log.info(s"WebClient fetched content successfully. ${response.status} ${response.statusText} ${response.body}")
       response.header("Content-Type") match {
         case Some(header) => {
           val mt = MimeType(extract(header))
