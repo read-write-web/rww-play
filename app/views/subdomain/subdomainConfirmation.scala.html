@@ -28,7 +28,8 @@
     buttons : {
     "Visit your subdomain" :
     function() {
-    window.location.href = window.location.href = subdomainURL;
+        var cardURL = subdomainURL+"/card"; // TODO for now we redirect automatically to the card, maybe it's not a good idea?
+    window.location.href = window.location.href = cardURL;
     }
     }
     });
