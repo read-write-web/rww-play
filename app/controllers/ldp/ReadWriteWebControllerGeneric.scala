@@ -136,7 +136,12 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     namedRes.result match {
       case ldpr: LDPR[Rdf] =>  {
         bestReplyContentType match {
-          case SupportedRdfMimeType.Html => Ok(views.html.ldp.rdfToHtml())
+
+
+          // case SupportedRdfMimeType.Html => Ok(views.html.ldp.rdfToHtml())
+          case SupportedRdfMimeType.Html => Ok(views.html.ldp.rdfToHtmlIframe())
+
+
           case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
             writerFor[Rdf#Graph](request).map { wr =>
               val headers =  "Access-Control-Allow-Origin"-> "*"::userHeader(namedRes)::linkOpt.toList
