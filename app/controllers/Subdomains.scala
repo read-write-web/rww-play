@@ -23,6 +23,7 @@ import play.api.mvc.ResponseHeader
 import utils.subdomain.SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
 import java.security.interfaces.RSAPublicKey
 import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
+import controllers.plantain
 
 case class CreateUserSpaceForm(subdomain: String, key: PublicKey, email: String)
 
@@ -268,7 +269,8 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
   def createX509Certificate(webid: Rdf#URI,subdomain: String, key: PublicKey): X509Certificate = {
     Logger.info(s"Adding new certificate for owner of domain $subdomain")
     val webIdUrl = new jURL(webid.toString)
-    val commonName = webid.toString // TODO what to put as certificate CN?
+    val subdomainURL = plantain.hostRootSubdomain(subdomain).toString
+    val commonName = "WebID Cert for " +subdomainURL
     val certReq = CertReq(commonName,List(webIdUrl),key,ClientCertificateApp.tenMinutesAgo,ClientCertificateApp.yearsFromNow(2))
     certReq.certificate
   }
