@@ -8,8 +8,8 @@ var App = {
 
 		// Get current user relative URI.
 		this.pointedGraph = pointedGraph;
-		this.baseGraph = pointedGraph.graph;
-		this.baseUri = pointedGraph.graphName.uri;
+		this.baseGraph = pointedGraph.store;
+		this.baseUri = pointedGraph.namedGraphUrl.uri;
 
 		$.get(templateUri, function(template) {
 			loadScript("/assets/ldp/js/menuViewer.js", function() {
@@ -35,6 +35,7 @@ var App = {
 		loadCSS("/assets/ldp/css/style.css");
 
 		// Load utils js.
+        loadScript("/assets/ldp/lib/rdflib.js", null);
 		loadScript("/assets/ldp/js/utils.js", null);
 		loadScript("/assets/ldp/js/utils/appUtils.js", null);
 	},
@@ -43,7 +44,7 @@ var App = {
 	getContainerContent: function() {
 		var self = this;
 		var template2URI = "/assets/ldp/templates/containerEltTemplate.html";
-		console.log("getContainerContent");
+
 		// Fetch template for container items.
 		$.get(template2URI, function (template) {
 			var onResult, onDone;
@@ -66,15 +67,13 @@ var App = {
 
 			// Define callback for Sparql request.
 			onResult = function (result) {
-				console.log("result !!!!!");
 				// Create corresponding contact view.
 				loadScript("/assets/ldp/js/containerEltView.js", function() {
 					containerEltView.initialize(result, template);
 				});
 			};
 			onDone = function (result) {
-				console.log(result);
-				console.log('done !!!!!!');
+				console.log('done');
 			};
 
 			// Execute the Sparql query.

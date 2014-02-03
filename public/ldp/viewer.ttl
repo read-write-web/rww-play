@@ -4,6 +4,7 @@
 
 ldp:Container stample:view </assets/ldp/js/containerViewer.js> .
 ldp:Ressource stample:view </assets/ldp/js/fileViewer.js> .
-foaf:PersonalProfileDocument stample:view </assets/ldp/js/userProfileViewer.js> .
+foaf:PersonalProfileDocument stample:view </assets/react-foaf/js/scripts/AppStarter.js> .
+#foaf:PersonalProfileDocument stample:view </assets/ldp/js/userProfileViewer.js> .
 # foaf:PersonalProfileDocument stample:view </assets/ldp/js/personalProfileDocumentViewer.js> .
 stample:EventsDocument stample:view </assets/ldp/js/ldcalViewer.js> .

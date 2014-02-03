@@ -4,82 +4,30 @@
 
     <head>
         <title>Primary Html file.</title>
+        <link rel="stylesheet/less" href="/assets/react-foaf/css/base.less">
+        <script src="/assets/react-foaf/js/lib/less.js"></script>
+        <link href='https://fonts.googleapis.com/css?family=Noto+Sans:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+        <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
+
         <script type="text/javascript" src="/assets/ldp/lib/jquery-1.7.1.min.js"></script>
         <script type="text/javascript" src="/assets/ldp/lib/underscore.js"></script>
-        <script type="text/javascript" src="/assets/ldp/lib/rsvp-latest.js"></script>
         <script type="text/javascript" src="/assets/ldp/lib/rdflib.js"></script>
         <script type="text/javascript" src="/assets/ldp/lib/pointedGraph.js"></script>
+        <script type="text/javascript" src="/assets/ldp/lib/preconditions.js"></script>
+        <script type="text/javascript" src="/assets/ldp/lib/q.js"></script>
         <script type="text/javascript" src="/assets/ldp/lib/fetcherWithPromise.js"></script>
+        <script type="text/javascript" src="/assets/ldp/js/utils/rdflibUtils.js"></script>
         <script type="text/javascript" src="/assets/ldp/lib/rx.js"></script>
         <script type="text/javascript" src="/assets/ldp/lib/rx.async.js"></script>
-        <script type="text/javascript" src="/assets/ldp/lib/spin.min.js"></script>
         <script type="text/javascript" src="/assets/ldp/js/loadScript.js"></script>
         <script type="text/javascript" src="/assets/ldp/js/loadCSS.js"></script>
-        <script type="text/javascript">
-        var LDP = $rdf.Namespace("http://www.w3.org/ns/ldp#");
-        var RDF = $rdf.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
-        var STAMPLE = $rdf.Namespace("http://ont.stample.co/2013/display#");
-        var WEBAPP = $rdf.Namespace("http://ns.rww.io/wapp#");
-        var FOAF = $rdf.Namespace("http://xmlns.com/foaf/0.1/");
-        var CONTACT = $rdf.Namespace("http://www.w3.org/2000/10/swap/pim/contact#");
-        var GEOLOC = $rdf.Namespace("http://www.w3.org/2003/01/geo/wgs84_pos#");
-
-        // Define proxy.
-        $rdf.Fetcher.crossSiteProxyTemplate = "http://data.fm/proxy?uri={uri}";
-        //$rdf.Fetcher.crossSiteProxyTemplate = window.location.origin+"/srv/cors?url={uri}";
-
-        // Global variables.
-        graphsCache = {};
-        storeGlobal = new $rdf.IndexedFormula();
-        baseUriGlobal = window.location.href;
-        baseUriSymGlobal = $rdf.sym(baseUriGlobal);
-        baseUriSym = $rdf.sym(baseUriGlobal);
-        routerUri = window.location.origin + '/assets/ldp/viewer.ttl';
-        routerUriSym = $rdf.sym(routerUri);
-
-        // Fetch the basic graphs.
-        var f1 = $rdf.fetcher(storeGlobal);
-        var f2 = $rdf.fetcher(storeGlobal);
-
-        // Create related promises.
-        baseGraphPromise = f1.fetch(baseUriGlobal, baseUriGlobal, false);
-        routerPromise = f2.fetch(routerUri, routerUri, false);
-
-        RSVP.all([baseGraphPromise, routerPromise]).then(
-        function(results) {
-        // Get the type of the ressource in the graph.
-        var basicGraphPg = results[0];
-        var routerPg = results[1];
-        var routerTypes = _.chain(results[0].rel(RDF("type")))
-        .map(function(pg) {
-        var pg2 = new $rdf.PointedGraph(routerPg.graph,pg.pointer,routerPg.graphName)
-        var res = pg2.rel(STAMPLE("view"));
-        return res
-        })
-        .flatten()
-        .map(function(pg){
-        return pg.pointer
-        }).value();
-
-        // Load viewer.
-        if (routerTypes && routerTypes.length > 0) {
-        var viewerJsUri = routerTypes[0].uri;
-        // Load viewer app.
-        loadScript(viewerJsUri, function() {
-        App.initialize(basicGraphPg);
-        });
-        }
-        else
-        throw new Error('no viewer can render any of the RDF document types: ' + routerTypes);
-
-        }
-        );
-
-        </script>
+        <script type="text/javascript" src="/assets/ldp/viewer.js"></script>
     </head>
 
-    <body>
-
+<body>
+    <div id="container">
+            <!-- Application Renders Here-->
+    </div>
 </body>
 
 </html>

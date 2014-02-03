@@ -54,7 +54,7 @@ var containerEltView = {
 	},
 
 	render: function() {
-		console.log("render elt");
+
 		// Save ressource informations.
 		this.attr.uri = this.container['?m'].uri;
 
