@@ -83,7 +83,7 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
     val pg: PointedGraph[Rdf] = (
       URI("").a(foaf.PersonalProfileDocument)
         -- foaf.primaryTopic ->- (
-        URI(personFragment)
+        URI(personFragment).a(foaf.Person)
           -- foaf.mbox ->- URI("mailto:" + email)
           // TODO temporary
           // for now we add some "default friends" because there's no way to discover people on a new account
