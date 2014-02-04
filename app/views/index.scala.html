@@ -5,8 +5,7 @@
     }
 
 @main(title, NavigationBar.Home) {
-
-    <button type="submit"><a href="@routes.Subdomains.createSubdomain">Create your User Space</a></button>
-
-
+    @helper.form(action = routes.Subdomains.createSubdomain) {
+        <button type="submit" onclick="this.form.submit();">Create your user space</button>
+    }
 }
