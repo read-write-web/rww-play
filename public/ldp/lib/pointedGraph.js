@@ -272,7 +272,7 @@ $rdf.PointedGraph = function() {
     }
 
     $rdf.PointedGraph.prototype.relFirst = function(relUri) {
-        var l = $rdf.PointedGraph.prototype.rel(relUri);
+        var l = this.rel(relUri);
         if (l.length > 0) return l[0];
     }
 
