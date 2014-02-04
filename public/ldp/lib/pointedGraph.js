@@ -19,6 +19,7 @@ $rdf.pointedGraph = function(store, pointer, namedGraphUrl) {
 
 $rdf.PointedGraph = function() {
     $rdf.PointedGraph = function(store, pointer, namedGraphUrl){
+        // TODO assert the  pointer is a node
         Preconditions.checkArgument( $rdf.Stmpl.isFragmentlessSymbol(namedGraphUrl),"The namedGraphUrl should be a fragmentless symbol! -> "+namedGraphUrl);
         this.store = store;
         this.pointer = pointer;
@@ -450,6 +451,17 @@ $rdf.PointedGraph = function() {
     }
 
     /**
+     * This permits to find the triples that matches a given rel/predicate and object
+     * for the current pointer in the current document.
+     * @param rel
+     * @param object
+     * @param onlyOne
+     */
+    $rdf.PointedGraph.prototype.getPointerTriplesMatching = function(rel,object,onlyOne) {
+        return this.getCurrentDocumentTriplesMatching(this.pointer, rel, object, onlyOne);
+    }
+
+    /**
      * Returns the Url of the currently pointed document.
      * Most of the time it will return the current document url.
      * It will return a different url only for non-local symbol nodes.
@@ -475,6 +487,31 @@ $rdf.PointedGraph = function() {
     }
     $rdf.PointedGraph.prototype.isRemotePointer = function() {
         return !this.isLocalPointer();
+    }
+
+    /**
+     * Permits to "move" to another subject in the given graph
+     * @param newPointer
+     * @returns {$rdf.PointedGraph}
+     */
+    $rdf.PointedGraph.prototype.withPointer = function(newPointer) {
+        return new $rdf.PointedGraph(this.store, newPointer, this.namedGraphUrl, this.namedGraphFetchUrl);
+    }
+
+    /**
+     * Permits to know if the given pointer have at least one rel that can be followed.
+     * This means that the current pointer exists in the local graph as a subject in at least one triple.
+     */
+    $rdf.PointedGraph.prototype.hasRels = function() {
+        return this.getCurrentDocumentTriplesMatching(this.pointer, undefined, object, onlyOne);
+    }
+
+    /**
+     * Permits to know if the given pointer have at least one rev that can be followed.
+     * This means that the current pointer exists in the local graph as an object in at least one triple.
+     */
+    $rdf.PointedGraph.prototype.hasRevs = function() {
+        return this.getCurrentDocumentTriplesMatching(undefined, rel, object, onlyOne);
     }
 
 
