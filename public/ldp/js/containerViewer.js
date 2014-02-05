@@ -1,4 +1,4 @@
-var App = {
+var AppStarter = {
 	initialize: function(pointedGraph) {
 		var self = this;
 		var templateUri = "/assets/ldp/templates/containerTemplate.html";

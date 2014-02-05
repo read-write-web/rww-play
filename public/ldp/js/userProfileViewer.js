@@ -1,4 +1,4 @@
-var App = {
+var AppStarter = {
 	attr: {
 		"name":"-",
 		"imgUrl":"/assets/ldp/images/user_background.png",
