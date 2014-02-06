@@ -1,3 +1,161 @@
+(function(root, undef) {
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+// pg.js, part of rdflib-pg-extension.js made by Stample
+// see https://github.com/stample/rdflib.js
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+$rdf.PG = {
+    createNewStore: function(fetcherTimeout) {
+        var store = new $rdf.IndexedFormula();
+        // this makes "store.fetcher" variable available
+        $rdf.fetcher(store, fetcherTimeout, true);
+        return store;
+    }
+}
+
+$rdf.PG.Utils = {
+
+    /**
+     * Just a little helper method to verify preconditions and fail fast.
+     * See http://en.wikipedia.org/wiki/Precondition
+     * See http://en.wikipedia.org/wiki/Fail-fast
+     * @param condition
+     * @param message
+     */
+    checkArgument: function(condition, message) {
+        if (!condition) {
+            throw Error('IllegalArgumentException: ' + (message || 'No description'));
+        }
+    },
+
+    /**
+     * remove hash from URL - this gets the document location
+     * @param url
+     * @returns {*}
+     */
+    fragmentless: function(url) {
+        return url.split('#')[0];
+    },
+
+    isFragmentless: function(url) {
+        return url.indexOf('#') == -1;
+    },
+
+    isFragmentlessSymbol: function(node) {
+        return this.isSymbolNode(node) && this.isFragmentless(this.symbolNodeToUrl(node));
+    },
+
+
+    getTermType: function(node) {
+        if ( node && node.termType ) {
+            return node.termType
+        } else {
+            throw new Error("Can't get termtype on this object. Probably not an RDFlib node: "+node);
+        }
+    },
+
+
+    isLiteralNode: function(node) {
+        return this.getTermType(node) == 'literal';
+    },
+    isSymbolNode: function(node) {
+        return this.getTermType(node) == 'symbol';
+    },
+    isBlankNode: function(node) {
+        return this.getTermType(node) == 'bnode';
+    },
+
+    literalNodeToValue: function(node) {
+        this.checkArgument(this.isLiteralNode(node), "Node is not a literal node:"+node);
+        return node.value;
+    },
+    symbolNodeToUrl: function(node) {
+        this.checkArgument(this.isSymbolNode(node), "Node is not a symbol node:"+node);
+        return node.uri;
+    },
+
+
+
+
+
+    /**
+     * Get the nodes for a given relation symbol
+     * @param pg
+     * @param relSym
+     * @returns => List[Nodes]
+     */
+    getNodes: function(pg, relSym) {
+        return _.chain( pg.rels(relSym) )
+            .map(function(pg) {
+                return pg.pointer;
+            }).value();
+    },
+
+    getLiteralNodes: function(pg, relSym) {
+        return _.chain(pgUtils.getNodes(pg,relSym))
+            .filter($rdf.PG.Utils.isLiteralNode)
+            .value();
+    },
+    getSymbolNodes: function(pg, relSym) {
+        return _.chain(pgUtils.getNodes(pg,relSym))
+            .filter($rdf.PG.Utils.isSymbolNode)
+            .value();
+    },
+    getBlankNodes: function(pg, relSym) {
+        return _.chain(pgUtils.getNodes(pg,relSym))
+            .filter($rdf.PG.Utils.isBlankNode)
+            .value();
+    },
+
+
+    /**
+     *
+     * @param pgList
+     * @returns {*}
+     */
+    getLiteralValues: function(pgList) {
+        var rels = (slice.call(arguments, 1));
+        var res =  _.chain(pgList)
+            .map(function (pg) {
+                return pg.getLiteral(rels);
+            })
+            .flatten()
+            .value();
+        return res;
+    }
+
+}
+
+
+$rdf.PG.Filters = {
+    isLiteralPointer: function(pg) {
+        return pg.isLiteralPointer();
+    },
+    isBlankNodePointer: function(pg) {
+        return pg.isBlankNodePointer();
+    },
+    isSymbolPointer: function(pg) {
+        return pg.isSymbolPointer();
+    }
+}
+
+$rdf.PG.Transformers = {
+    literalPointerToValue: function(pg) {
+        return $rdf.PG.Utils.literalNodeToValue(pg.pointer);
+    },
+    symbolPointerToValue: function(pg) {
+        return $rdf.PG.Utils.symbolNodeToUrl(pg.pointer);
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+// pointedGraph.js, part of rdflib-pg-extension.js made by Stample
+// see https://github.com/stample/rdflib.js
+///////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * A pointed graph is a pointer in a named graph.
@@ -20,7 +178,7 @@ $rdf.pointedGraph = function(store, pointer, namedGraphUrl) {
 $rdf.PointedGraph = function() {
     $rdf.PointedGraph = function(store, pointer, namedGraphUrl){
         // TODO assert the  pointer is a node
-        Preconditions.checkArgument( $rdf.Stmpl.isFragmentlessSymbol(namedGraphUrl),"The namedGraphUrl should be a fragmentless symbol! -> "+namedGraphUrl);
+        $rdf.PG.Utils.checkArgument( $rdf.PG.Utils.isFragmentlessSymbol(namedGraphUrl),"The namedGraphUrl should be a fragmentless symbol! -> "+namedGraphUrl);
         this.store = store;
         this.pointer = pointer;
         this.namedGraphUrl = namedGraphUrl;
@@ -111,7 +269,7 @@ $rdf.PointedGraph = function() {
      * @returns {[PointedGraph]} of PointedGraphs with the same graph name in the same store
      */
     $rdf.PointedGraph.prototype.rel = function (rel) {
-        Preconditions.checkArgument( $rdf.Stmpl.isSymbolNode(rel) , "The argument should be a symbol:"+rel);
+        $rdf.PG.Utils.checkArgument( $rdf.PG.Utils.isSymbolNode(rel) , "The argument should be a symbol:"+rel);
         var self = this;
         var resList = this.getCurrentDocumentTriplesMatching(this.pointer, rel, undefined, false);
         return _.map(resList, function (triple) {
@@ -125,7 +283,7 @@ $rdf.PointedGraph = function() {
      * @returns {[PointedGraph]} of PointedGraphs with the same graph name in the same store
      */
     $rdf.PointedGraph.prototype.rev = function (rel) {
-        Preconditions.checkArgument( $rdf.Stmpl.isSymbolNode(rel) , "The argument should be a symbol:"+rel);
+        $rdf.PG.Utils.checkArgument( $rdf.PG.Utils.isSymbolNode(rel) , "The argument should be a symbol:"+rel);
         var self = this;
         var resList = this.getCurrentDocumentTriplesMatching(undefined, rel, this.pointer, false);
         return _.map(resList, function (triple) {
@@ -239,9 +397,9 @@ $rdf.PointedGraph = function() {
      * @returns {Promise[PointedGraph]}
      */
     $rdf.PointedGraph.prototype.jumpFetchRemote = function() {
-        Preconditions.checkArgument( this.isRemotePointer(),"You are not supposed to jumpFetch if you already have all the data locally. Pointer="+this.pointer);
+        $rdf.PG.Utils.checkArgument( this.isRemotePointer(),"You are not supposed to jumpFetch if you already have all the data locally. Pointer="+this.pointer);
         var pointerUrl = this.getSymbolPointerUrl();
-        var referrerUrl = $rdf.Stmpl.symbolNodeToUrl(this.namedGraphUrl);
+        var referrerUrl = $rdf.PG.Utils.symbolNodeToUrl(this.namedGraphUrl);
         var force = false;
         return this.store.fetcher.fetch(pointerUrl, referrerUrl, force);
     }
@@ -254,8 +412,8 @@ $rdf.PointedGraph = function() {
         var pgList = this.rels.apply(this, rels);
         var symbolValueList =
             _.chain(pgList)
-                .filter(pgUtils.pgFilters.isSymbolPointer)
-                .map(pgUtils.pgTransformers.symbolPointerToValue)
+                .filter($rdf.PG.Filters.isSymbolPointer)
+                .map($rdf.PG.Transformers.symbolPointerToValue)
                 .value();
         return symbolValueList
     }
@@ -266,8 +424,8 @@ $rdf.PointedGraph = function() {
         var rels = _.flatten(arguments);  // TODO: WTF WHY DO WE NEED TO FLATTEN!!!
         var pgList = this.rels.apply(this, rels);
         var literalValueList = _.chain(pgList)
-            .filter(pgUtils.pgFilters.isLiteralPointer)
-            .map(pgUtils.pgTransformers.literalPointerToValue)
+            .filter($rdf.PG.Filters.isLiteralPointer)
+            .map($rdf.PG.Transformers.literalPointerToValue)
             .value();
         return literalValueList;
     }
@@ -317,7 +475,7 @@ $rdf.PointedGraph = function() {
 
     $rdf.PointedGraph.prototype.replaceStatements = function(pg) {
         var self = this;
-        this.store.removeMany(pg.pointer, undefined, undefined, pg.namedGraphFetchUrl);
+        this.store.removeMany(undefined, undefined, undefined, pg.namedGraphFetchUrl);
         _.each(pg.store.statements, function(stat) {
             self.store.add(stat.subject, stat.predicate, stat.object, pg.namedGraphFetchUrl)
         });
@@ -357,33 +515,13 @@ $rdf.PointedGraph = function() {
         return this.printSummary();
     }
 
-
-    // TODO not sure it's a good idea neither if it's well implemented
-    // TODO this file should not contain anything related to react...
     /**
-     * Return a string key for the current pointer.
-     * This is useful for React to be able to associate a key to each relation to avoid recreating dom nodes
-     * Note that the key value must be unique or React can't handle this
-     * @returns
+     * Return a clone of the current pointed graph in another store.
+     * This is useful to edit a pointed graph.
+     * Once the edit is validated it may be nice to merge the small temporary edited store
+     * to the original big store.
      */
-    $rdf.PointedGraph.prototype.getPointerKeyForReact = function() {
-        if ( this.isBlankNodePointer() ) {
-            return "BNode-"+this.pointer.id; // TODO not sure it's a good idea (?)
-        }
-        else if ( this.isSymbolPointer() ) {
-            return this.pointer.value;
-        }
-        else if ( this.isLiteralPointer() ) {
-            return this.pointer.value;
-        }
-        else {
-            throw new Error("Unexpected pointed type:"+this.pointer);
-        }
-    }
-
-    /**
-     * Return a clone of the current pointed graph.
-     */
+    // TODO need better name
     $rdf.PointedGraph.prototype.deepCopyOfGraph = function() {
         var self = this;
         var triples = this.store.statementsMatching(undefined, undefined, undefined, this.namedGraphFetchUrl);
@@ -397,13 +535,13 @@ $rdf.PointedGraph = function() {
 
 
     $rdf.PointedGraph.prototype.isSymbolPointer = function() {
-        return $rdf.Stmpl.isSymbolNode(this.pointer);
+        return $rdf.PG.Utils.isSymbolNode(this.pointer);
     }
     $rdf.PointedGraph.prototype.isLiteralPointer = function() {
-        return $rdf.Stmpl.isLiteralNode(this.pointer);
+        return $rdf.PG.Utils.isLiteralNode(this.pointer);
     }
     $rdf.PointedGraph.prototype.isBlankNodePointer = function() {
-        return $rdf.Stmpl.isBlankNode(this.pointer);
+        return $rdf.PG.Utils.isBlankNode(this.pointer);
     }
 
     /**
@@ -412,7 +550,7 @@ $rdf.PointedGraph = function() {
      * Will fail if the pointer is not a symbol because you can't get an url for a blank node or a literal.
      */
     $rdf.PointedGraph.prototype.getSymbolPointerUrl = function() {
-        return $rdf.Stmpl.symbolNodeToUrl(this.pointer);
+        return $rdf.PG.Utils.symbolNodeToUrl(this.pointer);
     }
 
     /**
@@ -422,7 +560,7 @@ $rdf.PointedGraph = function() {
      */
     $rdf.PointedGraph.prototype.getSymbolPointerDocumentUrl = function() {
         var pointerUrl = this.getSymbolPointerUrl();
-        return $rdf.Stmpl.fragmentless(pointerUrl);
+        return $rdf.PG.Utils.fragmentless(pointerUrl);
     }
 
 
@@ -430,7 +568,7 @@ $rdf.PointedGraph = function() {
      * Returns the current document/namedGraph Url (so it has no fragment)
      */
     $rdf.PointedGraph.prototype.getCurrentDocumentUrl = function() {
-        return $rdf.Stmpl.symbolNodeToUrl(this.namedGraphUrl);
+        return $rdf.PG.Utils.symbolNodeToUrl(this.namedGraphUrl);
     }
 
     /**
@@ -503,7 +641,7 @@ $rdf.PointedGraph = function() {
      * This means that the current pointer exists in the local graph as a subject in at least one triple.
      */
     $rdf.PointedGraph.prototype.hasRels = function() {
-        return this.getCurrentDocumentTriplesMatching(this.pointer, undefined, object, onlyOne);
+        return this.getCurrentDocumentTriplesMatching(this.pointer, undefined, undefined, true).length > 0;
     }
 
     /**
@@ -511,9 +649,158 @@ $rdf.PointedGraph = function() {
      * This means that the current pointer exists in the local graph as an object in at least one triple.
      */
     $rdf.PointedGraph.prototype.hasRevs = function() {
-        return this.getCurrentDocumentTriplesMatching(undefined, rel, object, onlyOne);
+        return this.getCurrentDocumentTriplesMatching(undefined, undefined, this.pointer, true).length > 0;
     }
 
 
     return $rdf.PointedGraph;
 }();
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+// fetcherWithPromise.js, part of rdflib-pg-extension.js made by Stample
+// see https://github.com/stample/rdflib.js
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+TODO:
+this proxification code is kind of duplicate of RDFLib's "crossSiteProxyTemplate" code.
+How can we make this code be integrated in rdflib nicely?
+*/
+
+
+/**
+ * Permits to know in which conditions we are using a CORS proxy (if one is configured)
+ * @param uri
+ */
+$rdf.Fetcher.prototype.requiresProxy = function(url) {
+    var isCorsProxyConfigured = $rdf.Fetcher.fetcherWithPromiseCrossSiteProxyTemplate;
+    if ( !isCorsProxyConfigured ) {
+        return false;
+    }
+    else {
+        // /!\ this may not work with the original version of RDFLib
+        var isUriAlreadyProxified = (url.indexOf($rdf.Fetcher.fetcherWithPromiseCrossSiteProxyTemplate) == 0);
+        var isHomeServerUri = (url.indexOf($rdf.Fetcher.homeServer) == 0)
+        if ( isUriAlreadyProxified || isHomeServerUri ) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+}
+
+
+/**
+ * permits to proxify the URI
+ * @param uri
+ * @returns {string}
+ */
+$rdf.Fetcher.prototype.proxify = function(uri) {
+    if ( uri && uri.indexOf('#') != -1 ) {
+        throw new Error("Tit is forbiden to proxify an uri with a fragment:"+uri);
+    }
+    if ( uri && uri.indexOf($rdf.Fetcher.fetcherWithPromiseCrossSiteProxyTemplate) == 0 ) {
+        throw new Error("You are trying to proxify an URL that seems to already been proxified!"+uri);
+    }
+    return $rdf.Fetcher.fetcherWithPromiseCrossSiteProxyTemplate + encodeURIComponent(uri);
+};
+
+/**
+ * Permits to proxify an url if RDFLib is configured to be used with a CORS Proxy
+ * @param url
+ * @returns {String} the original url or the proxied url
+ */
+$rdf.Fetcher.prototype.proxifyIfNeeded = function(url) {
+    if ( this.requiresProxy(url) ) {
+        return this.proxify(url);
+    } else {
+        return url;
+    }
+}
+
+$rdf.Fetcher.prototype.proxifySymbolIfNeeded = function(symbol) {
+    $rdf.PG.Utils.checkArgument( $rdf.PG.Utils.isSymbolNode(symbol),"This is not a symbol!"+symbol);
+    var url = $rdf.PG.Utils.symbolNodeToUrl(symbol);
+    var proxifiedUrl = this.proxifyIfNeeded(url);
+    return $rdf.sym(proxifiedUrl);
+}
+
+
+
+
+
+
+/**
+ * Return the Promise of a pointed graph for a given url
+ * @param {String} uri to fetch as string. The URI may contain a fragment because it results in a pointedGraph
+ * @param {String} referringTerm the uri as string. Referring to the requested url
+ * @param {boolean} force, force fetching of resource even if already in store
+ * @return {Promise} of a pointedGraph
+ */
+$rdf.Fetcher.prototype.fetch = function(uri, referringTerm, force) {
+    var self = this;
+    var uriSym = $rdf.sym(uri);
+    var docUri = $rdf.PG.Utils.fragmentless(uri);
+    var docUriSym = $rdf.sym(docUri);
+    // The doc uri to fetch is the doc uri that may have been proxyfied
+    var docUriToFetch = self.proxifyIfNeeded(docUri);
+    var docUriToFetchSym = $rdf.sym(docUriToFetch);
+    // if force mode enabled -> we previously unload so that uriFetchState will be "unrequested"
+    if ( force ) {
+        self.unload(docUriToFetchSym);
+    }
+    var uriFetchState = self.getState(docUriToFetch);
+    // if it was already fetched we return directly the pointed graph pointing
+    if (uriFetchState == 'fetched') {
+        return Q.fcall(function() {
+            return $rdf.pointedGraph(self.store, uriSym, docUriSym, docUriToFetchSym)
+        });
+    }
+    // if it was already fetched and there was an error we do not try again
+    // notice you can call "unload(symbol)" if you want a failed request to be fetched again if needed
+    else if ( uriFetchState == 'failed') {
+        return Q.fcall(function() {
+            throw new Error("Previous fetch has failed for"+docUriToFetch+" -> Will try to fetch it again");
+        });
+    }
+    // else maybe a request for this uri is already pending, or maybe we will have to fire a request
+    // in both case we are interested in the answer
+    else if ( uriFetchState == 'requested' || uriFetchState == 'unrequested' ) {
+        if ( uriFetchState == 'requested') {
+            // TODO this needs to be tested and may not work well,
+            // we may not have already encountered this situation already
+            console.error("This code may not work: please tell me if it does when you test it hahaha :)");
+            console.info("A request is already being done for",docUriToFetch," -> will wait for that response");
+        }
+        var deferred = Q.defer();
+        self.addCallback('done', function fetchDoneCallback(uriFetched) {
+            if ( docUriToFetch == uriFetched ) {
+                deferred.resolve($rdf.pointedGraph(self.store, uriSym, docUriSym, docUriToFetchSym));
+                return false; // stop
+            }
+            return true; // continue
+        });
+        self.addCallback('fail', function fetchFailureCallback(uriFetched, statusString, xhr) {
+            if ( docUriToFetch == uriFetched ) {
+                deferred.reject(new Error("Async fetch failure [uri="+uri+"][statusCode="+xhr.status+"][reason="+statusString+"]"));
+                return false; // stop
+            }
+            return true; // continue
+        });
+
+        if (uriFetchState == 'unrequested') {
+            // console.debug("Will try to fetch a document that has not yet been fetched;",docUri);
+            var result = self.requestURI(docUriToFetch, referringTerm, force);
+            if (result == null) {
+                // TODO not sure of the effect of this line. This may cause the promise to be resolved twice no?
+                deferred.resolve($rdf.pointedGraph(self.store, uriSym, docUriSym, docUriToFetchSym));
+            }
+        }
+        return deferred.promise;
+    }
+    else {
+        throw new Error("Unknown and unhandled uriFetchState="+uriFetchState+" - for URI="+uri)
+    }
+
+}})(this);
