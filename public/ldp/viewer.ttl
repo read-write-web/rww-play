@@ -6,8 +6,8 @@ ldp:Container stample:view </assets/ldp/js/containerViewer.js> .
 ldp:Ressource stample:view </assets/ldp/js/fileViewer.js> .
 
 
-foaf:Person stample:view </assets/apps/react-foaf/js/scripts/AppStarter.js> .
-foaf:PersonalProfileDocument stample:view </assets/apps/react-foaf/js/scripts/AppStarter.js> .
+foaf:Person stample:view </assets/apps/react-foaf/js/AppStarter.js> .
+foaf:PersonalProfileDocument stample:view </assets/apps/react-foaf/js/AppStarter.js> .
 
 
 #foaf:PersonalProfileDocument stample:view </assets/ldp/js/userProfileViewer.js> .
