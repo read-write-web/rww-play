@@ -22,6 +22,7 @@ import play.api.libs.iteratee.{Error, Done, Iteratee}
 import java.io.ByteArrayOutputStream
 import util.{Try, Failure, Success}
 import scala.concurrent.ExecutionContext
+import rww.ldp.ParserException
 
 /**
  * Iteratee for reading in SPARQL Queries
@@ -41,8 +42,12 @@ class SparqlQueryIteratee[Rdf<:RDF, +SyntaxType]
     (stream,bytes) => {stream.write(bytes); stream }
   } map { stream =>
       val query = loc.map(b=>s"base <${b.toString}> \n").getOrElse("")+new String(stream.toByteArray,"UTF-8")//todo, where do we get UTF-8?
-      Query(query) //todo: https://github.com/w3c/banana-rdf/issues/76
-    }
+      //todo: https://github.com/w3c/banana-rdf/issues/76
+      Query(query) match {
+        case Failure(e) => Failure(ParserException(s"failed to parse <query type='sparql'>\n$query\n</query>",e))
+        case ok => ok
+      }
+  }
 }
 
 

@@ -54,21 +54,24 @@ class RwwBodyParser[Rdf <: RDF](base: URL)(implicit ops: RDFOps[Rdf],
 
 
   def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[SimpleResult,RwwContent]] =  {
+
+    def messageAndCause(e: Throwable) = e.getMessage+" due to " + e.getCause
+
     if (rh.method == "GET" || rh.method == "HEAD" || rh.method == "OPTIONS") Done(Right(emptyContent), Empty)
     else if ( ! rh.headers.get("Content-Length").exists( Integer.parseInt(_) > 0 )) {
       Done(Right(emptyContent), Empty)
     } else rh.contentType.map { str =>
       MimeType(str) match {
         case sparqlSelector(iteratee) => iteratee(Option(new URL(base,rh.path))).map {
-          case Failure(e) => Left(BadRequest("could not parse query "+e))
+          case Failure(e) => Left(BadRequest(messageAndCause(e)))
           case Success(sparql) => Right(QueryRwwContent(sparql))
         }
         case graphSelector(iteratee) => iteratee().map {
-          case Failure(e) => Left(BadRequest("cought " + e))
+          case Failure(e) => Left(BadRequest(messageAndCause(e)))
           case Success(graph) => Right(GraphRwwContent(graph))
         }
         case sparqlUpdateSelector(iteratee) => iteratee(Option(new URL(base,rh.path))).map {
-          case Failure(e) => Left(BadRequest("cought " + e))
+          case Failure(e) => Left(BadRequest(messageAndCause(e)))
           case Success(update) => Right(PatchRwwContent(update))
         }
         //todo: it would nice not to have to go through temporary files, but be able to pass on the iteratee
