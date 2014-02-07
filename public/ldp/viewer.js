@@ -73,7 +73,7 @@
     function doRenderInViewer(viewerAppUrl,pgToRender) {
         loadScript(viewerAppUrl, function() {
             console.info("Will initialize app",viewerAppUrl, " with ",pgToRender.printSummary());
-            AppStarter.initialize(pgToRender);
+            AppStarter.initialize(pgToRender, viewerAppUrl);
         });
     }
 
