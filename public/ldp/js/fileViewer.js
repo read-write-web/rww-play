@@ -1,18 +1,16 @@
-var App = {
+var AppStarter = {
 	initialize: function(pointedGraph){
 		var self = this;
 		var templateURI = "/assets/ldp/templates/fileTemplate.html";
 
-		//
+		// Load appropriate lib and scripts.
 		this.loadVariousFiles();
 
-		//
-		this.pointerGraph = pointedGraph;
-
-		// Get base graph and uri.
-		this.baseUri = this.pointerGraph.graphName.uri;
-		this.baseGraph = this.pointerGraph.graph;
-		this.baseGraphString = this.baseGraph.toString();
+        // Get current user relative URI.
+        this.pointedGraph = pointedGraph;
+        this.baseGraph = pointedGraph.store;
+        this.baseUri = pointedGraph.namedGraphUrl.uri;
+        this.baseGraphString = this.baseGraph.toString();
 
 		// Get template and render();
 		$.get(templateURI, function(template) {
