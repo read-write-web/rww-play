@@ -20,8 +20,9 @@ import org.w3.banana.{RDFOps, Prefix, SparqlOps, RDF}
 import java.net.URL
 import play.api.libs.iteratee.Iteratee
 import java.io.ByteArrayOutputStream
-import util.Try
+import scala.util.{Failure, Try}
 import scala.concurrent.ExecutionContext
+import rww.ldp.ParserException
 
 /**
  * Iteratee for reading in SPARQL Queries
@@ -41,10 +42,13 @@ class SparqlUpdateIteratee[Rdf<:RDF, +SyntaxType]
     Iteratee.fold[Array[Byte],ByteArrayOutputStream](new ByteArrayOutputStream()){
     (stream,bytes) => {stream.write(bytes); stream }
   } map { stream =>
-      Try{
-        val query = loc.map(b=>s"base <${b.toString}> \n").getOrElse("")+new String(stream.toByteArray,"UTF-8")//todo, where do we get UTF-8?
+      val query = loc.map(b=>s"base <${b.toString}> \n").getOrElse("")+new String(stream.toByteArray,"UTF-8")//todo, where do we get UTF-8?
+      Try{ //todo: https://github.com/w3c/banana-rdf/issues/76
         UpdateQuery(query)
-      } //todo: https://github.com/w3c/banana-rdf/issues/76
+      } match {
+        case Failure(e) => Failure(ParserException("failed in parsing <update>\n"+query+"\n</update>",e))
+        case o => o
+      }
     }
 }
 
