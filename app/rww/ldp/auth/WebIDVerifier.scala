@@ -146,7 +146,7 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
 
             keyVal.flatMap { key =>
               if (key.modulus == rsaKey.getModulus && key.exponent == rsaKey.getPublicExponent) Success(WebIDPrincipal(uri))
-              else Failure(new KeyMatchFailure("RSA key does not match one in profile",san,rsaKey,key))
+              else Failure(new KeyMatchFailure(s"RSA key does not match one in profile. $san $rsaKey $key",san,rsaKey,key))
             }
           }
           val result: Try[WebIDPrincipal] = s.find(_.isSuccess).getOrElse {
@@ -158,8 +158,8 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
               }
             )
             Failure(
-              if (failures.size == 0) WebIDVerificationFailure("no rsa keys found in profile for WebID.",uri)
-              else WebIDVerificationFailure("no keys matched the WebID in the profile",uri,failures)
+              if (failures.size == 0) WebIDVerificationFailure(s"no rsa keys found in profile for WebID. $uri",uri)
+              else WebIDVerificationFailure(s"no keys matched the WebID in the profile $uri",uri,failures)
             )
           }
           if ( result.isSuccess ) {
@@ -173,8 +173,8 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
       )
     }
   } catch {
-    case e: URISyntaxException  =>   Future.failed(URISyntaxError("could not parse uri",List(e),san))
-    case e: MalformedURLException => Future.failed(URISyntaxError("could not parse SAN as a URL",List(e),san))
+    case e: URISyntaxException  =>   Future.failed(URISyntaxError(s"could not parse uri $san",List(e),san))
+    case e: MalformedURLException => Future.failed(URISyntaxError(s"could not parse SAN as a URL $san",List(e),san))
     case e: Exception => Future.failed(WrappedThrowable(e))
   }
 
