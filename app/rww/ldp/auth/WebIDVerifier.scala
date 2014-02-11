@@ -15,6 +15,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import util.{Failure, Success, Try}
 import org.w3.banana._
 import org.slf4j.LoggerFactory
+import java.lang.Exception
+import scala.Exception
 
 object WebIDVerifier {
 
@@ -234,27 +236,28 @@ trait VerificationException extends BananaException {
   //  val findSubject: T
 }
 
+// TODO these exceptions should rather be refactored
 
-abstract class WebIDClaimFailure extends VerificationException
+trait WebIDClaimFailure extends VerificationException
 
-class UnsupportedKeyType(val msg: String, val subject: PublicKey) extends WebIDClaimFailure { type T = PublicKey }
+class UnsupportedKeyType(val msg: String, val subject: PublicKey) extends Exception(msg) with WebIDClaimFailure { type T = PublicKey }
 
-case class WebIDVerificationFailure(msg: String, webid: java.net.URI, failures: List[BananaException] = Nil) extends WebIDClaimFailure {
+case class WebIDVerificationFailure(msg: String, webid: java.net.URI, failures: List[BananaException] = Nil) extends Exception(msg) with WebIDClaimFailure {
   failures.foreach( this.addSuppressed(_))
 }
 
-abstract class SANFailure extends WebIDClaimFailure { type T = String }
-case class UnsupportedProtocol(val msg: String, subject: String) extends SANFailure
-case class URISyntaxError(val msg: String, val cause: List[Throwable], subject: String) extends SANFailure {
+trait SANFailure extends WebIDClaimFailure { type T = String }
+case class UnsupportedProtocol(val msg: String, subject: String) extends Exception(msg) with SANFailure
+case class URISyntaxError(val msg: String, val cause: List[Throwable], subject: String) extends Exception(msg) with SANFailure {
   cause.foreach( this.addSuppressed(_))
 }
 
 //The findSubject could be more refined than the URL, especially in the paring error
-abstract class ProfileError extends WebIDClaimFailure  { type T = URL }
-case class ProfileGetError(val msg: String,  val cause: List[Throwable], subject: URL) extends ProfileError {
+trait ProfileError extends WebIDClaimFailure { type T = URL }
+case class ProfileGetError(val msg: String,  val cause: List[Throwable], subject: URL) extends Exception(msg) with ProfileError {
   cause.foreach( this.addSuppressed(_))
 }
-case class ProfileParseError(val msg: String, val cause: List[Throwable], subject: URL) extends ProfileError {
+case class ProfileParseError(val msg: String, val cause: List[Throwable], subject: URL) extends Exception(msg) with ProfileError {
   cause.foreach( this.addSuppressed(_))
 }
 
@@ -262,4 +265,4 @@ case class ProfileParseError(val msg: String, val cause: List[Throwable], subjec
 
 //it would be useful to pass the graph in
 //perhaps change the WebID to the doc uri where it was fetched finally.
-case class KeyMatchFailure(val msg: String, webid: String, certKey: RSAPublicKey, comparedWith: RSAPubKey ) extends VerificationException
+case class KeyMatchFailure(val msg: String, webid: String, certKey: RSAPublicKey, comparedWith: RSAPubKey ) extends Exception(msg) with VerificationException
