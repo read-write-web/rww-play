@@ -14,7 +14,7 @@ var AppStarter = {
 		$.get(templateUri, function(template) {
 			loadScript("/assets/ldp/js/menuViewer.js", function() {
 				// Create menu.
-				MenuView.initialize()
+				MenuView.initialize(this.baseUri)
 
 				// Set template.
 				self.template = template;

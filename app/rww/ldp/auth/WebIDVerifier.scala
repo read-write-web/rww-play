@@ -156,7 +156,7 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
               }
             )
             Failure(
-              if (failures.size == 0) WebIDVerificationFailure("no rsa keys found in profile for WebID.",uri,failures)
+              if (failures.size == 0) WebIDVerificationFailure("no rsa keys found in profile for WebID.",uri)
               else WebIDVerificationFailure("no keys matched the WebID in the profile",uri,failures)
             )
           }
@@ -239,16 +239,24 @@ abstract class WebIDClaimFailure extends VerificationException
 
 class UnsupportedKeyType(val msg: String, val subject: PublicKey) extends WebIDClaimFailure { type T = PublicKey }
 
-case class WebIDVerificationFailure(msg: String, webid: java.net.URI, failures: List[BananaException]) extends WebIDClaimFailure
+case class WebIDVerificationFailure(msg: String, webid: java.net.URI, failures: List[BananaException] = Nil) extends WebIDClaimFailure {
+  failures.foreach( this.addSuppressed(_))
+}
 
 abstract class SANFailure extends WebIDClaimFailure { type T = String }
 case class UnsupportedProtocol(val msg: String, subject: String) extends SANFailure
-case class URISyntaxError(val msg: String, val cause: List[Throwable], subject: String) extends SANFailure
+case class URISyntaxError(val msg: String, val cause: List[Throwable], subject: String) extends SANFailure {
+  cause.foreach( this.addSuppressed(_))
+}
 
 //The findSubject could be more refined than the URL, especially in the paring error
 abstract class ProfileError extends WebIDClaimFailure  { type T = URL }
-case class ProfileGetError(val msg: String,  val cause: List[Throwable], subject: URL) extends ProfileError
-case class ProfileParseError(val msg: String, val cause: List[Throwable], subject: URL) extends ProfileError
+case class ProfileGetError(val msg: String,  val cause: List[Throwable], subject: URL) extends ProfileError {
+  cause.foreach( this.addSuppressed(_))
+}
+case class ProfileParseError(val msg: String, val cause: List[Throwable], subject: URL) extends ProfileError {
+  cause.foreach( this.addSuppressed(_))
+}
 
 
 

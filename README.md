@@ -62,6 +62,12 @@ need to start your server with
 Of course this requires you to have a TLS certificate that allows subdomains, and to set up routing
 correctly.
 
+Installing RWW apps
+----------
+The RWW apps are stored in other git repositories.
+One can run the script `./install-app.sh` to install or update the RWW apps that we ship with the platform.
+Check the script content, it is simply a git clone.
+
 
 Documentation
 -------------

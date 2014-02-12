@@ -1,8 +1,9 @@
 var MenuView = {
-	initialize: function() {
+	initialize: function(baseUri) {
 		console.log('Initialise menu');
 		var self = this;
 		var templateURI = "/assets/ldp/templates/menuTemplate.html";
+        this.baseUri = baseUri;
 
 		$.get(templateURI, function(template) {
 			// Set template.
@@ -50,7 +51,7 @@ var MenuView = {
 			var error = function () {
 				window.location.reload();
 			};
-			createFileFromString(res.value, baseUriGlobal, success, error, null);
+			createFileFromString(res.value, this.baseUri, success, error, null);
 		}
 		else if (res.name === 'dir') {
 			var success = function () {
@@ -59,7 +60,7 @@ var MenuView = {
 			var error = function () {
 				window.location.reload();
 			};
-			createContainerFromString(res.value, baseUriGlobal, success, error, null);
+			createContainerFromString(res.value, this.baseUri, success, error, null);
 		}
 	},
 
