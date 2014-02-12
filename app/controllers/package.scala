@@ -121,7 +121,7 @@ object plantain extends Setup {
   val rww: RWWActorSystem[Plantain] = {
     val rootURI = ops.URI(rwwRoot.toString)
     if (plantain.rwwSubdomainsEnabled) RWWActorSystemImpl.withSubdomains[Plantain](rootURI, rootContainerPath, webClient)
-    else RWWActorSystemImpl.withSubdomains[Plantain](rootURI, rootContainerPath, webClient)
+    else RWWActorSystemImpl.plain[Plantain](rootURI, rootContainerPath, webClient)
   }
 
 

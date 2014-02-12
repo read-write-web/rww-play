@@ -10,19 +10,7 @@ import akka.pattern.ask
 import rww.ldp._
 import rww.ldp.actor.router._
 import rww.ldp.actor.remote.LDPWebActor
-import rww.ldp.actor.common.CommonActorMessages.ScriptMessage
-import akka.actor.DeadLetter
-import rww.ldp.LDPExceptions.ResourceDoesNotExist
-import rww.ldp.actor.common.CommonActorMessages.LDPSActorSetterMessage
-import rww.ldp.actor.common.CommonActorMessages.CmdMessage
-import rww.ldp.actor.common.CommonActorMessages.WebActorSetterMessage
-import rww.ldp.actor.plantain.LDPCActor
-import rww.ldp.actor.common.CommonActorMessages.ScriptMessage
-import akka.actor.DeadLetter
-import rww.ldp.LDPExceptions.ResourceDoesNotExist
-import rww.ldp.actor.common.CommonActorMessages.LDPSActorSetterMessage
-import rww.ldp.actor.common.CommonActorMessages.CmdMessage
-import rww.ldp.actor.common.CommonActorMessages.WebActorSetterMessage
+import rww.ldp.actor.plantain.{LDPCSubdomainActor, LDPCActor}
 import rww.ldp.actor.common.CommonActorMessages.ScriptMessage
 import akka.actor.DeadLetter
 import rww.ldp.LDPExceptions.ResourceDoesNotExist
@@ -59,7 +47,7 @@ object RWWActorSystemImpl {
                                                  timeout: Timeout): RWWActorSystem[Rdf] = {
     val rwwActor =  new RWWActorSystemImpl(baseUri,Props(new RWWRoutingActorSubdomains(baseUri)))
     rwwActor.setWebActor(rwwActor.system.actorOf(Props(new LDPWebActor[Rdf](baseUri, fetcher)), "webActor"))
-    rwwActor.setLDPSActor(rwwActor.system.actorOf(Props(new LDPCActor[Rdf](baseUri, baseDir)),"rootContainer"))
+    rwwActor.setLDPSActor(rwwActor.system.actorOf(Props(new LDPCSubdomainActor[Rdf](baseUri, baseDir)),"rootContainer"))
     return rwwActor
   }
 

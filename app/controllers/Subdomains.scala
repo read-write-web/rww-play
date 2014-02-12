@@ -199,7 +199,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
       for {
         adminGraph <- getLDPR(adminResourceURI)
       } yield {
-        Logger.info(s"AdminResourceURI $adminResourceURI yield = resource graoh $adminGraph")
+        Logger.info(s"AdminResourceURI $adminResourceURI yield = resource graph $adminGraph")
         SubdomainAdminGraphWrapper(adminResourceURI,adminGraph)
       }
     }

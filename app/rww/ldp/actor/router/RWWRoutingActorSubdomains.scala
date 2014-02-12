@@ -8,12 +8,11 @@ import scalaz.-\/
 import scala.Some
 import scalaz.\/-
 import rww.ldp._
-import rww.ldp.actor._
-import rww.ldp.actor.common.{CommonActorMessages, RWWBaseActor}
+import rww.ldp.actor.common.CommonActorMessages
 import CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
 import java.nio.file.Path
-import rww.ldp.LDPExceptions.ResourceDoesNotExist
+import rww.ldp.LDPExceptions.{ServerException, ResourceDoesNotExist}
 
 object RWWRoutingActorSubdomains {
 
@@ -96,24 +95,24 @@ class RWWRoutingActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
     }
   }
 
+  var msg: String = _
+
   /** We in fact ignore the R and A types, since we cannot capture */
   protected def forwardSwitch[A](cmd: CmdMessage[Rdf,A]) {
     local(cmd.command.uri.underlying,baseUri.underlying).map { switch =>
       rootContainer match {
         case Some(root) => {
           val pathList = switch.path.split('/').toList
-          val pathListWithSubdomain = switch.lcSubHost.map(_::pathList).getOrElse(pathList)
-          val pathAsString = pathListWithSubdomain.mkString("/")
-          if ( isExistingActor(pathAsString) ) {
-            val actorPath = root.path / pathListWithSubdomain
-            val to = context.actorSelection(actorPath)
-            log.debug(s"forwarding message $cmd to akka('$switch')=$to received from $sender")
-            to.tell(cmd,context.sender)
-          } else {
-            context.sender ! akka.actor.Status.Failure(new ResourceDoesNotExist(s"No resource exist for $pathAsString"))
-          }
+          val pathListWithSubdomain = switch.lcSubHost.map(_ :: pathList).getOrElse(pathList)
+          val actorPath = root.path / pathListWithSubdomain
+          val to = context.actorFor(actorPath)
+          to.tell(cmd, context.sender)
         }
-        case None => log.warning("RWWebActor not set up yet: missing rootContainer")
+        case None => {
+          val msg = "RWWebActor not set up yet: missing rootContainer"
+          log.warning(msg)
+          context.sender ! akka.actor.Status.Failure(ServerException(msg))
+        }
       }
     } getOrElse {
       //todo: this relative uri comparison is too simple.
@@ -124,21 +123,14 @@ class RWWRoutingActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
       web.map {
         log.debug(s"sending message $cmd to general web agent <$web>")
         _ forward cmd
-      }.getOrElse(log.warning("RWWebActor not set up yet: missing web actor"))
+      }.getOrElse{
+        msg = "RWWebActor not set up yet: missing web actor"
+        log.warning(msg)
+        context.sender ! akka.actor.Status.Failure(ServerException(msg))
+      }
     }
 
   }
 
-
-  // TODO /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\
-  // TODO remove this hardcoded method with ugly fix of timeout problems, see #65
-  // TODO /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\
-  // This avoids to sending no message at all because the actorSelection does not match any actor at all
-  def isExistingActor(relativePath: String): Boolean = {
-    val absolutePath: Path = controllers.plantain.rootContainerPath.resolve(relativePath) // TODO very bad to have plantain hardcoded here
-    val exist = absolutePath.toFile.exists()
-    log.warning(s"Temporary hack: will check if a file exist at $absolutePath to know if there is a corresponding actor -> answer is=$exist")
-    exist
-  }
 
 }

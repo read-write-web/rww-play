@@ -9,6 +9,7 @@ import rww.ldp._
 import rww.ldp.actor.common.CommonActorMessages
 import CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
+import rww.ldp.LDPExceptions.ServerException
 
 
 object RWWRoutingActor {
@@ -104,11 +105,14 @@ class RWWRoutingActor[Rdf<:RDF](val baseUri: Rdf#URI)
       rootContainer match {
         case Some(root) => {
           val p = root.path / path.split('/').toIterable
-          val to = context.actorSelection(p)
-          log.info(s"forwarding message $cmd to akka('$path')=$to ")
+          val to = context.actorFor(p)
           to.tell(cmd,context.sender)
         }
-        case None => log.warning("RWWebActor not set up yet: missing rootContainer")
+        case None => {
+          val msg = "RWWebActor not set up yet: missing rootContainer"
+          log.warning(msg)
+          context.sender ! akka.actor.Status.Failure(ServerException(msg))
+        }
       }
     } getOrElse {
       //todo: this relative uri comparison is too simple.
@@ -119,7 +123,11 @@ class RWWRoutingActor[Rdf<:RDF](val baseUri: Rdf#URI)
       web.map {
         log.info(s"sending message $cmd to general web agent <$web>")
         _ forward cmd
-      }.getOrElse(log.warning("RWWebActor not set up yet: missing web actor"))
+      }.getOrElse {
+        val msg = "RWWebActor not set up yet: missing web actor"
+        log.warning(msg)
+        context.sender ! akka.actor.Status.Failure(ServerException(msg))
+      }
     }
 
   }
