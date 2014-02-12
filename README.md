@@ -56,7 +56,7 @@ If you want to run ldp on a server where the root directory turns into subdomain
 need to start your server with
 
 ```bash
-[RWWeb] $ run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true
+[RWWeb] $ run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true -Dhttp.hostname=localhost -Drww.subdomains=true -Dsmtp.password=secret
 ```
 
 Of course this requires you to have a TLS certificate that allows subdomains, and to set up routing
