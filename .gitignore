@@ -2,7 +2,8 @@
 *.class
 
 # Play 2 #
-play-2-TLS*
+Play20
+play-2.2-TLS*
 logs
 project/project
 project/target
