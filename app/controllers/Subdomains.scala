@@ -4,7 +4,7 @@ import org.w3.banana._
 import play.api.mvc.Action
 import play.api.mvc.Results._
 import java.security.cert.X509Certificate
-import java.net.{URL=>jURL}
+import java.net.{URL=>jURL, URI=>jURI}
 import rww.ldp.LDPCommand._
 import scala.concurrent.Future
 import org.w3.banana.plantain.Plantain
@@ -258,7 +258,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     getAdminResource(subdomain) flatMap { adminResourceWrapper =>
     // TODO check the subdomain and webid have been created ?
       val cardUri = adminResourceWrapper.webIdCardCreated.get
-      val webidUri = URI(cardUri.toString+"#i") // TODO remove hardcoded
+      val webidUri = URI(new jURI(cardUri.toString+"#i").normalize().toString) // TODO remove hardcoded
       val certificate = createX509Certificate(webidUri,subdomain,publicKey)
       addPublicKeyToCard(cardUri,publicKey) map { unit =>
         certificate
