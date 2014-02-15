@@ -33,6 +33,7 @@ import rww.ldp.actor.common.CommonActorMessages
 import CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
 import rww.ldp.model._
+import java.net.{URI=>jURI}
 
 
 class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
@@ -53,6 +54,8 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
   val stat = STATPrefix[Rdf]
 
   import org.w3.banana.syntax._
+
+  lazy val basejURI = baseUri.underlying
 
   //google cache with soft values: at least it will remove the simplest failures
   val resourceCache: LoadingCache[String,Try[LocalNamedResource[Rdf]]] = CacheBuilder.newBuilder()
@@ -165,7 +168,11 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
     implicit val codec = Codec.UTF8
     val (file,iri) = fileAndURIFor(name)
     file.createNewFile()
-    writer.write(graphW[Rdf](graph).relativize(baseUri),xResource.fromOutputStream(new FileOutputStream(file)),"") match {
+    val cleanGraph = graph.copy{ uri =>
+      val juri = new jURI(uri.toString).normalize().relativize(basejURI)
+      ops.makeUri(juri.toString)
+    }
+    writer.write(graphW[Rdf](cleanGraph).relativize(baseUri),xResource.fromOutputStream(new FileOutputStream(file)),"") match {
       case scala.util.Failure(t) => throw new StoreProblem(t)
       case x => x
     }
