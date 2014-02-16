@@ -31,7 +31,7 @@ object ApplicationBuild extends Build {
     "org.scalaz" % "scalaz-core_2.10" % "7.0.0-RC1", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"
     "org.bouncycastle" % "bcprov-jdk15on" % "1.47",
     "org.scala-lang" % "scala-actors" % "2.10.0", //for tests because of sbt for some reason
-    "net.sf.uadetector" % "uadetector-resources" % "2012.12",
+    "net.sf.uadetector" % "uadetector-resources" % "2014.01",
     iterateeDeps,
     "org.scalatest" %% "scalatest" % "2.0.RC1-SNAP4",
     "org.scala-lang" % "scala-actors" % "2.10.2",

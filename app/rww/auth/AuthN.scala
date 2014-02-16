@@ -7,7 +7,7 @@ import java.security.cert.{X509Certificate, Certificate}
 import java.security.Principal
 import net.sf.uadetector.service.UADetectorServiceFactory
 import rww.ldp.auth.{WebIDPrincipal, Claim, WebIDVerifier}
-import net.sf.uadetector.UserAgentFamily
+import net.sf.uadetector.{UserAgentType, UserAgentFamily}
 import com.typesafe.scalalogging.slf4j.Logging
 
 
@@ -97,14 +97,18 @@ class WebIDAuthN[Rdf <: RDF](verifier: WebIDVerifier[Rdf]) extends AuthN with Lo
   }
 
 
-  private val FamiliesNotSupportingTLSWantMode = Set(
-    UserAgentFamily.CURL,
-    UserAgentFamily.JAVA,
-    UserAgentFamily.SAFARI,
-    UserAgentFamily.OPERA,
-    // see https://github.com/stample/rww-play/issues/74, it seems to work half the time on Chrome with Want mode :(
-    UserAgentFamily.CHROME
-  )
+  private val FamiliesNotSupportingTLSWantMode = {
+    import UserAgentFamily._
+    Set(
+      CURL,
+      JAVA,
+      SAFARI,
+      OPERA,
+      MOBILE_SAFARI,
+      // see https://github.com/stample/rww-play/issues/74, it seems to work half the time on Chrome with Want mode :(
+      CHROME
+    )
+  }
 
   private def ajaxRequest(req: RequestHeader): Boolean = req.headers.get("X-Requested-With").map(_.trim.equalsIgnoreCase("XMLHttpRequest")).getOrElse(false)
 
