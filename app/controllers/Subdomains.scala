@@ -4,7 +4,8 @@ import org.w3.banana._
 import play.api.mvc.Action
 import play.api.mvc.Results._
 import java.security.cert.X509Certificate
-import java.net.{URL=>jURL, URI=>jURI}
+import java.net.{URL=>jURL}
+import spray.http.Uri
 import rww.ldp.LDPCommand._
 import scala.concurrent.Future
 import org.w3.banana.plantain.Plantain
@@ -258,7 +259,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     getAdminResource(subdomain) flatMap { adminResourceWrapper =>
     // TODO check the subdomain and webid have been created ?
       val cardUri = adminResourceWrapper.webIdCardCreated.get
-      val webidUri = URI(new jURI(cardUri.toString+"#i").normalize().toString) // TODO remove hardcoded
+      val webidUri = URI(Uri(cardUri.toString+"#i").toString) // TODO remove hardcoded
       val certificate = createX509Certificate(webidUri,subdomain,publicKey)
       addPublicKeyToCard(cardUri,publicKey) map { unit =>
         certificate
@@ -268,7 +269,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
   def createX509Certificate(webid: Rdf#URI,subdomain: String, key: PublicKey): X509Certificate = {
     Logger.info(s"Adding new certificate for owner of domain $subdomain")
-    val webIdUrl = new jURL(webid.toString)
+    val webIdUrl = new jURL(Uri(webid.toString).toString())
     val subdomainURL = plantain.hostRootSubdomain(subdomain).toString
     val commonName = "WebID Cert for " +subdomainURL
     val certReq = CertReq(commonName,List(webIdUrl),key,ClientCertificateApp.tenMinutesAgo,ClientCertificateApp.yearsFromNow(2))

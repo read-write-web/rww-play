@@ -168,11 +168,8 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
     implicit val codec = Codec.UTF8
     val (file,iri) = fileAndURIFor(name)
     file.createNewFile()
-    val cleanGraph = graph.copy{ uri =>
-      val juri = new jURI(uri.toString).normalize().relativize(basejURI)
-      ops.makeUri(juri.toString)
-    }
-    writer.write(graphW[Rdf](cleanGraph).relativize(baseUri),xResource.fromOutputStream(new FileOutputStream(file)),"") match {
+    val cleanGr = rww.rdf.util.GraphUtil.normalise(graph)
+    writer.write(cleanGr,xResource.fromOutputStream(new FileOutputStream(file)),basejURI.toString) match {
       case scala.util.Failure(t) => throw new StoreProblem(t)
       case x => x
     }

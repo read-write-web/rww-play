@@ -27,7 +27,7 @@ object ApplicationBuild extends Build {
   Seq(
     "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
     "nu.validator.htmlparser" % "htmlparser" % "1.2.1",
-    "io.spray" % "spray-http" % "1.0-M8.1",
+    "io.spray" % "spray-http" % "1.2.0",
     "org.scalaz" % "scalaz-core_2.10" % "7.0.0-RC1", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"
     "org.bouncycastle" % "bcprov-jdk15on" % "1.47",
     "org.scala-lang" % "scala-actors" % "2.10.0", //for tests because of sbt for some reason
