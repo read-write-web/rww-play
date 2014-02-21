@@ -16,9 +16,7 @@ object GraphUtil {
     import org.w3.banana.syntax.GraphW
     new GraphW(graph).copy { uri =>
       val normalised = Uri(uri.toString)
-      val res = ops.makeUri(normalised.toString)
-      println(s"tran <$uri> => <$res>")
-      res
+      ops.makeUri(normalised.toString)
     }
   }
 

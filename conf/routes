@@ -38,3 +38,4 @@ HEAD          /2013/$file<.*>                          controllers.ldp.ReadWrite
 POST          /srv/certgen                             controllers.ClientCertificateApp.generate
 GET           /srv/certgen                             controllers.ClientCertificateApp.get
 GET           /srv/cors                                controllers.CORSProxyController.action(url: Option[String])
+GET           /srv/displayCert                         controllers.Certificates.display()
