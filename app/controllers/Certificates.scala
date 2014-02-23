@@ -10,7 +10,6 @@ object Certificates {
 
   def display() = Action.async { request=>
     import plantain.executionContext //todo: what EC should one use?
-  println("in display")
     val res = for {
       certs <- request.certs(true)
     } yield {

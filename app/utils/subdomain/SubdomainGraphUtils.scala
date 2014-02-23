@@ -145,7 +145,9 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
       ldpr <- createLDPR(container, Some(slug), graph)
       meta <- getMeta(ldpr)
       _ <- updateLDPR(meta.acl.get,add=Graph(Triple(URI(""),wac.include,URI(".acl"))).toIterable)
-    } yield ldpr
+    } yield {
+      ldpr
+    }
   }
 
 }

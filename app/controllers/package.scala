@@ -86,7 +86,6 @@ trait Setup {
     file.toPath.toAbsolutePath
   }
 
-
   logger.info(s""""
     secure port=$securePort
     port = $port
@@ -95,6 +94,9 @@ trait Setup {
     rwwRoot = $rwwRoot
     rww root LDPC path = $rootContainerPath
     with subdomain support = $rwwSubdomainsEnabled
+    Some properties:
+       - jdk.tls.disabledAlgorithms= ${java.security.Security.getProperty("jdk.tls.disabledAlgorithms")}
+       - jdk.certpath.disabledAlgorithms= ${java.security.Security.getProperty("jdk.certpath.disabledAlgorithms")}
     """)
 }
 

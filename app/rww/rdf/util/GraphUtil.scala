@@ -7,15 +7,15 @@ import spray.http.Uri
  */
 object GraphUtil {
   /**
-   * normalise all URIs in the graph and relativize them for the baseURI
+   * normalise all URIs in the graph and the baseURI
    * @param graph
-   * @return a clean relative URI graph
+   * @return a clean non-relative URI graph
    * //todo: move to util lib
    */
-  def normalise[Rdf<:RDF](graph: Rdf#Graph)(implicit ops: RDFOps[Rdf]): Rdf#Graph = {
+  def normalise[Rdf<:RDF](base: Uri, graph: Rdf#Graph)(implicit ops: RDFOps[Rdf]): Rdf#Graph = {
     import org.w3.banana.syntax.GraphW
     new GraphW(graph).copy { uri =>
-      val normalised = Uri(uri.toString)
+      val normalised = Uri.parseAndResolve(uri.toString,base)
       ops.makeUri(normalised.toString)
     }
   }

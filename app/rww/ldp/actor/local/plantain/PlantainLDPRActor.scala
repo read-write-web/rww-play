@@ -34,6 +34,7 @@ import CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
 import rww.ldp.model._
 import java.net.{URI=>jURI}
+import spray.http.Uri
 
 
 class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
@@ -56,6 +57,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
   import org.w3.banana.syntax._
 
   lazy val basejURI = baseUri.underlying
+  lazy val baseSprayUri = Uri(baseUri.toString)
 
   //google cache with soft values: at least it will remove the simplest failures
   val resourceCache: LoadingCache[String,Try[LocalNamedResource[Rdf]]] = CacheBuilder.newBuilder()
@@ -168,8 +170,9 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
     implicit val codec = Codec.UTF8
     val (file,iri) = fileAndURIFor(name)
     file.createNewFile()
-    val cleanGr = rww.rdf.util.GraphUtil.normalise(graph)
-    writer.write(cleanGr,xResource.fromOutputStream(new FileOutputStream(file)),basejURI.toString) match {
+    val cleanGr = rww.rdf.util.GraphUtil.normalise(baseSprayUri,graph)
+    val dirUri = baseUri.toString.substring(0,baseUri.toString.length- baseUri.lastPathSegment.length)
+    writer.write(cleanGr,xResource.fromOutputStream(new FileOutputStream(file)),dirUri) match {
       case scala.util.Failure(t) => throw new StoreProblem(t)
       case x => x
     }
@@ -224,8 +227,9 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
 //            val temp = remove.foldLeft(graph) {
 //              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
 //            }
+            val graphName = uriW[Rdf](URI(nme)).resolveAgainst(baseUri)
             val resultGraph = add.foldLeft(graph) {
-              (graph, triple) => graph union Graph(triple.resolveAgainst(uriW[Rdf](uri).resolveAgainst(baseUri)))
+              (graph, triple) => graph union Graph(triple.resolveAgainst(graphName))
             }
             setResource(nme,resultGraph)
             rwwRouterActor.tell(ScriptMessage(a),context.sender)

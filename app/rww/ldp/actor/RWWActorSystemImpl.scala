@@ -19,6 +19,7 @@ import rww.ldp.actor.common.CommonActorMessages.CmdMessage
 import rww.ldp.actor.common.CommonActorMessages.WebActorSetterMessage
 import org.w3.banana.plantain.LDPatch
 import scala.util.Try
+import spray.http.Uri
 
 object RWWActorSystemImpl {
 
@@ -45,9 +46,10 @@ object RWWActorSystemImpl {
                                                  patch: LDPatch[Rdf, Try],
                                                  ec: ExecutionContext,
                                                  timeout: Timeout): RWWActorSystem[Rdf] = {
-    val rwwActor =  new RWWActorSystemImpl(baseUri,Props(new RWWRoutingActorSubdomains(baseUri)))
-    rwwActor.setWebActor(rwwActor.system.actorOf(Props(new LDPWebActor[Rdf](baseUri, fetcher)), "webActor"))
-    rwwActor.setLDPSActor(rwwActor.system.actorOf(Props(new LDPCSubdomainActor[Rdf](baseUri, baseDir)),"rootContainer"))
+    val cleanBaseUri = ops.URI(Uri(baseUri.toString).toString())
+    val rwwActor =  new RWWActorSystemImpl(cleanBaseUri,Props(new RWWRoutingActorSubdomains(baseUri)))
+    rwwActor.setWebActor(rwwActor.system.actorOf(Props(new LDPWebActor[Rdf](cleanBaseUri, fetcher)), "webActor"))
+    rwwActor.setLDPSActor(rwwActor.system.actorOf(Props(new LDPCSubdomainActor[Rdf](cleanBaseUri, baseDir)),"rootContainer"))
     return rwwActor
   }
 
@@ -59,9 +61,10 @@ object RWWActorSystemImpl {
                                         patch: LDPatch[Rdf, Try],
                                         ec: ExecutionContext,
                                         timeout: Timeout): RWWActorSystem[Rdf] = {
-    val rwwActor = new RWWActorSystemImpl(baseUri,Props(new RWWRoutingActor(baseUri)))
-    rwwActor.setWebActor(rwwActor.system.actorOf(Props(new LDPWebActor[Rdf](baseUri, fetcher)), "webActor"))
-    rwwActor.setLDPSActor(rwwActor.system.actorOf(Props(new LDPCActor[Rdf](baseUri, baseDir)),"rootContainer"))
+    val cleanBaseUri = ops.URI(Uri(baseUri.toString).toString())
+    val rwwActor = new RWWActorSystemImpl(cleanBaseUri,Props(new RWWRoutingActor(baseUri)))
+    rwwActor.setWebActor(rwwActor.system.actorOf(Props(new LDPWebActor[Rdf](cleanBaseUri, fetcher)), "webActor"))
+    rwwActor.setLDPSActor(rwwActor.system.actorOf(Props(new LDPCActor[Rdf](cleanBaseUri, baseDir)),"rootContainer"))
     return rwwActor
   }
 

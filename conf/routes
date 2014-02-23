@@ -20,7 +20,7 @@ GET           /srv/createSubdomain                     controllers.Subdomains.cr
 POST          /srv/createUserSpaceRequest              controllers.Subdomains.createUserSpaceRequest
 GET           /srv/subdomainWaitingConfirmation        controllers.Subdomains.subdomainWaitingConfirmation
 GET           /srv/confirmSubdomain                    controllers.Subdomains.confirmSubdomain
-GET           /srv/createCertificate                   controllers.Subdomains.createCertificate
+POST          /srv/createCertificate                   controllers.Subdomains.createCertificate
 
 
 # Map static resources from the /public folder to the /assets URL path
