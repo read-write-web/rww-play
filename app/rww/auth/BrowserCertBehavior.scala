@@ -32,7 +32,7 @@ object BrowserCertBehavior {
   def browserDoesNotSupportsTLSWantMode(req: RequestHeader): Boolean =  {
     req.headers.get("User-Agent").map { userAgentString =>
       val userAgent = agentParser.parse(userAgentString)
-      FamiliesNotSupportingTLSWantMode.contains(userAgent.getFamily) || ajaxRequest(req)
+      FamiliesNotSupportingTLSWantMode.contains(userAgent.getFamily) || ajaxRequest(req) || userAgent.getName == "Android browser"
     }.getOrElse(false)
   }
 
