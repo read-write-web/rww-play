@@ -49,7 +49,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
   val acl = ".acl"
   import ops._
 
-  val ldp = LDPPrefix[Rdf]
+  val ldp = rww.rdf.util.LDPPrefix[Rdf]
   val rdfs = RDFSPrefix[Rdf]
   val rdf = RDFPrefix[Rdf]
   val stat = STATPrefix[Rdf]

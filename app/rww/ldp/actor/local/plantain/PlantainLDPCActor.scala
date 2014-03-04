@@ -96,11 +96,11 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
   private def descriptionFor(path: Path, attrs: BasicFileAttributes): Rdf#Graph = {
     def graphFor(uri: Rdf#URI) = {
       var res = Graph(
-        Triple(ldpcUri, ldp.created, uri),
+        Triple(ldpcUri, ldp.contains, uri),
         Triple(uri, stat.mtime, TypedLiteral(attrs.lastModifiedTime().toMillis.toString,xsd.integer))
       )
       if (attrs.isDirectory)
-        res union Graph(Triple(uri, rdf.typ, ldp.Container))
+        res union Graph(Triple(uri, rdf.typ, ldp.BasicContainer))
       else if (attrs.isSymbolicLink) {
         val target: Path = root.resolve(Files.readSymbolicLink(path))
         res union Graph(Triple(uri, stat.size, TypedLiteral((target.toFile.length()).toString, xsd.integer)))
@@ -128,7 +128,7 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
       case ok @ Success(ldpr: LocalLDPR[Rdf]) => {
         if (name == fileName) {
           //if this is the index file, add all the content info
-          var contentGrph = ldpr.graph union Graph(Triple(ldpcUri, rdf.typ, ldp.Container))
+          var contentGrph = ldpr.graph union Graph(Triple(ldpcUri, rdf.typ, ldp.BasicContainer))
           Files.walkFileTree(root, util.Collections.emptySet(), 1,
             new SimpleFileVisitor[Path] {
 
@@ -196,7 +196,7 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
         }
 
         //todo: move this into the resource created ( it should know on creation how to find the parent )
-        val linkedGraph = graph union Graph(Triple(ldpcUri, ldp.created, iri))
+        val linkedGraph = graph union Graph(Triple(ldpcUri, ldp.contains, iri))
 
         //todo: should these be in the header?
         val scrpt = LDPCommand.updateLDPR[Rdf](iri, add = graphToIterable(linkedGraph)).flatMap(_ => k(iri))
@@ -231,7 +231,7 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
         val p = root.resolve(pathSegment)
         val dirUri = uriW[Rdf](uri) / ""
         val ldpc = context.actorOf(Props(new LDPCActor(dirUri, p)), pathSegment.getFileName.toString)
-        val creationRel = Triple(ldpcUri, ldp.created, dirUri)
+        val creationRel = Triple(ldpcUri, ldp.contains, dirUri)
         val linkedGraph = graph union Graph(creationRel)
         //todo: should these be in the header?
         val scrpt = LDPCommand.updateLDPR[Rdf](dirUri, add = graphToIterable(linkedGraph)).flatMap(_ => k(dirUri))
