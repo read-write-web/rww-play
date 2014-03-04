@@ -12,6 +12,8 @@ import com.typesafe.scalalogging.slf4j.Logging
 import scala.util.Try
 import scala.Some
 import scala.util.Success
+import rww.play.Method
+import play.Logger
 
 /**
  * WACAuthZ groups methods to find the authorized WebIDs for a particular resource
@@ -60,7 +62,6 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
   protected
   def getAuthEnum(acls: Enumerator[LinkedDataResource[Rdf]],
                             method: Rdf#URI, on: Rdf#URI): Enumerator[Rdf#URI] = {
-
     acls.flatMap { ldr =>
       authzWebIDs(ldr,on,method)
     }
@@ -234,17 +235,35 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
       webids.toList
     }
 
+  def wacIt(mode: Method.Value) = mode match {
+    case Method.Read => wac.Read
+    case Method.Write => wac.Write
+    case Method.Append => wac.Append
+  }
+
   /**
    *
    * @param on   resource for which we are looking for rights
    * @param user verified WebIds of the authenticated user, or the empty list
    * @return a Future which will contain the list of wac:modes allowed: wac:Read, wac:Write, wac:Append
    */
-  def getAllowedMethodsForAgent(on: Rdf#URI, user: List[Rdf#URI])
-  : Future[Set[Rdf#URI]] = {
+  def getAllowedMethodsForAgent(on: Rdf#URI, user: List[WebIDPrincipal])
+  : Future[Set[Method.Value]] = {
+    //todo: move this to a more specialised class
+    def toMethod(modeUri: Rdf#URI): Option[Method.Value] = {
+      modeUri match {
+        case wac.Read => Some(Method.Read)
+        case wac.Write => Some(Method.Write)
+        case wac.Append => Some(Method.Append)
+        case _ => None
+      }
+    }
     //todo: it would be nice to have this process stop as soon as it has all the answers
-    val authzMethods = getAllowedMethodsForAgentEnum(acl2(on),on,user)
-    Iteratees.enumeratorAsList(authzMethods).map(_.toSet)
+    val authzMethods = getAllowedMethodsForAgentEnum(acl2(on),on,user.map(p=>URI(p.webid.toString)))
+    Iteratees.enumeratorAsList(authzMethods).map{  listOfModes =>
+      Logger.info(s"getAllowedMethodsForAgent($on,$user) is $listOfModes")
+      listOfModes.flatMap(toMethod(_)).toSet
+    }
   }
 
   /**

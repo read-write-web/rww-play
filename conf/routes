@@ -33,6 +33,7 @@ DELETE        /2013/$file<.*>                          controllers.ldp.ReadWrite
 #MKCOL        /2013/$file<.*>                          controllers.ReadWriteWebApp.mkcol(file)
 PATCH         /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.patch(file)
 HEAD          /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.head(file)
+OPTIONS       /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.options(file)
 
 
 POST          /srv/certgen                             controllers.ClientCertificateApp.generate

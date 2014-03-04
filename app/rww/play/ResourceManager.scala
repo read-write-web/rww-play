@@ -17,6 +17,7 @@
 package rww.play
 
 import _root_.play.api.Logger
+import _root_.play.api.mvc.Session
 import org.w3.banana._
 import rww.ldp.LDPCommand._
 import concurrent.{Future, ExecutionContext}
@@ -27,7 +28,7 @@ import scalaz.Either3._
 import rww.play.auth.AuthN
 import rww.ldp._
 import scala.Some
-import rww.ldp.auth.WACAuthZ
+import rww.ldp.auth.{WebIDPrincipal, WACAuthZ}
 import java.net.{URI=>jURI, URL=>jURL}
 import rww.ldp.actor.RWWActorSystem
 import rww.ldp.LDPExceptions._
@@ -38,19 +39,33 @@ import rww.ldp.model.{LDPR, BinaryResource, NamedResource}
 object Method extends Enumeration {
   val Read = Value
   val Write = Value
+  val Append = Value
 }
+
+
+case class AuthorizedModes(user: List[WebIDPrincipal], path: String, modesAllowed: Set[Method.Value] )
 
 /**
  * This permits to transmit a result and to add an User header in the request which contains the URI of the authenticated user's WebID
- * @param id
+ * @param webid of the authenticated user
+ * @param result the result
+ * @tparam R
+ */
+case class IdResult[R](webid: jURI, result: R) {
+   lazy val id = List(WebIDPrincipal(webid))
+}
+
+/**
+ * A result with all the Authorization Mode info
+ * @param authInfo
  * @param result
  * @tparam R
  */
-case class IdResult[R](id: jURI, result: R)
+case class AuthResult[R](authInfo: AuthorizedModes,result: R)
 
 //the idea of this class was to not be reliant on Play! We need RequestHeader in order to do authentication
 //todo: find a way of abstracting this
-import _root_.play.api.mvc.{Request=>PlayRequest, RequestHeader=>PlayRequestHeader}
+import _root_.play.api.mvc.{RequestHeader=>PlayRequestHeader}
 
 
 class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN, authz: WACAuthZ[Rdf])
@@ -128,23 +143,54 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
 
 
 
-  //    val res = store.execute(Command.PUT(LinkedDataResource(resourceURI, PointedGraph(resourceURI, model))))
-  //    res
-  //  }
+  /**
+   *
+   * @param request
+   * @param path
+   * @param mode the mode of the request
+   * @return AuthorizeModes for the resource and user ( may authenticate user with TLS if needed )
+   */
+  def fullAuthInfo(request: PlayRequestHeader, path: String, mode: Method.Value): Future[AuthorizedModes] = {
+    Logger.info(s"fullAuthInfo(_,$path,$mode)")
+    import syntax._
+    //1. find out what the user is authenticated as
+    //todo: we should be able to deal with a session containing multiple ids. WebIDs & e-mail addresses, etc...
+    val webIdsList = request.session.get("webid").toList.map(u=>WebIDPrincipal(new jURI(u)))
+    val relativePathUri = URI(path)
+    //2. find out all rights for this user
 
-  def wacIt(mode: Method.Value) = mode match {
-    case Method.Read => wac.Read
-    case Method.Write => wac.Write
+    //todo: what we are missing here is a way for the user to say that he prefers to be authenticated
+    //because otherwise for most resources we may just return what the public user is allowed access to.
+
+    getAllowedMethodsForAgent(relativePathUri, webIdsList).flatMap{ allowedMethods =>
+      Logger.info(s"the allowed methods for agent $webIdsList is $allowedMethods")
+      //3. if the requested method is allowed
+      if (allowedMethods.contains(mode)) {
+          Future.successful(AuthorizedModes(webIdsList, path, allowedMethods))
+      }
+      else if (webIdsList.isEmpty) { //todo: we need a way to tell that the user has been asked to authenticate but does not want to be
+        //if the person has not been authenticated yet, authenticate if possible, then verify
+        authn(request).flatMap { subject =>
+          val newWebIds = subject.webIds
+          Logger.info(s" user agent is identified by $newWebIds")
+          getAllowedMethodsForAgent(relativePathUri, newWebIds).map { authzModes =>
+            Logger.info(s"the allowed methods for the now newly authenticated agent $newWebIds is $allowedMethods")
+            AuthorizedModes(newWebIds, path, authzModes)
+          }
+        }
+      } else { // the user cannot access the resource in the desired mode, and has not authenticated successfully
+        Future.successful(AuthorizedModes(webIdsList, path, allowedMethods))
+      }
+    }
   }
-
 
   /**
    * todo: This could be made part of the Play Action.
    *
    * @param request
-   * @param path
-   * @param mode
-   * @return
+   * @param path the resource on which an action is required
+   * @param mode the type of the action
+   * @return the authorized agent WebID
    */
   def auth(request: PlayRequestHeader, path: String, mode: Method.Value): Future[jURI] = {
     getAuthorizedWebIDsFor(URI(path), wacIt(mode)).flatMap { agents =>
@@ -159,11 +205,11 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
       else {
         authn(request).flatMap { subject =>
           subject.webIds.find{ wid =>
-            agents.contains(URI(wid.toString))
+            agents.contains(URI(wid.webid.toString))
           } match {
             case Some(id) => {
               Logger.info(s"Access allowed with mode $mode on ${request.path}. Subject $subject has been found on the allowed agents list $agents")
-              Future.successful(id)
+              Future.successful(id.webid)
             }
             case None => Future.failed(AccessDenied(s"No access for $mode on ${request.path}. Subject is $subject and allowed agents are $agents"))
           }
@@ -173,13 +219,15 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
   }
 
 
-  def get(request: PlayRequestHeader, uri: java.net.URI): Future[IdResult[NamedResource[Rdf]]] = {
-   for {
-      id <- auth(request, uri.toString, Method.Read)
-      x <- rww.execute {
-        getResource(URI(uri.toString), None)
+  def get(request: PlayRequestHeader, uri: java.net.URI): Future[AuthResult[NamedResource[Rdf]]] = {
+    fullAuthInfo(request, uri.toString, Method.Read).flatMap { authmodes =>
+      Logger.info(s"get(_,$uri) fullAuthInfo returns $authmodes")
+      if (authmodes.modesAllowed.contains(Method.Read)) {
+         rww.execute(getResource(URI(uri.toString), None)).map(id=>AuthResult(authmodes,id))
+      } else {
+         Future.failed(AccessDeniedAuthModes(authmodes))
       }
-    } yield IdResult(id,x)
+    }
   }
 
   def makeLDPR( collectionPath: String, content: Rdf#Graph, slug: Option[String])

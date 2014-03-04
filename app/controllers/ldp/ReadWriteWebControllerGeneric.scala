@@ -8,7 +8,7 @@ import PlayApi.libs.iteratee.Enumerator
 import PlayApi.mvc._
 import org.w3.banana._
 import concurrent.{Future, ExecutionContext}
-import java.net.URLDecoder
+import java.net.{URI=>jURI, URLDecoder}
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
 import com.google.common.base.Throwables
@@ -25,6 +25,7 @@ import rww.play.BinaryRwwContent
 import rww.play.IdResult
 import rww.ldp.WrongTypeException
 import rww.ldp.model.{LDPR, BinaryResource, NamedResource}
+import rww.ldp.auth.WebIDPrincipal
 
 
 /**
@@ -48,24 +49,36 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
   private def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
 
   /**
-   * The user header is used to transmoit the WebId URI to the client, because he can't know it before
+   * The user header is used to transmit the WebId URI to the client, because he can't know it before
    * the authentication takes place with the server.
-   * @param res
-   * @return
+   * @param principals
+   * @return a one element List or an empty one
+   * todo: what happens
    */
-  private def userHeader(res: IdResult[_]) =  "User"->res.id.toString
+  private def userHeader(principals: List[WebIDPrincipal]): List[(String,String)] =  {
+    principals match {
+      case Nil => Nil
+      case webidp::_ => List("User" -> webidp.webid.toString)
+    }
+  }
+
+  private def allowHeader(modes: Set[Method.Value ]) = {
+    "Allow"->{
+      modes.collect {
+        case Method.Append => "POST"
+        case Method.Read => "GET, HEAD"
+        case Method.Write => "PUT, PATCH"
+      }
+    }.mkString(",")
+  }
 
 
   def get(path: String) = Action.async { request =>
     getAsync(request)
   }
 
-  def options(file: String) = Action.async { request =>
-    // need to get the authentication level of the user
+  def options(file: String) = head(file)
 
-    //find the methods allowed for the user
-    null
-  }
 
 
   /**
@@ -101,23 +114,24 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
    * @return
    */
   private def getAsync(bestReplyContentType: SupportedRdfMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+    Logger.info(s"getAsync($bestReplyContentType)")
     val getResult = for {
-      namedRes <- resourceManager.get(request, request.getAbsoluteURI)
-    }
-    yield writeGetResult(bestReplyContentType,namedRes)
+      authResult <- resourceManager.get(request, request.getAbsoluteURI)
+    } yield writeGetResult(bestReplyContentType,authResult)
+
     getResult recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case rse: ResourceDoesNotExist => NotFound(rse.getMessage + stackTrace(rse))
-      case auth: AccessDenied => {
-        Logger.warn("Access denied exception",auth)
+      case err @ AccessDeniedAuthModes(authinfo) => {
+        Logger.warn("Access denied exception"+authinfo)
         bestReplyContentType match {
           case SupportedRdfMimeType.Html => {
             Unauthorized(
-              views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(auth) )
-            )
+              views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(err) )
+            ).withHeaders(allowHeader(authinfo.modesAllowed))
           }
           case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
-            Unauthorized(auth.message)
+            Unauthorized(err.getMessage).withHeaders(allowHeader(authinfo.modesAllowed))
           }
         }
       }
@@ -129,17 +143,21 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
 
 
-  private def writeGetResult(bestReplyContentType: SupportedRdfMimeType.Value,namedRes: IdResult[NamedResource[Rdf]])
+  private def writeGetResult(bestReplyContentType: SupportedRdfMimeType.Value, authResult: AuthResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
-    val linkOpt = namedRes.result.acl.toOption map (acl => ("Link" -> s"<${acl}>; rel=acl"))
+    val linkOpt = authResult.result.acl.toOption map (acl => ("Link" -> s"<${acl}>; rel=acl"))
+    def commonHeaders: List[(String, String)] = allowHeader(authResult.authInfo.modesAllowed)::userHeader(authResult.authInfo.user).toList:::linkOpt.toList
 
-    namedRes.result match {
+    authResult.result match {
       case ldpr: LDPR[Rdf] =>  {
         bestReplyContentType match {
           case SupportedRdfMimeType.Html => Ok(views.html.ldp.rdfToHtml())
           case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
             writerFor[Rdf#Graph](request).map { wr =>
-              val headers =  "Access-Control-Allow-Origin"-> "*"::userHeader(namedRes)::linkOpt.toList
+              val headers =
+                "Access-Control-Allow-Origin" -> "*" ::
+                "Accept-Patch" -> Syntax.SparqlUpdate.mimeTypes.head.mime :: //todo: something that is more flexible
+                commonHeaders
               result(200, wr, Map(headers:_*))(ldpr.relativeGraph)
             } getOrElse { throw new RuntimeException("Unexpected: no writer found")}
           }
@@ -148,7 +166,8 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       case bin: BinaryResource[Rdf] => {
         val contentType = bin.mime.mime
         Logger.info(s"Getting binary resource, no [$bestReplyContentType] representation available, so the content type will be [${contentType}}]")
-        val headers =  "Content-Type" -> contentType::userHeader(namedRes)::linkOpt.toList
+        val headers =  "Content-Type" -> contentType::commonHeaders
+
         SimpleResult(
           header = ResponseHeader(200, Map(headers:_*)),
           body = bin.readerEnumerator(1024 * 8)
@@ -182,9 +201,9 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       val path = correctedPath.toString.substring(coll.toString.length)
       for (answer <- resourceManager.makeCollection(coll.toString, Some(path), graph))
       yield {
-        val res = Created("Created Collection at " + answer).withHeaders(userHeader(answer))
+        val res = Created("Created Collection at " + answer).withHeaders(userHeader(answer.id).toList:_*)
         if (request.path == correctedPath) res
-        else res.withHeaders(("Location" -> answer.toString),userHeader(answer))
+        else res.withHeaders(("Location" -> answer.toString)::userHeader(answer.id).toList:_*)
       }
     }
     val resultFuture = request.body match {
@@ -204,7 +223,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     val future = for {
       answer <- resourceManager.put(request.body)
     } yield {
-      Ok("Succeeded").withHeaders(userHeader(answer))
+      Ok("Succeeded").withHeaders(userHeader(answer.id):_*)
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
@@ -216,7 +235,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     val future = for {
       answer <- resourceManager.patch( request.body)
     } yield {
-      Ok("Succeeded").withHeaders(userHeader(answer))
+      Ok("Succeeded").withHeaders(userHeader(answer.id):_*)
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
@@ -251,7 +270,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     for {
       location <- resourceManager.postGraph(slug, rwwGraph)
     } yield {
-      Created.withHeaders("Location" -> location.result.toString,userHeader(location))
+      Created.withHeaders("Location" -> location.result.toString::userHeader(location.id):_*)
     }
   }
 
@@ -259,7 +278,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     for {
       answer <- resourceManager.postBinary(request.path, slug, binaryContent.file, MimeType(binaryContent.mime) )
     } yield {
-      Created.withHeaders("Location" -> answer.result.toString,userHeader(answer))
+      Created.withHeaders("Location" -> answer.result.toString::userHeader(answer.id):_*)
     }
   }
 
@@ -270,15 +289,15 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       answer.result.fold(
         graph =>
           writerFor[Rdf#Graph](request).map {
-            wr => result(200, wr,Map(userHeader(answer)))(graph)
+            wr => result(200, wr,Map(userHeader(answer.id):_*))(graph)
           },
         sol =>
           writerFor[Rdf#Solutions](request).map {
-            wr => result(200, wr,Map(userHeader(answer)))(sol)
+            wr => result(200, wr,Map(userHeader(answer.id):_*))(sol)
           },
         bool =>
           writerFor[Boolean](request).map {
-            wr => result(200, wr,Map(userHeader(answer)))(bool)
+            wr => result(200, wr,Map(userHeader(answer.id):_*))(bool)
           }
       ).getOrElse(PlayApi.mvc.Results.UnsupportedMediaType(s"Cannot publish answer of type ${answer.getClass} as" +
         s"one of the mime types given ${request.headers.get("Accept")}"))
@@ -290,7 +309,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     val future = for {
       answer <- resourceManager.delete(request)
     } yield {
-      Ok.withHeaders(userHeader(answer))
+      Ok.withHeaders(userHeader(answer.id):_*)
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))

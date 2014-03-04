@@ -22,12 +22,9 @@ import rww.auth.BrowserCertBehavior
  * @param principals
  */
 case class Subject(principals: List[Principal]) {
-  lazy val webIds = principals.flatMap{ p =>
-    p match {
-      case wp: WebIDPrincipal => Some(wp.webid)
-      case _ => None
+  lazy val webIds = principals.collect{
+      case wp: WebIDPrincipal => wp
     }
-  }
 }
 
 /**
