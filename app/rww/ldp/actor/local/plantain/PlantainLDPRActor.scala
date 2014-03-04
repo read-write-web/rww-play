@@ -125,7 +125,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
     val resourceGet = resourceCache.get(name) match {
       case success @ Success(LocalLDPR(_,_,path,updated)) if (path.toFile.lastModified() > updated.get.getTime) => {
         resourceCache.invalidate(name)
-        success
+        resourceCache.get(name)
       }
       case failure @ Failure(exception: UnparsableSource) => {
         resourceCache.invalidate(name)
