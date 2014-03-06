@@ -39,11 +39,15 @@ trait LDPR[Rdf <: RDF] extends NamedResource[Rdf] with LinkedDataResource[Rdf]  
 case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
                                graph: Rdf#Graph,
                                path: Path,
-                               updated: Option[Date] = Some(new Date))
+                               updated: Option[Date] = Some(new Date),
+                               metaData: Option[Rdf#Graph] = None)
                               (implicit val ops: RDFOps[Rdf])
   extends LDPR[Rdf] with LocalNamedResource[Rdf]{
   import ops._
-  def meta = Success(PointedGraph(location,Graph.empty))  //todo: build up aclPath from local info
+  def meta = metaData match {
+    case Some(graph) => Success(PointedGraph(location,graph))
+    case None => Success(PointedGraph(location,Graph.empty))
+  }  //todo: build up aclPath from local info
   def size = None
 }
 

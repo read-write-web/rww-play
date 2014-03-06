@@ -55,6 +55,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
   val stat = STATPrefix[Rdf]
 
   import org.w3.banana.syntax._
+  import diesel._
 
   lazy val basejURI = baseUri.underlying
   lazy val baseSprayUri = Uri(baseUri.toString)
@@ -74,11 +75,13 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
         if (file.toString.endsWith(ext)) {
           val res = xResource.fromFile(file)
           reader.read(res, iri.toString).map { g =>
-            LocalLDPR[Rdf](iri, g, path, Option(new Date(path.toFile.lastModified())))
+            LocalLDPR[Rdf](iri, g, path, Option(new Date(path.toFile.lastModified())),
+              Some((iri -- rdf.typ ->- ldp.Resource).graph)
+            )
           } recover {
             case RDFParseExceptionMatcher(e) => throw UnparsableSource(s"Can't parse resource $iri as an RDF file",e)
           }
-        } else Success(LocalBinaryResource[Rdf](file.toPath, iri))
+        } else Success(LocalBinaryResource[Rdf](file.toPath, iri,Some((iri -- rdf.typ ->- ldp.Resource).graph)))
 
       } else Failure(ResourceDoesNotExist(s"no resource for '$key'"))
     }
@@ -123,7 +126,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
     import scalax.io.{Resource=>xResource}
     //todo: the file should be verified to see if it is up to date.
     val resourceGet = resourceCache.get(name) match {
-      case success @ Success(LocalLDPR(_,_,path,updated)) if (path.toFile.lastModified() > updated.get.getTime) => {
+      case success @ Success(LocalLDPR(_,_,path,updated,_)) if (path.toFile.lastModified() > updated.get.getTime) => {
         resourceCache.invalidate(name)
         resourceCache.get(name)
       }
@@ -222,7 +225,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       case UpdateLDPR(uri, remove, add, a) => {
         val nme = localName(uri)
         getResource(nme) match {
-          case Success(LocalLDPR(_,graph,_,updated)) => {
+          case Success(LocalLDPR(_,graph,_,updated,_)) => {
             if (remove.size>0) throw LocalException("need to upgrade to a later version of banana that supports diffs")
 //            val temp = remove.foldLeft(graph) {
 //              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
@@ -246,7 +249,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       case PatchLDPR(uri, update, bindings, k) => {
         val nme = localName(uri)
         getResource(nme) match {
-          case Success(LocalLDPR(_,graph,_,updated)) => {
+          case Success(LocalLDPR(_,graph,_,updated,_)) => {
             patch.executePatch(graph,update,bindings) match {
               case Success(gr) => {
                 setResource(nme, gr)
@@ -261,7 +264,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       }
       case SelectLDPR(uri, query, bindings, k) => {
         getResource(localName(uri)) match {
-          case Success(LocalLDPR(_,graph,_,_)) => {
+          case Success(LocalLDPR(_,graph,_,_,_)) => {
             val solutions = sparqlGraph(graph).executeSelect(query, bindings)
             rwwRouterActor.tell(ScriptMessage(k(solutions)),context.sender)
           }
@@ -271,7 +274,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       }
       case ConstructLDPR(uri, query, bindings, k) => {
         getResource(localName(uri)).get match {
-          case LocalLDPR(_,graph,_,_) => {
+          case LocalLDPR(_,graph,_,_,_) => {
             val result = sparqlGraph(graph).executeConstruct(query, bindings)
             rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
           }
@@ -281,7 +284,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       }
       case AskLDPR(uri, query, bindings, k) => {
         getResource(localName(uri)).get match {
-          case LocalLDPR(_,graph,_,_) => {
+          case LocalLDPR(_,graph,_,_,_) => {
             val result = sparqlGraph(graph).executeAsk(query, bindings)
             rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
           }

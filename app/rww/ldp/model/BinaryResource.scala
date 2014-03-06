@@ -30,12 +30,15 @@ trait BinaryResource[Rdf<:RDF] extends NamedResource[Rdf]  {
 
 
 
-case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI)
+case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI,metaData: Option[Rdf#Graph] = None)
                                  (implicit val ops: RDFOps[Rdf])
   extends BinaryResource[Rdf] with LocalNamedResource[Rdf] with Logging {
   import ops._
 
-  def meta = Success(PointedGraph(location,Graph.empty))  //todo: need to build it correctly
+  def meta = metaData match {
+    case Some(graph) => Success(PointedGraph(location,graph))
+    case None => Success(PointedGraph(location,Graph.empty))
+  }  //todo: build up aclPath from local info
 
 
   // also should be on a metadata trait, since all resources have update times

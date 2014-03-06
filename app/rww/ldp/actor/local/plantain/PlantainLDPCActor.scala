@@ -46,8 +46,9 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
                                   patch: LDPatch[Rdf, Try]
 //                                  adviceSelector: AdviceSelector[Rdf] = new EmptyAdviceSelector
                                    ) extends LDPRActor[Rdf](ldpcUri,root) {
-  import org.w3.banana.syntax._
   import ops._
+  import syntax._
+  import diesel._
 
   override lazy val fileName = ""
 
@@ -142,7 +143,14 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
                 FileVisitResult.CONTINUE
               }
             })
-          Success(LocalLDPR[Rdf](ldpcUri, contentGrph, root, Some(new Date(Files.getLastModifiedTime(root).toMillis))))
+          Success(
+            LocalLDPR[Rdf](
+              ldpcUri,
+              contentGrph,
+              root,
+              Some(new Date(Files.getLastModifiedTime(root).toMillis)),
+              Some((ldpcUri -- rdf.typ ->- ldp.BasicContainer).graph)
+            ))
         } else ok
       }
       case badContent @ Success(_) =>  Failure(StorageError(s"Data in LDPC must be a graph. "))

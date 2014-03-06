@@ -7,7 +7,7 @@ import PlayApi.http.Status._
 import PlayApi.libs.iteratee.Enumerator
 import PlayApi.mvc._
 import org.w3.banana._
-import concurrent.{Future, ExecutionContext}
+import scala.concurrent.{Future, ExecutionContext}
 import java.net.{URI=>jURI, URLDecoder}
 import rww.play.rdf.IterateeSelector
 import org.w3.banana.plantain.Plantain
@@ -37,13 +37,14 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
   implicit def rwwBodyParser: RwwBodyParser[Rdf]
   implicit def ec: ExecutionContext
-  implicit def ops: RDFOps[Rdf]
+  implicit val ops: RDFOps[Rdf]
   implicit def graphWriterSelector: WriterSelector[Rdf#Graph]
   implicit def solutionsWriterSelector: WriterSelector[Rdf#Solutions]
   implicit val boolWriterSelector: WriterSelector[Boolean] = BooleanWriter.selector
   implicit val sparqlUpdateSelector: IterateeSelector[Plantain#UpdateQuery]
 
   import rww.play.PlayWriterBuilder._
+  import ops._
 
 
   private def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
@@ -141,12 +142,39 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     }
   }
 
+  val wac = WebACLPrefix[Rdf]
 
+  /**
+   * return a number of Link headers for each element of the graph that can be thus tranformed
+   * @param ldpr: the LDPR with the metadata
+   * @return a list of headers
+   * //todo: move to a util library
+   */
+  private def linkHeaders(ldpr: NamedResource[Rdf]): List[(String,String)] = {
+    val ldprUri: Rdf#URI = ldpr.location
+    import syntax.URISyntax._
+    for {
+      pg <- ldpr.meta.toOption.toList
+      rel <- graphToIterable(pg.graph).toList
+      (subject, relation, obj) = ops.fromTriple(rel)
+      if (isURI(subject) && isURI(obj))
+      objURI = obj.asInstanceOf[Rdf#URI]
+    } yield {
+      val rel = relation match {
+        case rdf.typ => "type"
+        case URI(uristr) => s"<$uristr>"
+      }
+      val relativeObject = ldprUri.relativize(objURI)
+      ("Link" -> s"<${relativeObject}>; rel=$rel")
+    }
+  }
 
   private def writeGetResult(bestReplyContentType: SupportedRdfMimeType.Value, authResult: AuthResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
     val linkOpt = authResult.result.acl.toOption map (acl => ("Link" -> s"<${acl}>; rel=acl"))
-    def commonHeaders: List[(String, String)] = allowHeader(authResult.authInfo.modesAllowed)::userHeader(authResult.authInfo.user).toList:::linkOpt.toList
+    def commonHeaders: List[(String, String)] = allowHeader(authResult.authInfo.modesAllowed)::
+      userHeader(authResult.authInfo.user).toList:::
+      linkOpt.toList
 
     authResult.result match {
       case ldpr: LDPR[Rdf] =>  {
@@ -157,7 +185,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
               val headers =
                 "Access-Control-Allow-Origin" -> "*" ::
                 "Accept-Patch" -> Syntax.SparqlUpdate.mimeTypes.head.mime :: //todo: something that is more flexible
-                commonHeaders
+                commonHeaders ::: linkHeaders(ldpr)
               result(200, wr, Map(headers:_*))(ldpr.relativeGraph)
             } getOrElse { throw new RuntimeException("Unexpected: no writer found")}
           }
@@ -166,7 +194,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       case bin: BinaryResource[Rdf] => {
         val contentType = bin.mime.mime
         Logger.info(s"Getting binary resource, no [$bestReplyContentType] representation available, so the content type will be [${contentType}}]")
-        val headers =  "Content-Type" -> contentType::commonHeaders
+        val headers =  "Content-Type" -> contentType :: commonHeaders::: linkHeaders(bin)
 
         SimpleResult(
           header = ResponseHeader(200, Map(headers:_*)),
