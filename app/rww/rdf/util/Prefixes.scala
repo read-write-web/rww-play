@@ -8,17 +8,6 @@ object LDPPrefix {
 }
 
 class LDPPrefix[Rdf<:RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("ldp", "http://www.w3.org/ns/ldp#")(ops) {
-//  val AggregateContainer = apply("AggregateContainer")
-//  val CompositeContainer = apply("CompositeContainer")
-//  val Container = apply("Container")
-//  val Page = apply("Page")
-//  val Resource = apply("Resource")
-//  val containerSortPredicates = apply("containerSortPredicates")
-//  val membershipPredicate = apply("membershipPredicate")
-//  val membershipSubject = apply("membershipSubject")
-//  val nextPage = apply("nextPage")
-//  val created = apply("created")
-//  val pageOf = apply("pageOf")
 
   val Resource = apply("Resource")
   val RDFSource = apply("RDFSource")

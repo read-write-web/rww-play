@@ -111,7 +111,7 @@ function renderDirectory(rootUri, graph) {
         "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> \n" +
         "SELECT ?type ?size ?mt \n" +
         "WHERE {\n" +
-        "<" + rootUri + "> ldp:created ?m . \n" +
+        "<" + rootUri + "> ldp:contains ?m . \n" +
             "OPTIONAL { ?m stat:size ?size . } \n" +
             "OPTIONAL { ?m a ?type . } \n" +
             "OPTIONAL { ?m stat:mtime ?mt .} \n" +
@@ -132,7 +132,9 @@ function renderDirectory(rootUri, graph) {
 
         // Get the type.
         try {
-            informations.type =  (result['?type'].value == ldp("Container") )?"Container":"-"
+            var tp = result['?type'].value
+            informations.type = (tp == ldp("BasicContainer") || ldp("Container" ||
+                ldp("IndirectContainer")) || ldp("DirectContainer") ) ? tp.substr(tp.length) : "-"
         } catch (error) {
             informations.type = "-";
         }

@@ -56,7 +56,7 @@ var AppStarter = {
 					"PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> \n" +
 					"SELECT ?m ?type ?size ?mt \n" +
 					"WHERE {\n" +
-					" <" + self.baseUri + "> ldp:created ?m . \n" +
+					" <" + self.baseUri + "> ldp:contains ?m . \n" +
 					" OPTIONAL { ?m stat:size ?size . } \n" +
 					" OPTIONAL { ?m a ?type . } \n" +
 					" OPTIONAL { ?m stat:mtime ?mt .} \n" +

@@ -66,7 +66,9 @@ var containerEltView = {
 
 		// Get the type.
 		try {
-			this.attr.type = (this.container['?type'].value == ldp("Container") ) ? "Container" : "-"
+            var tp = this.container['?type'].value
+			this.attr.type = (tp == ldp("BasicContainer") || ldp("Container" ||
+                ldp("IndirectContainer")) || ldp("DirectContainer") ) ? tp.substr(tp.length) : "-"
 		} catch (error) {
 			this.attr.type = "-";
 		}
