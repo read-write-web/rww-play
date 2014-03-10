@@ -4,7 +4,7 @@ import org.w3.banana._
 import play.api.mvc.Action
 import play.api.mvc.Results._
 import java.security.cert.X509Certificate
-import java.net.{URL=>jURL}
+import java.net.{URL=>jURL, URI => jURI}
 import spray.http.Uri
 import rww.ldp.LDPCommand._
 import scala.concurrent.Future

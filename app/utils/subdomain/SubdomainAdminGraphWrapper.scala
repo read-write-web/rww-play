@@ -11,13 +11,13 @@ import org.w3.banana._
 // TODO maybe a LinkedDataResource of banana should be used here !
 class SubdomainAdminGraphWrapper[Rdf<:RDF](uri: Rdf#URI,underlyingGraph: Rdf#Graph)(implicit ops: RDFOps[Rdf]) {
 
-  play.api.Logger.warn(s"Created SubdomainAdminGraphWrapper with uri= $uri \nunderlyingGraph=$underlyingGraph")
-
-
   // TODO it seems there RecordBinder in Banana RDF which could handle this kind of graph wrapping logic
   // see
   // https://github.com/w3c/banana-rdf/blob/master/rdf-test-suite/src/main/scala/RecordBinderTest.scala
   // https://github.com/w3c/banana-rdf/blob/master/rdf-test-suite/src/main/scala/ObjectExamples.scala
+
+  play.api.Logger.info(s"SubdomainAdminGraphWrapper uri = $uri \n underlyingGraph=$underlyingGraph")
+
 
 
   import ops._
