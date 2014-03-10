@@ -42,15 +42,22 @@ trait Setup {
   //todo: the code below should be adapted to finding the real default of Play.
   lazy val securePort: Option[Int] = Play.current.configuration.getInt(httpsPortKey)
 
+  // TODO ! this seems useless: duplicate of securePort value not wrapped in an option right?
   lazy val port: Int = Play.current.configuration.getInt(httpsPortKey).orElse(securePort).get
 
   lazy val host: String =
     Play.current.configuration.getString(httpHostnameKey).getOrElse("localhost")
 
+  // This permits to remove the default http 80 / https 443 port from the String
+  def normalizeUri(uri: String): String = spray.http.Uri(uri).toString()
+
+  def normalizeURL(url: URL): URL = new URL(normalizeUri(url.toString))
 
   lazy val hostRoot: URL = {
     val protocol = if (securePort==None) "http" else "https"
-    new URL(protocol,host,port,"")
+    val url = new URL(protocol,host,port,"")
+    val normalized = normalizeURL(url)
+    normalized
   }
 
   def hostRootSubdomain(subdomain: String): URL = {
