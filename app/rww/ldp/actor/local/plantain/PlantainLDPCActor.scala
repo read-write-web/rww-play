@@ -234,6 +234,13 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
           //todo: make sure the uri does not end in ";aclPath" or whatever else the aclPath standard will be
         } getOrElse(throw UnsupportedMediaType("we do not yet support "+mime))
       }
+      case PutLDPR(uri,graph,headers,k) => {
+        headers.map{headerGraph=>
+          (PointedGraph(uri,headerGraph)/rdf.typ).nodes.exists(n=> n.fold(u=>u == ldp.BasicContainer,_=>false,_=>false))
+
+
+        }
+      }
       case CreateContainer(_,slugOpt,graph,k) => {
         val (uri, pathSegment) = mkDir(slugOpt)
         val p = root.resolve(pathSegment)
