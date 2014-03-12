@@ -72,10 +72,10 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
     } yield createResultForNamedResource(namedResource)
     implicit var implicitUrl = url
     futureResponse recover {
-      case e @ RemoteException(msg, headers) => errorResult(ExpectationFailed(msg),e)
+      case e @ RemoteException(msg, headers) => errorResult(ExpectationFailed(Throwables.getStackTraceAsString(e)),e)
       case e @ MissingParserException(err) => errorResult(ExpectationFailed(err),e)
-      case e @ ParserException(msg,err) => errorResult(ExpectationFailed(msg+"\n"+err),e)
-      case e @ LocalException(msg) => errorResult(ExpectationFailed(msg),e)
+      case e @ ParserException(msg,err) => errorResult(ExpectationFailed(Throwables.getStackTraceAsString(e)),e)
+      case e @ LocalException(msg) => errorResult(ExpectationFailed(Throwables.getStackTraceAsString(e)),e)
       // TODO these low level exceptions should rather be handled at the client level and expose other exceptions
       // because exception introspection (looking for root cause) is bad and create coupling
       case e @ UnresolvedAddressExceptionExtractor(rootE) => errorResult(BadGateway(Throwables.getStackTraceAsString(e)),e)

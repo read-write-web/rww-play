@@ -11,6 +11,8 @@ import util.{Try, Success, Failure}
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.immutable
 import rww.ldp.model._
+import java.lang.Exception
+import scala.Exception
 
 /**
  * A Web Client interacts directly with http resources on the web.
@@ -84,32 +86,43 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
       .withHeaders("Accept" -> "application/rdf+xml,text/turtle,application/xhtml+xml;q=0.8,text/html;q=0.7,text/n3;q=0.2")
       .get
     response.flatMap { response =>
-      import MimeType._
-      WebClient.log.info(s"WebClient fetched content successfully. ${response.status} ${response.statusText} ${response.body}")
-      response.header("Content-Type") match {
-        case Some(header) => {
-          val mt = MimeType(extract(header))
-          val gs = graphSelector(mt)
-          gs match {
-            case Some(r) => r.read(response.body, url.toString) match {
-              //todo: add base & use binary type
-              case Success(g) => {
-                val headers: FluentCaseInsensitiveStringsMap = response.ahcResponse.getHeaders
-                val meta = parseHeaders(URI(url.toString), headers)
-                val updated = Try {
-                  DateUtil.parseDate(headers.getFirstValue("Last-Modified"))
+      response.status match {
+        case okStatus if okStatus >= 200 && okStatus < 300 => {
+          import MimeType._
+          WebClient.log.info(s"WebClient fetched content successfully for $url -> [${response.status}][${response.statusText}]")
+          response.header("Content-Type") match {
+            case Some(header) => {
+              val mt = MimeType(extract(header))
+              val gs = graphSelector(mt)
+              gs match {
+                case Some(r) => r.read(response.body, url.toString) match {
+                  //todo: add base & use binary type
+                  case Success(g) => {
+                    val headers: FluentCaseInsensitiveStringsMap = response.ahcResponse.getHeaders
+                    val meta = parseHeaders(URI(url.toString), headers)
+                    val updated = Try {
+                      DateUtil.parseDate(headers.getFirstValue("Last-Modified"))
+                    }
+                    Future.successful(RemoteLDPR(URI(url.toString), g, meta, updated.toOption))
+                  }
+                  case Failure(e) => Future.failed(ParserException("had problems parsing document returned by server", e))
                 }
-                Future.successful(RemoteLDPR(URI(url.toString), g, meta, updated.toOption))
+                case None => {
+                  Future.failed(MissingParserException(s"no Iteratee/parser for Content-Type ${response.header("Content-Type")} fetching $url"))
+                }
               }
-              case Failure(e) => Future.failed(ParserException("had problems parsing document returned by server", e))
             }
-            case None => {
-              Future.failed(MissingParserException(s"no Iteratee/parser for Content-Type ${response.header("Content-Type")} fetching $url"))
-            }
+            case None => Future.failed(RemoteException.netty("no Content-Type header specified in response returned by server ", response))
           }
         }
-        case None => Future.failed(RemoteException.netty("no Content-Type header specified in response returned by server ", response))
+        case badStatus => {
+          val msg = s"WebClient fetch error for $url -> Status=[${response.status}][${response.statusText}]" +
+            s"\nBody=\n################################BODY_BEGIN\n${response.body}\n################################BODY_END"
+          WebClient.log.warn(msg)
+          Future.failed(RemoteException.netty(msg, response))
+        }
       }
+
     }
   }
 
@@ -187,7 +200,7 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
 
 trait FetchException extends BananaException
 
-case class RemoteException(msg: String, remote: ResponseHeaders) extends FetchException
+case class RemoteException(msg: String, remote: ResponseHeaders) extends Exception(msg) with FetchException
 object RemoteException {
   def netty(msg: String, resp: Response) = {
     RemoteException(msg,ResponseHeaders(resp.status, WS.ningHeadersToMap(resp.ahcResponse.getHeaders)))
