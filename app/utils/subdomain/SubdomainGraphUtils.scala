@@ -140,11 +140,24 @@ class SubdomainGraphUtils[Rdf<:RDF](implicit ops: RDFOps[Rdf]) {
 
   def calendarEventEmptyGraph: Rdf#Graph = Graph(Triple(URI(""),rdf.typ, stampleDisplay.EventsDocument))
 
+  def publicCardAcl: Rdf#Graph = {
+    // All agents should be able to access the user's public key to be able to authenticate him
+    val readAccessForAllAgents: Rdf#Graph =
+      ( bnode()
+        -- wac.accessTo ->- URI("card")
+        -- wac.agentClass ->- foaf.Agent
+        -- wac.mode ->- wac.Read
+        ).graph
+    // The subdomain Acl permits to give write permission to the subdomain owner
+    val importContainerAcl = ( URI("") -- wac.include ->- URI(".acl") ).graph
+    readAccessForAllAgents union importContainerAcl
+  }
+
   def createAndSetAcl(container: Rdf#URI, slug: String, graph: Rdf#Graph) = {
     for {
       ldpr <- createLDPR(container, Some(slug), graph)
       meta <- getMeta(ldpr)
-      _ <- updateLDPR(meta.acl.get,add=Graph(Triple(URI(""),wac.include,URI(".acl"))).toIterable)
+      _ <- updateLDPR(meta.acl.get,add=publicCardAcl.toIterable)
     } yield {
       ldpr
     }
