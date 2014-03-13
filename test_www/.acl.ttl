@@ -1,9 +1,14 @@
 @prefix acl: <http://www.w3.org/ns/auth/acl#> . 
 @prefix foaf: <http://xmlns.com/foaf/0.1/> . 
 
+[] acl:accessToClass [ acl:regex "https://(\\w+\\.)?localhost:8443/.*[.]acl" ];
+   acl:mode acl:Read;
+   acl:agentClass foaf:Agent .
+
+
 [] acl:accessToClass [ acl:regex "https://(\\w+\\.)?localhost:8443/.*" ];
    acl:mode acl:Write, acl:Read;
-#   acl:agentClass foaf:Agent;
+#   acl:agentClass foaf:Agent
    acl:agent <card#me> .
 
 #if you name your computer "bleau" in /etc/hosts then it is easier to debug virtual cell phone apps
