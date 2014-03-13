@@ -33,17 +33,26 @@ trait Setup {
 
   val logger = Logger("rww")
   val httpsPortKey = "https.port"
+  val httpsExternalPortKey = "https.external.port"
   val httpHostnameKey = "http.hostname"
   val RootContainerPathKey = "rww.root.container.path"
   val rwwSubDomainsEnabledKey = "rww.subdomains"
   val baseHostnameKey = "http.hostname"
+
+
+  // We usually run https on port 8443 and use a tcp redirect (using iptables) of 443 to 8443
+  // to avoid launching app as root (required for opening 443 default https port).
+  // The externalSecurePort provided (if any) is probably 443 which is the one that is supposed
+  // to be used by http clients.
+  lazy val externalSecurePort: Option[Int] = Play.current.configuration.getInt(httpsExternalPortKey)
+
 
   //Play setup: needed for WebID info
   //todo: the code below should be adapted to finding the real default of Play.
   lazy val securePort: Option[Int] = Play.current.configuration.getInt(httpsPortKey)
 
   // TODO ! this seems useless: duplicate of securePort value not wrapped in an option right?
-  lazy val port: Int = Play.current.configuration.getInt(httpsPortKey).orElse(securePort).get
+  lazy val port: Int = externalSecurePort.orElse(securePort).get
 
   lazy val host: String =
     Play.current.configuration.getString(httpHostnameKey).getOrElse("localhost")
@@ -95,6 +104,7 @@ trait Setup {
 
   logger.info(s""""
     secure port=$securePort
+    externalSecurePort=$externalSecurePort
     port = $port
     host = $host
     hostRoot = $hostRoot
