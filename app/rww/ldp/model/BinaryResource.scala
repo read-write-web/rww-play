@@ -35,11 +35,12 @@ case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI,metaData:
   extends BinaryResource[Rdf] with LocalNamedResource[Rdf] with Logging {
   import ops._
 
-  def meta = metaData match {
-    case Some(graph) => Success(PointedGraph(location,graph))
-    case None => Success(PointedGraph(location,Graph.empty))
-  }  //todo: build up aclPath from local info
 
+  /** type specific metadata */
+  override def typeMetadata = Graph.empty
+
+  /** context specific metadata */
+  override def contextualMetadata = None
 
   // also should be on a metadata trait, since all resources have update times
   def updated = Try { new Date(Files.getLastModifiedTime(path).toMillis) }.toOption

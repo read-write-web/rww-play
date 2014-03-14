@@ -144,7 +144,7 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
               }
             })
           Success(
-            LocalLDPR[Rdf](
+            LocalLDPC[Rdf](
               ldpcUri,
               contentGrph,
               root,

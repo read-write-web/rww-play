@@ -14,18 +14,25 @@ import org.w3.banana.plantain.Plantain
 import com.google.common.base.Throwables
 import scala.util.Try
 import rww.play._
+import rww.ldp.model._
 import rww.play.QueryRwwContent
-import rww.ldp.LDPExceptions._
+import rww.play.AuthResult
+import rww.ldp.LDPExceptions.ResourceDoesNotExist
 import scala.util.Failure
+import rww.ldp.LDPExceptions.AccessDeniedAuthModes
 import rww.play.GraphRwwContent
 import scala.Some
 import rww.play.auth.AuthenticationError
+import play.api.mvc.SimpleResult
+import rww.ldp.LDPExceptions.ParentDoesNotExist
+import rww.ldp.auth.WebIDPrincipal
+import play.api.mvc.ResponseHeader
 import scala.util.Success
 import rww.play.BinaryRwwContent
-import rww.play.IdResult
+import rww.ldp.LDPExceptions.AccessDenied
 import rww.ldp.WrongTypeException
-import rww.ldp.model.{LDPR, BinaryResource, NamedResource}
-import rww.ldp.auth.WebIDPrincipal
+import rww.ldp.model.LocalLDPC
+import spray.http.Uri
 
 
 /**
@@ -63,16 +70,25 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     }
   }
 
-  private def allowHeader(modes: Set[Method.Value ]) = {
-    "Allow"->{
-      modes.collect {
-        case Method.Append => "POST"
-        case Method.Read => "GET, HEAD"
-        case Method.Write => "PUT, PATCH"
-      }
-    }.mkString(",")
+  private def allowHeader(authResult: AuthResult[NamedResource[Rdf]]): Pair[String, String] = {
+    allowHeader(authResult.authInfo.modesAllowed, authResult.result.isInstanceOf[LocalLDPC[_]])
   }
 
+
+  private def allowHeader(modesAllowed: Set[Method.Value], isLDPC: Boolean): (String, String) = {
+    "Allow" -> {
+      val headerStr = modesAllowed.collect {
+        case Method.Append => {
+          if (isLDPC) "POST" else ""
+        }
+        case Method.Read => "GET, HEAD"
+        case Method.Write => "PUT, PATCH, DELETE" + {
+          if (isLDPC) ", POST" else ""
+        }
+      }
+      ("OPTIONS"::headerStr.toList).filter(_ != "").mkString(", ")
+    }
+  }
 
   def get(path: String) = Action.async { request =>
     getAsync(request)
@@ -129,10 +145,11 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
           case SupportedRdfMimeType.Html => {
             Unauthorized(
               views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(err) )
-            ).withHeaders(allowHeader(authinfo.modesAllowed))
+              //todo a better implementation would have this on the actor itself, which WOULD know the type
+            ).withHeaders(allowHeader(authinfo.modesAllowed,false)) // we don't know if this is an LDPC
           }
           case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
-            Unauthorized(err.getMessage).withHeaders(allowHeader(authinfo.modesAllowed))
+            Unauthorized(err.getMessage).withHeaders(allowHeader(authinfo.modesAllowed,false)) // we don't know if this is an LDPC
           }
         }
       }
@@ -147,13 +164,16 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
   /**
    * return a number of Link headers for each element of the graph that can be thus tranformed
    * @param ldpr: the LDPR with the metadata
-   * @return a list of headers
+   * @return a Link header #Stupid play only allows one header type
    * //todo: move to a util library
    */
-  private def linkHeaders(ldpr: NamedResource[Rdf]): List[(String,String)] = {
-    val ldprUri: Rdf#URI = ldpr.location
+  private def linkHeaders(ldpr: NamedResource[Rdf]): (String,String) = {
     import syntax.URISyntax._
-    for {
+    val ldprUri: Rdf#URI = ldpr.location
+    val l = ldprUri.underlying
+    val path = l.getPath.substring(0,l.getPath.lastIndexOf('/'))
+    val hostUri = new jURI(l.getScheme,l.getUserInfo,l.getHost,l.getPort,path,"","")
+    val res = for {
       pg <- ldpr.meta.toOption.toList
       rel <- graphToIterable(pg.graph).toList
       (subject, relation, obj) = ops.fromTriple(rel)
@@ -162,19 +182,19 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     } yield {
       val rel = relation match {
         case rdf.typ => "type"
+        case wac.accessTo => "acl"
         case URI(uristr) => s"<$uristr>"
       }
-      val relativeObject = ldprUri.relativize(objURI)
-      ("Link" -> s"<${relativeObject}>; rel=$rel")
+      val relativeObject = hostUri.relativize(objURI.underlying)
+      s"<${relativeObject}>; rel=$rel"
     }
+    "Link" -> res.mkString(", ")
   }
 
   private def writeGetResult(bestReplyContentType: SupportedRdfMimeType.Value, authResult: AuthResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
-    val linkOpt = authResult.result.acl.toOption map (acl => ("Link" -> s"<${acl}>; rel=acl"))
-    def commonHeaders: List[(String, String)] = allowHeader(authResult.authInfo.modesAllowed)::
-      userHeader(authResult.authInfo.user).toList:::
-      linkOpt.toList
+    def commonHeaders: List[(String, String)] =
+      allowHeader(authResult)::userHeader(authResult.authInfo.user).toList
 
     authResult.result match {
       case ldpr: LDPR[Rdf] =>  {
@@ -185,7 +205,8 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
               val headers =
                 "Access-Control-Allow-Origin" -> "*" ::
                 "Accept-Patch" -> Syntax.SparqlUpdate.mimeTypes.head.mime :: //todo: something that is more flexible
-                commonHeaders ::: linkHeaders(ldpr)
+                 linkHeaders(ldpr)::
+                commonHeaders
               result(200, wr, Map(headers:_*))(ldpr.relativeGraph)
             } getOrElse { throw new RuntimeException("Unexpected: no writer found")}
           }
@@ -194,7 +215,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       case bin: BinaryResource[Rdf] => {
         val contentType = bin.mime.mime
         Logger.info(s"Getting binary resource, no [$bestReplyContentType] representation available, so the content type will be [${contentType}}]")
-        val headers =  "Content-Type" -> contentType :: commonHeaders::: linkHeaders(bin)
+        val headers =  "Content-Type" -> contentType :: linkHeaders(bin)::commonHeaders
 
         SimpleResult(
           header = ResponseHeader(200, Map(headers:_*)),
@@ -285,7 +306,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       case e: WrongTypeException =>
         //todo: the Allow methods should not be hardcoded.
         SimpleResult(
-          ResponseHeader(METHOD_NOT_ALLOWED, Map("Allow" -> "GET, OPTIONS, HEAD, PUT, POST, PATCH")),
+          ResponseHeader(METHOD_NOT_ALLOWED),
           Enumerator(e.msg.getBytes("UTF-8"))
         )
       case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))

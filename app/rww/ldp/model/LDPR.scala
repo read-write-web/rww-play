@@ -29,7 +29,7 @@ trait LDPR[Rdf <: RDF] extends NamedResource[Rdf] with LinkedDataResource[Rdf]  
 
 }
 
-
+trait LDPC[Rdf <: RDF] extends LDPR[Rdf]
 
 
 /**
@@ -40,16 +40,51 @@ case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
                                graph: Rdf#Graph,
                                path: Path,
                                updated: Option[Date] = Some(new Date),
-                               metaData: Option[Rdf#Graph] = None)
+                               contextualMetadata: Option[Rdf#Graph] = None)
                               (implicit val ops: RDFOps[Rdf])
-  extends LDPR[Rdf] with LocalNamedResource[Rdf]{
+  extends LDPR[Rdf] with LocalNamedResource[Rdf] {
+
   import ops._
-  def meta = metaData match {
-    case Some(graph) => Success(PointedGraph(location,graph))
-    case None => Success(PointedGraph(location,Graph.empty))
-  }  //todo: build up aclPath from local info
+  import diesel._
+  import syntax._
+
+
+  /** type specific metadata */
+  override
+  def typeMetadata =  (location -- rdf.typ ->- ldp.Resource).graph
+
+
+  //todo: build up aclPath from local info
   def size = None
+
 }
+
+/**
+ * it's important for the uris in the graph to be absolute
+ * this invariant is assumed by the sparql engine (TripleSource)
+ */
+case class LocalLDPC[Rdf<:RDF](location: Rdf#URI,
+                               graph: Rdf#Graph,
+                               path: Path,
+                               updated: Option[Date] = Some(new Date),
+                               contextualMetadata: Option[Rdf#Graph] = None)
+                              (implicit val ops: RDFOps[Rdf])
+  extends LDPR[Rdf] with LocalNamedResource[Rdf] {
+
+  import ops._
+  import diesel._
+  import syntax._
+
+  /** type specific metadata */
+  override
+  def typeMetadata =  (location -- rdf.typ ->- ldp.BasicContainer).graph
+
+
+  //todo: build up aclPath from local info
+  def size = None
+
+}
+
 
 case class RemoteLDPR[Rdf<:RDF](location: Rdf#URI, graph: Rdf#Graph, meta: Try[PointedGraph[Rdf]], updated: Option[Date])
                                (implicit val ops: RDFOps[Rdf]) extends LDPR[Rdf] {

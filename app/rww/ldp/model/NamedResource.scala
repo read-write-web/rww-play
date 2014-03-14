@@ -1,9 +1,11 @@
 package rww.ldp.model
 
-import org.w3.banana.RDF
 import java.nio.file.Path
 import org.w3.banana.syntax.URISyntax
 import scala.util.Try
+import org.w3.banana.{LDPPrefix=>_,_}
+import scala.util.Success
+import rww.rdf.util.LDPPrefix
 
 /**
  * A resource on the server ( Resource is already taken. )
@@ -34,8 +36,30 @@ trait NamedResource[Rdf<:RDF] extends Meta[Rdf] {
 
 //todo: the way of finding the meta data should not be set here, but in the implementation
 trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
-
+  implicit val ops: RDFOps[Rdf]
   def path: Path
+
+  import ops._
+  import syntax._
+  import org.w3.banana.diesel._
+
+  protected val wac = WebACLPrefix[Rdf] //todo, should be a static object somewhere
+  protected val ldp = LDPPrefix[Rdf]
+
+  /** context specific metadata */
+  def contextualMetadata: Option[Rdf#Graph]
+  
+  /** type specific metadata */
+  def typeMetadata: Rdf#Graph
+
+
+  lazy val meta:  Try[PointedGraph[Rdf]] = {
+    val aclgr = (for (u <- acl) yield {
+      (location -- wac.accessTo ->- u).graph
+    }).getOrElse(Graph.empty)
+    val resultGraph = contextualMetadata.fold(typeMetadata union aclgr)(_ union typeMetadata union aclgr)
+    Success(PointedGraph(location,resultGraph))
+  }
 
   lazy val acl: Try[Rdf#URI]= Try{
     var loc=location.toString
@@ -45,7 +69,6 @@ trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
       ops.URI(loc.substring(0,loc.length-4))
     } else {
       import URISyntax._
-      implicit val o = ops
       val fileName = location.lastPathSegment
       val i = fileName.indexOf('.')
       val coreName = if ( i > 0) fileName.substring(0,i) else fileName
