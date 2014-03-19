@@ -48,12 +48,25 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
   // turn a header map into an (att,val) sequence
   private implicit def sequentialise(headers: Map[String,Seq[String]]) = headers.toSeq.flatMap(pair=>pair._2.map(v=>(pair._1,v)))
 
-  private def AllowOriginHeader(origin: String) = ("Access-Control-Allow-Origin" -> "*")
+
+  // If the request had an origin header we allow it
+  // Note that using a wildcard can be a problem in certain CORS cases so it's better to only allow the request origin
+  // see https://github.com/linkeddata/rdflib.js/pull/35
+  private def AllowOriginHeader(request: PlayRequest[AnyContent]) = {
+    val requestOrigin = request.headers.get("Origin")
+    val headerValue = requestOrigin.getOrElse("*")
+    ("Access-Control-Allow-Origin" -> headerValue)
+  }
+
+  private def AllowCredentialsHeader = ("Access-Control-Allow-Credentials" -> "true")
 
   // see https://github.com/stample/rww-play/issues/77
   // we don't want security warning on browser if there's an error
-  private def errorResult(result: SimpleResult,t: Throwable)(implicit url:String): SimpleResult = {
-    val rez = result.withHeaders(AllowOriginHeader("*"))
+  private def errorResult(result: SimpleResult,t: Throwable)(implicit url:String,request: PlayRequest[AnyContent]): SimpleResult = {
+    val rez = result.withHeaders(
+      AllowOriginHeader(request),
+      AllowCredentialsHeader
+    )
     Logger.warn(s"CORS proxy error!\n[URL]=$url\n[Result]=${rez}",t)
     rez
   }
@@ -97,11 +110,11 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
 
 
   private def createResultForLDPR(ldpr: LDPR[Rdf], writer: Writer[Rdf#Graph, Any])(implicit request: PlayRequest[AnyContent]): SimpleResult = {
-    val hdrs = request.headers.toSimpleMap - "ContentType"
+    // TODO maybe it's not a good idea to put AllowCredentialsHeader here? needs to be checked
+    val hdrs = request.headers.toSimpleMap - "ContentType" + AllowCredentialsHeader
     //todo: this needs to be refined a lot, and thought through quite a lot more carefully
     val corsHeaders = if (!hdrs.contains("Access-Control-Allow-Origin")) {
-      val origin = request.headers.get("Origin")
-      hdrs + ("Access-Control-Allow-Origin" -> origin.getOrElse("*"))
+      hdrs + AllowOriginHeader(request)
     } else {
       hdrs
     }

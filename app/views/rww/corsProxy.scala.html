@@ -9,7 +9,8 @@
   </p>
   <p>All the request headers passed from the client on to this one are passed on. And the
       resulting response headers are passed along also, but with an additional
-      <code>Access-Control-Allow-Origin: *</code>
+      <code>Access-Control-Allow-Origin: {value sent by remote resource, falling back to request Origin header value, falling back to *}</code>
+      and also <code>Access-Control-Allow-Credentials:true</code>
       Header so that the JavaScript in the client can accept the request.
   </p>
   <form method="GET" action=".">
