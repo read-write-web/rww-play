@@ -119,7 +119,7 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
           val msg = s"WebClient fetch error for $url -> Status=[${response.status}][${response.statusText}]" +
             s"\nBody=\n################################BODY_BEGIN\n${response.body}\n################################BODY_END"
           WebClient.log.warn(msg)
-          Future.failed(RemoteException.netty(msg, response))
+          Future.failed(BadStatusException(msg, badStatus))
         }
       }
 
@@ -207,6 +207,8 @@ object RemoteException {
   }
 }
 
+
+case class BadStatusException(msg: String, status: Int) extends Exception(msg) with FetchException
 case class LocalException(msg: String) extends Exception(msg) with FetchException
 case class WrappedException(msg: String, e: Throwable) extends Exception(msg) with FetchException
 case class WrongTypeException(msg: String) extends Exception(msg) with FetchException

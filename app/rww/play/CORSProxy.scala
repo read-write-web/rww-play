@@ -84,9 +84,11 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
       namedResource <- wsClient.get( URI(url) )
     } yield createResultForNamedResource(namedResource)
     implicit var implicitUrl = url
+  SimpleResult
     futureResponse recover {
+      case e @ BadStatusException(msg,badStatus) => errorResult( Status(badStatus)(Throwables.getStackTraceAsString(e)) ,e)
       case e @ RemoteException(msg, headers) => errorResult(ExpectationFailed(Throwables.getStackTraceAsString(e)),e)
-      case e @ MissingParserException(err) => errorResult(ExpectationFailed(err),e)
+      case e @ MissingParserException(err) => errorResult(ExpectationFailed(Throwables.getStackTraceAsString(e)),e)
       case e @ ParserException(msg,err) => errorResult(ExpectationFailed(Throwables.getStackTraceAsString(e)),e)
       case e @ LocalException(msg) => errorResult(ExpectationFailed(Throwables.getStackTraceAsString(e)),e)
       // TODO these low level exceptions should rather be handled at the client level and expose other exceptions
