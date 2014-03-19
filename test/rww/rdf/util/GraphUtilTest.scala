@@ -48,7 +48,7 @@ class GraphUtilTest[Rdf<: RDF]( implicit val recordBinder: RecordBinder[Rdf], va
 
     "normalise" in {
       // this does not work because issue https://github.com/w3c/banana-rdf/issues/87 creates URIs
-      val cleanGraph = normalise(henryGraphX).resolveAgainst(henryCard)
+      val cleanGraph = normalise(Uri(henryCardComvoluted),henryGraphX).resolveAgainst(henryCard)
       val wanted = henryGraph.resolveAgainst(henryCard)
 
       assert( cleanGraph.isIsomorphicWith(wanted), "cleaned graph is "+cleanGraph.toString +

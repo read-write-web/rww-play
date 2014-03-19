@@ -2,7 +2,7 @@ package test.ldp
 
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import java.security.{KeyPair, KeyPairGenerator}
-import org.w3.banana._
+import org.w3.banana.{LDPPrefix=>_,_}
 import java.net.{URL => jURL}
 import java.util.Date
 import scala.concurrent.Future
@@ -12,6 +12,7 @@ import org.scalatest.{Suite, BeforeAndAfter}
 import rww.ldp._
 import rww.ldp.model.{LDPR, NamedResource}
 import scala.util.{Try, Success}
+import rww.rdf.util.LDPPrefix
 
 /**
  * Build up a set of Graphs with representing some realistic scenarios that can then be used
@@ -52,7 +53,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
   val henryKeys: RsaKeyPair = { keyGen.initialize(768); RsaKeyPair(keyGen.genKeyPair()) }
   val bertailsKeys: RsaKeyPair = { keyGen.initialize(512); RsaKeyPair(keyGen.genKeyPair()) }
 
-  val containsRel = (URI(".") -- ldp.created ->- URI("")).graph // added by LDP to members
+  val containsRel = (URI(".") -- ldp.contains ->- URI("")).graph // added by LDP to members
 
   val timbl = URI("http://www.w3.org/People/Berners-Lee/card#i")
   val timblCard = URI("http://www.w3.org/People/Berners-Lee/card")

@@ -15,6 +15,7 @@ import scala.Some
 import rww.ldp.auth.WebIDPrincipal
 import scala.util.Try
 import akka.util.Timeout
+import rww.play.Method
 
 
 class PlantainWebTest extends WebTestSuite[Plantain](baseUri,dir)
@@ -41,7 +42,7 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
 
   val webidVerifier = new WebIDVerifier(rww)
   implicit val authz: WACAuthZ[Rdf] =  new WACAuthZ[Rdf](new WebResource(rww))(ops)
-
+  import Method._
 
   "access to Henry's resources" when {
 
@@ -81,19 +82,19 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
     "What methods does Henry's WebID profile permit an anonymous user" in {
       val ex = authz.getAllowedMethodsForAgent(henryCard,List())
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read))
+      modes should be(Set(Read))
     }
 
     "What methods does Henry's WebID profile permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryCard,List(henry))
+      val ex = authz.getAllowedMethodsForAgent(henryCard,List(WebIDPrincipal(henry.underlying)))
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read,wac.Write))
+      modes should be(Set(Read,Write))
     }
 
     "What methods does Henry's WebID profile acl permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryCardAcl,List(henry))
+      val ex = authz.getAllowedMethodsForAgent(henryCardAcl,List(WebIDPrincipal(henry.underlying)))
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read,wac.Write))
+      modes should be(Set(Read,Write))
     }
 
     "henry creates his foaf list ( no ACL here )" in {
@@ -137,21 +138,21 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
     }
 
     "What methods does Henry's foaf profile permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List(henry))
+      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List(WebIDPrincipal(henry.underlying)))
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read,wac.Write))
+      modes should be(Set(Read,Write))
     }
 
     "What methods does Henry's foaf profile acl permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryFoafWac,List(henry))
+      val ex = authz.getAllowedMethodsForAgent(henryFoafWac,List(WebIDPrincipal(henry.underlying)))
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read,wac.Write))
+      modes should be(Set(Read,Write))
     }
 
     "What methods does Henry's foaf profile acl permit TimBL to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List(timbl))
+      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List(WebIDPrincipal(timbl.underlying)))
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read))
+      modes should be(Set(Read))
     }
 
   }
@@ -174,7 +175,9 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
       } yield {
         ldpc should be(bertailsContainer)
         cardMeta.acl.get should be(bertailsCardAcl)
-        assert(rGraph isIsomorphicWith (bertailsCardGraph union containsRel).resolveAgainst(bertailsCard))
+        val shouldBe = (bertailsCardGraph union containsRel).resolveAgainst(bertailsCard)
+        println(s"~~~~~>rGraph $rGraph should be $shouldBe ")
+        assert(rGraph isIsomorphicWith shouldBe)
         assert(aclGraph isIsomorphicWith bertailsCardAclGraph.resolveAgainst(bertailsCardAcl))
         assert(containerAclGraph isIsomorphicWith bertailsContainerAclGraph.resolveAgainst(bertailsContainerAcl))
       })
@@ -220,25 +223,25 @@ abstract class WebTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)
     "What methods does Alex's profile permit an anonymous user" in {
       val ex = authz.getAllowedMethodsForAgent(bertailsCard,List())
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read))
+      modes should be(Set(Read))
     }
 
     "What methods does Alex's profile permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(bertailsCard,List(henry))
+      val ex = authz.getAllowedMethodsForAgent(bertailsCard,List(WebIDPrincipal(henry.underlying)))
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read))
+      modes should be(Set(Read))
     }
 
     "What methods does Alex's profile acl permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(bertailsCard,List(bertails))
+      val ex = authz.getAllowedMethodsForAgent(bertailsCard,List(WebIDPrincipal(bertails.underlying)))
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read,wac.Write))
+      modes should be(Set(Read,Write))
     }
 
     "What methods does Alex's profile acl permit TimBL to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List(timbl))
+      val ex = authz.getAllowedMethodsForAgent(henryFoaf,List(WebIDPrincipal(timbl.underlying)))
       val modes = ex.getOrFail()
-      modes should be(Set(wac.Read))
+      modes should be(Set(Read))
     }
 
 
