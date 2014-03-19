@@ -5,14 +5,18 @@ import com.ning.http.util.DateUtil
 import concurrent.{ExecutionContext, Future}
 import org.slf4j.LoggerFactory
 import org.w3.banana._
-import org.w3.play.api.libs.ws.{Response, ResponseHeaders, WS}
-import scala.Some
-import util.{Try, Success, Failure}
+import org.w3.play.api.libs.ws.WS
+import util.Try
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.immutable
 import rww.ldp.model._
-import java.lang.Exception
 import scala.Exception
+import org.w3.play.api.libs.ws.Response
+import rww.ldp.model.RemoteLDPR
+import scala.util.Failure
+import scala.Some
+import scala.util.Success
+import org.w3.play.api.libs.ws.ResponseHeaders
 
 /**
  * A Web Client interacts directly with http resources on the web.
@@ -39,17 +43,17 @@ object WebClient {
 
 
 /**
-* This WebClient uses Play's WS
-*
-* @param graphSelector
-* @tparam Rdf
-*/
-class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWriter[Rdf,Turtle])
-                         (implicit ops: RDFOps[Rdf], ec: ExecutionContext) extends WebClient[Rdf] {
+ * This WebClient uses Play's WS
+ *
+ * @param readerSelector
+ * @tparam Rdf
+ */
+class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWriter[Rdf,Turtle])
+                        (implicit ops: RDFOps[Rdf], ec: ExecutionContext) extends WebClient[Rdf] {
 
   import ops._
-  import syntax.graphW
-  import syntax.URISyntax._
+  import org.w3.banana.syntax.graphW
+  import org.w3.banana.syntax.URISyntax._
 
   val parser = new LinkHeaderParser[Rdf]
 
@@ -88,31 +92,24 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
     response.flatMap { response =>
       response.status match {
         case okStatus if okStatus >= 200 && okStatus < 300 => {
-          import MimeType._
           WebClient.log.info(s"WebClient fetched content successfully for $url -> [${response.status}][${response.statusText}]")
-          response.header("Content-Type") match {
-            case Some(header) => {
-              val mt = MimeType(extract(header))
-              val gs = graphSelector(mt)
-              gs match {
-                case Some(r) => r.read(response.body, url.toString) match {
-                  //todo: add base & use binary type
-                  case Success(g) => {
-                    val headers: FluentCaseInsensitiveStringsMap = response.ahcResponse.getHeaders
-                    val meta = parseHeaders(URI(url.toString), headers)
-                    val updated = Try {
-                      DateUtil.parseDate(headers.getFirstValue("Last-Modified"))
-                    }
-                    Future.successful(RemoteLDPR(URI(url.toString), g, meta, updated.toOption))
-                  }
-                  case Failure(e) => Future.failed(ParserException("had problems parsing document returned by server", e))
-                }
-                case None => {
-                  Future.failed(MissingParserException(s"no Iteratee/parser for Content-Type ${response.header("Content-Type")} fetching $url"))
-                }
+          val maybeContentType = response.header("Content-Type")
+          val responseBody: String = response.body
+          tryToReadAsGraph(maybeContentType,responseBody,url.toString) match {
+            case Success(graph) => {
+              val headers: FluentCaseInsensitiveStringsMap = response.ahcResponse.getHeaders
+              val meta = parseHeaders(URI(url.toString), headers)
+              val updated = Try {
+                DateUtil.parseDate(headers.getFirstValue("Last-Modified"))
               }
+              Future.successful(RemoteLDPR(URI(url.toString), graph, meta, updated.toOption))
             }
-            case None => Future.failed(RemoteException.netty("no Content-Type header specified in response returned by server ", response))
+            case Failure(e) => {
+              val msg = s"WebClient for $url -> ContentType=[${maybeContentType}] -> Can't parse body as an RDF graph" +
+                s"\nBody=\n################################BODY_BEGIN\n${response.body}\n################################BODY_END"
+              WebClient.log.warn(msg)
+              Future.failed(ParserException(msg, e))
+            }
           }
         }
         case badStatus => {
@@ -122,9 +119,70 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
           Future.failed(BadStatusException(msg, badStatus))
         }
       }
-
     }
   }
+
+
+
+  /**
+   * Try to read the given body as an RDF graph.
+   * If the contentType is not provided left to a default value like text/plain,
+   * this will try some fallback parsers as best effort.
+   * @param maybeContentType
+   * @param body
+   * @param url
+   * @return
+   */
+  private def tryToReadAsGraph(maybeContentType: Option[String], body: String, url: String): Try[Rdf#Graph] = {
+    val mimeTypes = getParsingMimeTypesToTry(maybeContentType)
+    tryToReadWithMimeTypes(body,url)(mimeTypes) recoverWith {
+      case e: Exception => Failure(ParserException(s"Can't parse $url with any mime types of $mimeTypes. Original contentType was $maybeContentType",e))
+    }
+  }
+
+  private val AllRdfMimeTypes: Set[MimeType] = Set(
+    MimeType("text/turtle"),
+    MimeType("application/rdf+xml"),
+    MimeType("text/n3")
+  )
+
+
+  /**
+   * On some answers the content type header is not appropriately set while the body contains valid RDF.
+   * This code permits to compute some mime types to try if this is the case.
+   * This generally happens when the ContentType header is left to text/plain or not provided for exemple
+   * @param maybeContentType
+   * @return
+   */
+  private def getParsingMimeTypesToTry(maybeContentType: Option[String]): Set[MimeType] = {
+    val maybeMimeType = maybeContentType.map(ct => MimeType(MimeType.extract(ct)))
+    maybeMimeType match {
+      case None => AllRdfMimeTypes
+      case Some(MimeType("text/plain")) => AllRdfMimeTypes
+      case Some(MimeType("application/xml")) => Set(MimeType("application/xml"),MimeType("application/rdf+xml"))
+      case Some(MimeType("text/xml")) => Set(MimeType("text/xml"),MimeType("application/rdf+xml"))
+      case Some(mimeType @ MimeType(_)) => Set(mimeType)
+    }
+  }
+
+
+  private def readGraph(mimeType: MimeType, body: String,url: String): Try[Rdf#Graph] = {
+    readerSelector(mimeType)  match {
+      case Some(reader) => {
+        reader.read(body, url) recoverWith {
+          case e: Exception => Failure(ParserException(s"Can't read graph $url as mimeType=$mimeType with reader $reader",e))
+        }
+      }
+      case None => Failure(MissingParserException(s"no RDF Reader found for mime type ${mimeType} for reading $url"))
+    }
+  }
+
+  private def tryToReadWithMimeTypes(body: String, url: String)(mimeTypes: Set[MimeType]): Try[Rdf#Graph] = {
+    val baseTry: Try[Rdf#Graph] = Failure(new IllegalStateException(s"No mime type provided: $mimeTypes"))
+    val foldFunction: (Try[Rdf#Graph],MimeType) => Try[Rdf#Graph] = (baseTry,mimeType) => baseTry recoverWith { case e: Exception => readGraph(mimeType,body,url) }
+    mimeTypes.foldLeft(baseTry)(foldFunction)
+  }
+
 
   /** This caches results */
   //todo: it's important that if the future is a failure of the right type ( say a timeout execption ) that it retry fetching the resource
@@ -186,7 +244,7 @@ class WSClient[Rdf<:RDF](graphSelector: ReaderSelector[Rdf], rdfWriter: RDFWrite
     val futureResp = WS.url(url.toString).withHeaders(headers: _*).put(graph, syntax)
     futureResp.flatMap { resp =>
       if (resp.status == 200) {
-         Future.successful(())
+        Future.successful(())
       } else {
         Future.failed(RemoteException.netty("Resource creation failed", resp))
       }
