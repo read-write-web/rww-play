@@ -9,6 +9,8 @@ import java.util.Date
 import utils.{FileUtils, Iteratees}
 import com.typesafe.scalalogging.slf4j.Logging
 import rww.ldp.SupportedBinaryMimeExtensions
+import org.w3.banana._
+import rww.rdf.util.LDPPrefix
 
 /**
  * A binary resource does not get direct semantic interpretation.
@@ -34,10 +36,12 @@ case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI,metaData:
                                  (implicit val ops: RDFOps[Rdf])
   extends BinaryResource[Rdf] with LocalNamedResource[Rdf] with Logging {
   import ops._
+  import syntax._
+  import org.w3.banana.diesel._
 
 
   /** type specific metadata */
-  override def typeMetadata = Graph.empty
+  override def typeMetadata = (location -- rdf.typ ->- ldp.Resource).graph
 
   /** context specific metadata */
   override def contextualMetadata = None

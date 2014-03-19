@@ -75,13 +75,11 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
         if (file.toString.endsWith(ext)) {
           val res = xResource.fromFile(file)
           reader.read(res, iri.toString).map { g =>
-            LocalLDPR[Rdf](iri, g, path, Option(new Date(path.toFile.lastModified())),
-              Some((iri -- rdf.typ ->- ldp.Resource).graph)
-            )
+            LocalLDPR[Rdf](iri, g, path, Option(new Date(path.toFile.lastModified())) )
           } recover {
             case RDFParseExceptionMatcher(e) => throw UnparsableSource(s"Can't parse resource $iri as an RDF file",e)
           }
-        } else Success(LocalBinaryResource[Rdf](file.toPath, iri,Some((iri -- rdf.typ ->- ldp.Resource).graph)))
+        } else Success(LocalBinaryResource[Rdf](file.toPath, iri))
 
       } else Failure(ResourceDoesNotExist(s"no resource for '$key'"))
     }

@@ -148,9 +148,9 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
               ldpcUri,
               contentGrph,
               root,
-              Some(new Date(Files.getLastModifiedTime(root).toMillis)),
-              Some((ldpcUri -- rdf.typ ->- ldp.BasicContainer).graph)
-            ))
+              Some(new Date(Files.getLastModifiedTime(root).toMillis))
+            )
+          )
         } else ok
       }
       case badContent @ Success(_) =>  Failure(StorageError(s"Data in LDPC must be a graph. "))
