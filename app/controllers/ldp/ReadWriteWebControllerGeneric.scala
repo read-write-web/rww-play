@@ -32,7 +32,6 @@ import rww.play.BinaryRwwContent
 import rww.ldp.LDPExceptions.AccessDenied
 import rww.ldp.WrongTypeException
 import rww.ldp.model.LocalLDPC
-import spray.http.Uri
 
 
 /**
@@ -155,7 +154,10 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       }
       //todo: 401 Unauthorizes requires some WWW-Authenticate header. Can we really use it this way?
       case AuthenticationError(e) => Unauthorized("Could not authenticate user with TLS cert:"+stackTrace(e))
-      case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
+      case e => {
+        Logger.error("Unknown InternalServerError",e)
+        InternalServerError(e.getMessage + "\n" + stackTrace(e))
+      }
     }
   }
 
@@ -194,7 +196,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
   private def writeGetResult(bestReplyContentType: SupportedRdfMimeType.Value, authResult: AuthResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
     def commonHeaders: List[(String, String)] =
-      allowHeader(authResult)::userHeader(authResult.authInfo.user).toList
+      allowHeader(authResult) :: userHeader(authResult.authInfo.user).toList
 
     authResult.result match {
       case ldpr: LDPR[Rdf] =>  {
