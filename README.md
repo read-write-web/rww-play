@@ -31,42 +31,41 @@ it will build it from source in the `Play20` directory.)
 ```bash
 $ ./build
 ```
+Some network config.
+--------------------
 
-To start Play in secure mode with lightweight client certificate verification (for WebID)
+In file:
+conf/application.conf
+set the smtp parameters: host= and user=
+of your mail provider server.
 
-```bash
- $ Play20/play
- [RWWeb] $ idea with-sources=yes // if you want to run intelliJ
- [RWWeb] $ compile
- [RWWeb] $ run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
-```
-
-_Experimental_: You can also start the server so that it only accepts WebID certificates - which we will currently
-assume are those signed by an agent named "CN=WebID,O=∅". This is experimental! The previous solution is recommended.
-
-```bash
- $ Play20/play
- [RWWeb] $ run  -Dhttps.port=8443 -Dhttps.trustStore=webid.WebIDTrustManager
-```
-
-Subdomains
-----------
-
-If you want to run ldp on a server where the root directory turns into subdomains you
-need to start your server with
-
-```bash
-[RWWeb] $ run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true -Dhttp.hostname=localhost -Drww.subdomains=true -Dsmtp.password=secret
-```
-
-Of course this requires you to have a TLS certificate that allows subdomains, and to set up routing
-correctly.
+In file:
+/etc/hosts
+add host names for the subdomains you will create, e.g. :
+127.0.0.1 jmv.localhost
+127.0.0.1 jmv1.localhost
+127.0.0.1 jmv2.localhost
 
 Installing RWW apps
 ----------
 The RWW apps are stored in other git repositories.
 One can run the script `./install-app.sh` to install or update the RWW apps that we ship with the platform.
 Check the script content, it is simply a git clone.
+
+Running
+-------
+To start Play in secure mode with lightweight client certificate verification (for WebID); that is, a self-signed certificate:
+
+```bash
+ $ Play20/play
+ [RWWeb] $ idea with-sources=yes	// if you want to run intelliJ
+ [RWWeb] $ eclipse with-source=true	// if you want to run eclipse Scala IDE
+ [RWWeb] $ compile
+ [RWWeb] $ ~run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true -Dakka.loglevel=DEBUG -Dakka.debug.receive=on -Dsmtp.password=xxxx
+
+
+Then you can direct your browser to:
+https://localhost:8443/
 
 
 Documentation
