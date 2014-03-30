@@ -76,7 +76,7 @@ Further documentation can be found on the [rww-play wiki](https://github.com/sta
 Licence
 -------
 
-   Copyright 2013-2014 Stample 
+   Copyright 2013 Henry Story
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
