@@ -62,10 +62,11 @@ To start Play in secure mode with lightweight client certificate verification (f
  [RWWeb] $ eclipse with-source=true	// if you want to run eclipse Scala IDE
  [RWWeb] $ compile
  [RWWeb] $ ~run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true -Dakka.loglevel=DEBUG -Dakka.debug.receive=on -Dsmtp.password=xxxx
+ ```
 
 
 Then you can direct your browser to:
-https://localhost:8443/
+[https://localhost:8443/](https://localhost:8443)
 
 
 Documentation
