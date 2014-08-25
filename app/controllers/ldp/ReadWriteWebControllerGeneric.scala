@@ -1,37 +1,26 @@
 package controllers.ldp
 
+import java.net.{URLDecoder, URI => jURI}
+
 import _root_.play.{api => PlayApi}
-import PlayApi.Logger
-import PlayApi.mvc.Results._
-import PlayApi.http.Status._
-import PlayApi.libs.iteratee.Enumerator
-import PlayApi.mvc._
-import org.w3.banana._
-import scala.concurrent.{Future, ExecutionContext}
-import java.net.{URI=>jURI, URLDecoder}
-import rww.play.rdf.IterateeSelector
-import org.w3.banana.plantain.Plantain
 import com.google.common.base.Throwables
-import scala.util.Try
-import rww.play._
-import rww.ldp.model._
-import rww.play.QueryRwwContent
-import rww.play.AuthResult
-import rww.ldp.LDPExceptions.ResourceDoesNotExist
-import scala.util.Failure
-import rww.ldp.LDPExceptions.AccessDeniedAuthModes
-import rww.play.GraphRwwContent
-import scala.Some
-import rww.play.auth.AuthenticationError
-import play.api.mvc.SimpleResult
-import rww.ldp.LDPExceptions.ParentDoesNotExist
-import rww.ldp.auth.WebIDPrincipal
-import play.api.mvc.ResponseHeader
-import scala.util.Success
-import rww.play.BinaryRwwContent
-import rww.ldp.LDPExceptions.AccessDenied
+import org.w3.banana._
+import org.w3.banana.plantain.Plantain
+import play.api.Logger
+import play.api.http.Status._
+import play.api.libs.iteratee.Enumerator
+import play.api.mvc.Results._
+import play.api.mvc.{ResponseHeader, SimpleResult, _}
+import rww.ldp.LDPExceptions.{AccessDenied, AccessDeniedAuthModes, ParentDoesNotExist, ResourceDoesNotExist}
 import rww.ldp.WrongTypeException
-import rww.ldp.model.LocalLDPC
+import rww.ldp.auth.WebIDPrincipal
+import rww.ldp.model.{LocalLDPC, _}
+import rww.play.{AuthResult, BinaryRwwContent, GraphRwwContent, QueryRwwContent, _}
+import rww.play.auth.AuthenticationError
+import rww.play.rdf.IterateeSelector
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 
 /**
@@ -49,8 +38,8 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
   implicit val boolWriterSelector: WriterSelector[Boolean] = BooleanWriter.selector
   implicit val sparqlUpdateSelector: IterateeSelector[Plantain#UpdateQuery]
 
-  import rww.play.PlayWriterBuilder._
   import ops._
+  import rww.play.PlayWriterBuilder._
 
 
   private def stackTrace(e: Throwable) = Throwables.getStackTraceAsString(e)
@@ -69,13 +58,13 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     }
   }
 
-  private def allowHeader(authResult: AuthResult[NamedResource[Rdf]]): Pair[String, String] = {
-    allowHeader(authResult.authInfo.modesAllowed, authResult.result.isInstanceOf[LocalLDPC[_]])
+  private def allowHeaders(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
+    allowHeaders(authResult.authInfo.modesAllowed, authResult.result.isInstanceOf[LocalLDPC[_]])
   }
 
 
-  private def allowHeader(modesAllowed: Set[Method.Value], isLDPC: Boolean): (String, String) = {
-    "Allow" -> {
+  private def allowHeaders(modesAllowed: Set[Method.Value], isLDPC: Boolean): List[(String, String)] = {
+    val allow = "Allow" -> {
       val headerStr = modesAllowed.collect {
         case Method.Append => {
           if (isLDPC) "POST" else ""
@@ -87,6 +76,10 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       }
       ("OPTIONS"::headerStr.toList).filter(_ != "").mkString(", ")
     }
+    val acceptPost= if (isLDPC) {
+      List("Accept-Post"->"*/*")
+    } else Nil
+    allow::acceptPost
   }
 
   def get(path: String) = Action.async { request =>
@@ -145,10 +138,10 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
             Unauthorized(
               views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(err) )
               //todo a better implementation would have this on the actor itself, which WOULD know the type
-            ).withHeaders(allowHeader(authinfo.modesAllowed,false)) // we don't know if this is an LDPC
+            ).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC
           }
           case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
-            Unauthorized(err.getMessage).withHeaders(allowHeader(authinfo.modesAllowed,false)) // we don't know if this is an LDPC
+            Unauthorized(err.getMessage).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC
           }
         }
       }
@@ -170,7 +163,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
    * //todo: move to a util library
    */
   private def linkHeaders(ldpr: NamedResource[Rdf]): (String,String) = {
-    import syntax.URISyntax._
+    import org.w3.banana.syntax.URISyntax._
     val ldprUri: Rdf#URI = ldpr.location
     val l = ldprUri.underlying
     val path = l.getPath.substring(0,l.getPath.lastIndexOf('/'))
@@ -196,7 +189,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
   private def writeGetResult(bestReplyContentType: SupportedRdfMimeType.Value, authResult: AuthResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
     def commonHeaders: List[(String, String)] =
-      allowHeader(authResult) :: userHeader(authResult.authInfo.user).toList
+      allowHeaders(authResult) ::: userHeader(authResult.authInfo.user).toList
 
     authResult.result match {
       case ldpr: LDPR[Rdf] =>  {
