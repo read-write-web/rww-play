@@ -62,17 +62,28 @@ To start Play in secure mode with lightweight client certificate verification (f
  [RWWeb] $ idea with-sources=yes	// if you want to run intelliJ
  [RWWeb] $ eclipse with-source=true	// if you want to run eclipse Scala IDE
  [RWWeb] $ compile
- [RWWeb] $ ~run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true -Dakka.loglevel=DEBUG -Dakka.debug.receive=on -Dsmtp.password=xxxx
+ [RWWeb] $ ~run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Dakka.loglevel=DEBUG -Dakka.debug.receive=on -Drww.root.container.path=test_ldp 
  ```
-
 Then you can direct your browser to:
-[https://localhost:8443/](https://localhost:8443)
+[https://localhost:8443/2013/](https://localhost:8443/2013/)
 
-This will lead you to the account creation page, which will allow you to create subdomains on your server. An e-mail
-will be sent to your e-mail address for verification ( but you will be able to find the link in the logs if the e-mail server is not set up). For subdomains on your local machine you will need to edit `/etc/hosts` for each server. For
+If you want to have multiple users on your server, it is best to give each user a subdomain for JS security. This can
+be had by starting the server with the following attributes.
+
+ ```
+ [RWWeb] $ run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true -Dakka.loglevel=DEBUG -Dakka.debug.receive=on -Dsmtp.password=xxxx
+ ```
+ 
+For subdomains on your local machine you will need to edit `/etc/hosts` for each server. For
 machines on the web you can just assign all domains to the same ip address.
 
-TODO: add howto for running a server without subdomain support
+
+You can the create yourself a subdomain by pointing your browser to the root domain:
+[https://localhost:8443/](https://localhost:8443/). This will lead you to the account creation 
+page, which will allow you to create subdomains on your server. An e-mail will be sent to 
+your e-mail address for verification ( but you will be able to find the link in the logs 
+if the e-mail server is not set up). 
+
 
 Documentation
 -------------
