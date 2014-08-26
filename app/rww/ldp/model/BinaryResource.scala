@@ -1,22 +1,22 @@
 package rww.ldp.model
 
-import org.w3.banana.{PointedGraph, RDFOps, MimeType, RDF}
-import scala.concurrent.ExecutionContext
-import play.api.libs.iteratee.{Enumerator, Iteratee}
-import java.nio.file.{StandardCopyOption, StandardOpenOption, Files, Path}
-import scala.util.{Success, Try}
+import java.nio.file.{Files, Path, StandardCopyOption, StandardOpenOption}
 import java.util.Date
-import utils.{FileUtils, Iteratees}
+
 import com.typesafe.scalalogging.slf4j.Logging
+import org.w3.banana.{MimeType, RDF, RDFOps}
+import play.api.libs.iteratee.{Enumerator, Iteratee}
 import rww.ldp.SupportedBinaryMimeExtensions
-import org.w3.banana._
-import rww.rdf.util.LDPPrefix
+import utils.{FileUtils, Iteratees}
+
+import scala.concurrent.ExecutionContext
+import scala.util.Try
 
 /**
  * A binary resource does not get direct semantic interpretation.
  * It has a mime type. One can write bytes to it, to replace its content, or one
  * can read its content.
- * @tparam Rdf
+ * @tparam Rdf subclass of RDF
  */
 trait BinaryResource[Rdf<:RDF] extends NamedResource[Rdf]  {
 
@@ -36,7 +36,6 @@ case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI,metaData:
                                  (implicit val ops: RDFOps[Rdf])
   extends BinaryResource[Rdf] with LocalNamedResource[Rdf] with Logging {
   import ops._
-  import syntax._
   import org.w3.banana.diesel._
 
 
@@ -62,7 +61,7 @@ case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI,metaData:
 
   // creates a new BinaryResource, with new time stamp, etc...
   //here I can just write to the file, as that should be a very quick operation, which even if it blocks,
-  //should be extreemly fast server side.  Iteratee
+  //should be extremely fast server side.  Iteratee
   def writeIteratee(implicit ec: ExecutionContext): Iteratee[Array[Byte], LocalBinaryResource[Rdf] ] = {
     val tmpfile = Files.createTempFile(path.getFileName.toString+"_",".tmp")
     val out = Files.newOutputStream(tmpfile, StandardOpenOption.WRITE)
