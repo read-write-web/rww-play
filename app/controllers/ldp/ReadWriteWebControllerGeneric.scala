@@ -11,16 +11,16 @@ import play.api.http.Status._
 import play.api.libs.iteratee.Enumerator
 import play.api.mvc.Results._
 import play.api.mvc.{ResponseHeader, SimpleResult, _}
-import rww.ldp.LDPExceptions.{AccessDenied, AccessDeniedAuthModes, ParentDoesNotExist, ResourceDoesNotExist}
-import rww.ldp.WrongTypeException
+import rww.ldp.LDPExceptions._
 import rww.ldp.auth.WebIDPrincipal
 import rww.ldp.model.{LocalLDPC, _}
-import rww.play.{AuthResult, BinaryRwwContent, GraphRwwContent, QueryRwwContent, _}
+import rww.ldp.{SupportedBinaryMimeExtensions, WrongTypeException}
 import rww.play.auth.AuthenticationError
 import rww.play.rdf.IterateeSelector
+import rww.play.{AuthResult, BinaryRwwContent, GraphRwwContent, QueryRwwContent, _}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 
 /**
@@ -77,7 +77,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
       ("OPTIONS"::headerStr.toList).filter(_ != "").mkString(", ")
     }
     val acceptPost= if (isLDPC) {
-      List("Accept-Post"->"*/*")
+      List("Accept-Post"->{SupportedRdfMimeType.StringSet.mkString(",")+","+SupportedBinaryMimeExtensions.mimeExt.keys.map(_.mime).mkString(",")})
     } else Nil
     allow::acceptPost
   }
@@ -101,49 +101,33 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
   }
 
 
-  private def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
-    findReplyContentType(request) match {
-      case Failure(t) => {
-        Future.successful {
-          PlayApi.mvc.Results.UnsupportedMediaType(stackTrace(t))
-        }
-      }
-      case Success(replyContentType) => {
-        Logger.info(s"It seems the best content type to produce for this client is: $replyContentType")
-        getAsync(replyContentType)
-      }
-    }
-  }
 
   /**
    * Will try to get the resource and return it to the client in the given mimeType
-   * Note that it does not apply to binary resources but only for RDF resources
-   * @param bestReplyContentType
    * @param request
    * @return
    */
-  private def getAsync(bestReplyContentType: SupportedRdfMimeType.Value)(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
-    Logger.info(s"getAsync($bestReplyContentType)")
+  private def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
     val getResult = for {
       authResult <- resourceManager.get(request, request.getAbsoluteURI)
-    } yield writeGetResult(bestReplyContentType,authResult)
+    } yield writeGetResult(authResult)
 
     getResult recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case rse: ResourceDoesNotExist => NotFound(rse.getMessage + stackTrace(rse))
+      case umt: UnsupportedMediaType => Results.UnsupportedMediaType(umt.getMessage + stackTrace(umt))
       case err @ AccessDeniedAuthModes(authinfo) => {
         Logger.warn("Access denied exception"+authinfo)
-        bestReplyContentType match {
-          case SupportedRdfMimeType.Html => {
+           //todo: automatically create html versions if needed of error messages
             Unauthorized(
               views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(err) )
               //todo a better implementation would have this on the actor itself, which WOULD know the type
             ).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC
-          }
-          case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
-            Unauthorized(err.getMessage).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC
-          }
-        }
+//          }
+//          case _ => {
+//            Unauthorized(err.getMessage).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC
+//          }
+//        }
       }
       //todo: 401 Unauthorizes requires some WWW-Authenticate header. Can we really use it this way?
       case AuthenticationError(e) => Unauthorized("Could not authenticate user with TLS cert:"+stackTrace(e))
@@ -186,30 +170,27 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     "Link" -> res.mkString(", ")
   }
 
-  private def writeGetResult(bestReplyContentType: SupportedRdfMimeType.Value, authResult: AuthResult[NamedResource[Rdf]])
+  private def writeGetResult(authResult: AuthResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
     def commonHeaders: List[(String, String)] =
       allowHeaders(authResult) ::: userHeader(authResult.authInfo.user).toList
 
     authResult.result match {
-      case ldpr: LDPR[Rdf] =>  {
-        bestReplyContentType match {
-          case SupportedRdfMimeType.Html => Ok(views.html.ldp.rdfToHtml())
-          case SupportedRdfMimeType.Turtle | SupportedRdfMimeType.RdfXml => {
-            writerFor[Rdf#Graph](request).map { wr =>
-              val headers =
-                "Access-Control-Allow-Origin" -> "*" ::
-                "Accept-Patch" -> Syntax.SparqlUpdate.mimeTypes.head.mime :: //todo: something that is more flexible
-                 linkHeaders(ldpr)::
-                commonHeaders
-              result(200, wr, Map(headers:_*))(ldpr.relativeGraph)
-            } getOrElse { throw new RuntimeException("Unexpected: no writer found")}
-          }
+      case ldpr: LDPR[Rdf] => {
+        writerFor[Rdf#Graph](request).map { wr =>
+          val headers =
+            "Access-Control-Allow-Origin" -> "*" ::
+              "Accept-Patch" -> Syntax.SparqlUpdate.mimeTypes.head.mime :: //todo: something that is more flexible
+              linkHeaders(ldpr) ::
+              commonHeaders
+          result(200, wr, Map(headers: _*))(ldpr.relativeGraph)
+        } getOrElse {
+          play.api.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
+            request.headers.get(play.api.http.HeaderNames.ACCEPT))
         }
       }
       case bin: BinaryResource[Rdf] => {
         val contentType = bin.mime.mime
-        Logger.info(s"Getting binary resource, no [$bestReplyContentType] representation available, so the content type will be [${contentType}}]")
         val headers =  "Content-Type" -> contentType :: linkHeaders(bin)::commonHeaders
 
         SimpleResult(
@@ -298,6 +279,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
+      case umt: UnsupportedMediaType => Results.UnsupportedMediaType(umt.getMessage + stackTrace(umt))
       case e: WrongTypeException =>
         //todo: the Allow methods should not be hardcoded.
         SimpleResult(

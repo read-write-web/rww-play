@@ -30,11 +30,23 @@ object PlantainRDFWriter {
 
     }
 
-  val rdfxmlWriter: RDFWriter[Plantain, RDFXML] = PlantainRDFWriter[RDFXML]
+  implicit val htmlWriter: RDFWriter[Plantain, RDFaXHTML] = new RDFWriter[Plantain, RDFaXHTML] {
+    override def syntax = Syntax.RDFaXHTML
 
-  val turtleWriter: RDFWriter[Plantain, Turtle] = PlantainRDFWriter[Turtle]
+    override def write[R <: jWriter](obj: Plantain#Graph, wcr: WriteCharsResource[R], base: String) =
+      Try {
+        wcr.acquireAndGet { writer =>
+          writer.append(views.html.ldp.rdfToHtml().body)
+        }
+      }
+
+  }
+
+  implicit val rdfxmlWriter: RDFWriter[Plantain, RDFXML] = PlantainRDFWriter[RDFXML]
+
+  implicit val turtleWriter: RDFWriter[Plantain, Turtle] = PlantainRDFWriter[Turtle]
 
   implicit val selector: RDFWriterSelector[Plantain] =
-    RDFWriterSelector[Plantain, RDFXML] combineWith RDFWriterSelector[Plantain, Turtle]
+    RDFWriterSelector[Plantain, RDFXML] combineWith RDFWriterSelector[Plantain, Turtle] combineWith RDFWriterSelector[Plantain,RDFaXHTML]
 
 }
