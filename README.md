@@ -32,6 +32,12 @@ it will build it from source in the `Play20` directory.)
 $ ./build
 ```
 
+Download the JavaScript apps by running
+
+```bash
+$ ./install-app.sh
+```
+
 To start Play in secure mode with lightweight client certificate verification (for WebID)
 
 ```bash
