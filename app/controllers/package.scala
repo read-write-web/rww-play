@@ -1,25 +1,20 @@
 package controllers
 
-import _root_.play.api.Logger
-import _root_.play.api.Play
-import akka.actor.{Props, ActorSystem}
-import concurrent.ExecutionContext
-import rww.ldp._
 import java.io.File
-import java.nio.file.Path
-import akka.util.Timeout
-import java.util.concurrent.{Executors, ExecutorService, TimeUnit}
-import rww.ldp.actor._
-import rww.ldp.actor.plantain.{LDPCSubdomainActor, LDPCActor}
-
 import java.net.URL
-import rww.play.rdf.plantain.{PlantainSparqlUpdateIteratee, PlantainSparqlQueryIteratee, PlantainBlockingRDFIteratee}
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 
-
-import org.w3.banana._
+import _root_.play.api.{Logger, Play}
+import akka.actor.ActorSystem
+import akka.util.Timeout
 import org.w3.banana.plantain._
+import rww.ldp._
+import rww.ldp.actor._
 import rww.play.rdf.IterateeSelector
-import rww.ldp.actor.remote.LDPWebActor
+import rww.play.rdf.plantain._
+
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 
@@ -75,7 +70,7 @@ trait Setup {
   }
 
   lazy val rwwRoot: URL =  {
-    val path = controllers.routes.MainController.about.url+"/" // TODO: not the appropriate way to get this url!
+    val path = controllers.routes.MainController.about().url+"/" // TODO: not the appropriate way to get this url!
     new URL(hostRoot,path)
   }
 
@@ -84,7 +79,7 @@ trait Setup {
   /**
    * we check the existence of the file because Resource.fromFile creates the file if it doesn't exist
    * (the doc says it raises an exception but it's not the case)
-   * @param key
+   * @param key property key
    * @return
    */
   def getFileForConfigurationKey(key: String): File = {
@@ -124,8 +119,11 @@ object plantain extends Setup {
   implicit val ops = Plantain.ops
   implicit val sparqlOps = Plantain.sparqlOps
   val blockingIteratee = new PlantainBlockingRDFIteratee
-  implicit val writerSelector : RDFWriterSelector[Rdf] =
-     RDFWriterSelector[Rdf, Turtle] combineWith RDFWriterSelector[Rdf, RDFXML]
+  //note this writer selector also contains a writer for html that knows how to return an html full of JS
+  //todo: this is done in too hidden a manner. The writers should be rewritten using the Play request objects
+  // in order to allow more flexibility. Eg: one should be able to only server html if the client is a web browser
+  // (that accepts JS for example - if it were possible to determine that)
+  implicit val writerSelector = _root_.rww.play.rdf.plantain.PlantainRDFWriter.selector
 
   implicit val solutionsWriterSelector = Plantain.solutionsWriterSelector
   implicit val patch: LDPatch[Rdf,Try] = PlantainLDPatch

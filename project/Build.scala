@@ -45,7 +45,7 @@ object ApplicationBuild extends Build {
 
   val main = play.Project(appName, appVersion, appDependencies).settings(
     resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
-    resolvers += "sesame-repo-releases" at "http://repo.aduna-software.org/maven2/releases",
+    resolvers += "sesame-repo-releases" at "http://maven.ontotext.com/content/repositories/aduna/",
     resolvers += "spray repo" at "http://repo.spray.io",
     /*
     if you want to compile banana-* yourself then you need to remove the following resolver

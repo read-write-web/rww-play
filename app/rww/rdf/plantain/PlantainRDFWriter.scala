@@ -1,12 +1,14 @@
 package rww.play.rdf.plantain
 
-import org.w3.banana.sesame.SesameSyntax
-import java.io.{ Writer => jWriter }
+import java.io.{Writer => jWriter}
+
 import org.w3.banana._
-import plantain.{Plantain}
-import scalax.io.WriteCharsResource
-import util.Try
+import org.w3.banana.plantain.Plantain
 import org.w3.banana.plantain.model.Graph
+import org.w3.banana.sesame.SesameSyntax
+
+import scala.util.Try
+import scalax.io.WriteCharsResource
 
 object PlantainRDFWriter {
 
@@ -30,11 +32,23 @@ object PlantainRDFWriter {
 
     }
 
-  val rdfxmlWriter: RDFWriter[Plantain, RDFXML] = PlantainRDFWriter[RDFXML]
+  implicit val htmlWriter: RDFWriter[Plantain, RDFaXHTML] = new RDFWriter[Plantain, RDFaXHTML] {
+    override def syntax = Syntax.RDFaXHTML
 
-  val turtleWriter: RDFWriter[Plantain, Turtle] = PlantainRDFWriter[Turtle]
+    override def write[R <: jWriter](obj: Plantain#Graph, wcr: WriteCharsResource[R], base: String) =
+      Try {
+        wcr.acquireAndGet { writer =>
+          writer.append(views.html.ldp.rdfToHtml().body)
+        }
+      }
+
+  }
+
+  implicit val rdfxmlWriter: RDFWriter[Plantain, RDFXML] = PlantainRDFWriter[RDFXML]
+
+  implicit val turtleWriter: RDFWriter[Plantain, Turtle] = PlantainRDFWriter[Turtle]
 
   implicit val selector: RDFWriterSelector[Plantain] =
-    RDFWriterSelector[Plantain, RDFXML] combineWith RDFWriterSelector[Plantain, Turtle]
+     RDFWriterSelector[Plantain,RDFaXHTML] combineWith RDFWriterSelector[Plantain, Turtle] combineWith RDFWriterSelector[Plantain, RDFXML]
 
 }

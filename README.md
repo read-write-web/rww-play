@@ -31,6 +31,8 @@ it will build it from source in the `Play20` directory.)
 ```bash
 $ ./build
 ```
+Some network config.
+--------------------
 
 Download the JavaScript apps by running
 
@@ -39,40 +41,55 @@ $ ./install-app.sh
 ```
 
 To start Play in secure mode with lightweight client certificate verification (for WebID)
+In file:
+conf/application.conf
+set the smtp parameters: host= and user=
+of your mail provider server.
 
-```bash
- $ Play20/play
- [RWWeb] $ idea with-sources=yes // if you want to run intelliJ
- [RWWeb] $ compile
- [RWWeb] $ run  -Dhttps.port=8443 -Dhttps.trustStore=noCA
-```
-
-_Experimental_: You can also start the server so that it only accepts WebID certificates - which we will currently
-assume are those signed by an agent named "CN=WebID,O=∅". This is experimental! The previous solution is recommended.
-
-```bash
- $ Play20/play
- [RWWeb] $ run  -Dhttps.port=8443 -Dhttps.trustStore=webid.WebIDTrustManager
-```
-
-Subdomains
-----------
-
-If you want to run ldp on a server where the root directory turns into subdomains you
-need to start your server with
-
-```bash
-[RWWeb] $ run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true -Dhttp.hostname=localhost -Drww.subdomains=true -Dsmtp.password=secret
-```
-
-Of course this requires you to have a TLS certificate that allows subdomains, and to set up routing
-correctly.
+In file:
+/etc/hosts
+add host names for the subdomains you will create, e.g. :
+127.0.0.1 jmv.localhost
+127.0.0.1 jmv1.localhost
+127.0.0.1 jmv2.localhost
 
 Installing RWW apps
 ----------
 The RWW apps are stored in other git repositories.
 One can run the script `./install-app.sh` to install or update the RWW apps that we ship with the platform.
-Check the script content, it is simply a git clone.
+Check the script content, it is simply a git clone. ( If installing on a public server make sure the proxy
+url is set. )
+
+Running
+-------
+To start Play in secure mode with lightweight client certificate verification (for WebID); that is, a self-signed certificate:
+
+```bash
+ $ Play20/play
+ [RWWeb] $ idea with-sources=yes	// if you want to run intelliJ
+ [RWWeb] $ eclipse with-source=true	// if you want to run eclipse Scala IDE
+ [RWWeb] $ compile
+ [RWWeb] $ ~run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Dakka.loglevel=DEBUG -Dakka.debug.receive=on -Drww.root.container.path=test_ldp 
+ ```
+Then you can direct your browser to:
+[https://localhost:8443/2013/](https://localhost:8443/2013/)
+
+If you want to have multiple users on your server, it is best to give each user a subdomain for JS security. This can
+be had by starting the server with the following attributes.
+
+ 
+For subdomains on your local machine you will need to edit `/etc/hosts` for each server. For
+machines on the web you can just assign all domains to the same ip address.
+
+```bash
+[RWWeb] $ run -Dhttps.port=8443 -Dhttps.trustStore=noCA -Drww.subdomains=true -Dhttp.hostname=localhost -Drww.subdomains=true -Dsmtp.password=secret
+```
+
+You can the create yourself a subdomain by pointing your browser to the root domain:
+[https://localhost:8443/](https://localhost:8443/). This will lead you to the account creation 
+page, which will allow you to create subdomains on your server. An e-mail will be sent to 
+your e-mail address for verification ( but you will be able to find the link in the logs 
+if the e-mail server is not set up). 
 
 
 Documentation
@@ -83,13 +100,13 @@ Further documentation can be found on the [rww-play wiki](https://github.com/sta
 Licence
 -------
 
-   Copyright 2013 Henry Story
+   Copyright 2013-2014 Henry Story
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
+   
+   [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,

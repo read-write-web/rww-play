@@ -26,12 +26,14 @@ import scalax.io.Resource
  * Helps building Play Writers using RDFWriterSelectors
  */
 object PlayWriterBuilder {
-
+  import play.api.http.{MediaRange=>PlayMediaRange}
   //return writer from request header
   def writerFor[Obj](req: RequestHeader)(implicit writerSelector: WriterSelector[Obj]): Option[Writer[Obj, Any]] = {
-    //these two lines do more work than needed, optimise to get the first
-    val ranges = req.accept.map{ range => MediaRange(range) }
-    val writer = ranges.flatMap(range => writerSelector(range)).headOption
+    //todo: the range selection should really be done completely within play
+    def toBananaRange(range: PlayMediaRange): MediaRange = {
+      MediaRange(range.mediaType+"/"+range.mediaSubType)
+    }
+    val writer = req.acceptedTypes.flatMap(range => writerSelector(toBananaRange(range))).headOption
     writer
   }
 

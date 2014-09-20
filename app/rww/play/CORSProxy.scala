@@ -84,7 +84,6 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
       namedResource <- wsClient.get( URI(url) )
     } yield createResultForNamedResource(namedResource)
     implicit var implicitUrl = url
-  SimpleResult
     futureResponse recover {
       case e @ BadStatusException(msg,badStatus) => errorResult( Status(badStatus)(Throwables.getStackTraceAsString(e)) ,e)
       case e @ RemoteException(msg, headers) => errorResult(ExpectationFailed(Throwables.getStackTraceAsString(e)),e)
