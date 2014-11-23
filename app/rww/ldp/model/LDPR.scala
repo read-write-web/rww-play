@@ -1,11 +1,12 @@
 package rww.ldp.model
 
-import org.w3.banana._
 import java.nio.file.Path
 import java.util.Date
-import scala.Some
-import scala.util.{Failure, Try, Success}
+
+import org.w3.banana._
 import rww.ldp.LDPExceptions.InformationNotFound
+
+import scala.util.{Failure, Success, Try}
 
 /**
  * todo: naming
@@ -17,13 +18,15 @@ import rww.ldp.LDPExceptions.InformationNotFound
  */
 
 trait LDPR[Rdf <: RDF] extends NamedResource[Rdf] with LinkedDataResource[Rdf]  {
-  import org.w3.banana.syntax._
   def location: Rdf#URI
 
   def graph: Rdf#Graph // all uris are relative to location
 
   /* the graph such that all URIs are relative to $location */
-  def relativeGraph(implicit ops: RDFOps[Rdf]): Rdf#Graph  = graph.relativize(location)
+  def relativeGraph(implicit ops: RDFOps[Rdf]): Rdf#Graph  = {
+    import ops._
+    graph.relativize(location)
+  }
 
   def resource: PointedGraph[Rdf] = PointedGraph(location,graph)
 
@@ -45,8 +48,7 @@ case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
   extends LDPR[Rdf] with LocalNamedResource[Rdf] {
 
   import ops._
-  import diesel._
-  import syntax._
+  import org.w3.banana.diesel._
 
 
   /** type specific metadata */
@@ -72,8 +74,7 @@ case class LocalLDPC[Rdf<:RDF](location: Rdf#URI,
   extends LDPR[Rdf] with LocalNamedResource[Rdf] {
 
   import ops._
-  import diesel._
-  import syntax._
+  import org.w3.banana.diesel._
 
   /** type specific metadata */
   override

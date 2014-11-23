@@ -23,14 +23,15 @@ import play.Logger
  * @param ops
  * @tparam Rdf
  */
-class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) extends Logging {
+class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) extends Logging {
 
   import LDPCommand._
   import ops._
-  implicit val rww = web.rww
+
+  implicit val rww = web.rwwActorSys
+
   import org.w3.banana.diesel._
-  import org.w3.banana.syntax.LiteralSyntax._
-  import org.w3.banana.syntax.URISyntax._
+  import org.w3.banana.syntax._
 
 
   val foaf = FOAFPrefix[Rdf]
@@ -48,26 +49,23 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
    * @param method the method of access asked for ( in wac ontology )
    * @param on the resource to which access is requested
    * @return a Free based recursive structure that will return a list of agents ( identified by WebIDs. )
-   * */
+   **/
   def getAuth(aclUri: Rdf#URI, method: Rdf#URI, on: Rdf#URI): Future[List[Rdf#URI]] = {
     logger.debug(s"Will try to get the authorized agents for $method on $on with Acl URI = $aclUri")
-    val acl: Enumerator[LinkedDataResource[Rdf]] = web~(aclUri)
-    val authzWebIds = getAuthEnum(acl,method,on)
+    val acl: Enumerator[LinkedDataResource[Rdf]] = web ~ (aclUri)
+    val authzWebIds = getAuthEnum(acl, method, on)
     Iteratees.enumeratorAsList(authzWebIds)
   }
 
 
-
-
   protected
   def getAuthEnum(acls: Enumerator[LinkedDataResource[Rdf]],
-                            method: Rdf#URI, on: Rdf#URI): Enumerator[Rdf#URI] = {
+                  method: Rdf#URI, on: Rdf#URI): Enumerator[Rdf#URI] = {
     acls.flatMap { ldr =>
-      authzWebIDs(ldr,on,method)
+      authzWebIDs(ldr, on, method)
     }
 
   }
-
 
 
   /**
@@ -76,8 +74,8 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
    * @param method the type of access requested
    * @return the list of WebIDs for which authentication on the given resource is allowed for the specified method.
    */
-  def getAuthorizedWebIDsFor(resource: Rdf#URI,  method: Rdf#URI): Future[List[Rdf#URI]] =  {
-    val authzWebIds = getAuthEnum(acl(resource),method,resource)
+  def getAuthorizedWebIDsFor(resource: Rdf#URI, method: Rdf#URI): Future[List[Rdf#URI]] = {
+    val authzWebIds = getAuthEnum(acl(resource), method, resource)
     Iteratees.enumeratorAsList(authzWebIds)
   }
 
@@ -148,7 +146,7 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
    * @return an Enumeratee of those PointedGraphs giving access to the given resource
    */
   protected
-  def accessToResourceFilterFor(on: Rdf#URI) = Enumeratee.filter[PointedGraph[Rdf]]{
+  def accessToResourceFilterFor(on: Rdf#URI) = Enumeratee.filter[PointedGraph[Rdf]] {
     authorizationPermitsAccessToResource(on)
   }
 
@@ -159,13 +157,13 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
    * @return true if the aclpPG gives authorization on on
    */
   def authorizationPermitsAccessToResource(on: Rdf#URI)(aclPG: PointedGraph[Rdf]): Boolean = {
-    (aclPG/wac.accessTo).exists( _.pointer == on) ||
-      (aclPG/wac.accessToClass).exists{ clazzPg =>
-        (clazzPg/wac.regex).exists{ regexPg =>
+    (aclPG / wac.accessTo).exists(_.pointer == on) ||
+      (aclPG / wac.accessToClass).exists { clazzPg =>
+        (clazzPg / wac.regex).exists { regexPg =>
           foldNode(regexPg.pointer)(
-            uri=>false,
-            bnode=>false,
-            lit=>Try(Pattern.compile(lit.lexicalForm).matcher(on.toString).matches()).getOrElse(false))
+            uri => false,
+            bnode => false,
+            lit => Try(Pattern.compile(lit.lexicalForm).matcher(on.toString).matches()).getOrElse(false))
         }
       }
   }
@@ -179,8 +177,8 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
    * @return A list of Agents with access ( sometimes just an Agent )
    **/
   protected
-  def authzWebIDs(acldr: LinkedDataResource[Rdf], on: Rdf#URI, method: Rdf#URI): Enumerator[Rdf#URI]  = {
-    val authDefs = Enumerator((PointedGraph(method,acldr.resource.graph)/-wac.mode).toSeq:_*)
+  def authzWebIDs(acldr: LinkedDataResource[Rdf], on: Rdf#URI, method: Rdf#URI): Enumerator[Rdf#URI] = {
+    val authDefs = Enumerator((PointedGraph(method, acldr.resource.graph) /- wac.mode).toSeq: _*)
 
     // filter those pointedGraphs that give access to the required resource
     val accessToResourceFilter = accessToResourceFilterFor(on)
@@ -191,10 +189,12 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
     val agents: Enumerator[List[Rdf#URI]] = agentsEnabledBy(relevantAcls)
 
     val agentClassLDRs: Enumerator[LinkedDataResource[Rdf]] =
-      relevantAcls.flatMap( pg => web.~>(LinkedDataResource(acldr.location,pg),wac.agentClass){_.pointer != foaf.Agent})
+      relevantAcls.flatMap(pg => web.~>(LinkedDataResource(acldr.location, pg), wac.agentClass) {
+        _.pointer != foaf.Agent
+      })
 
     val seeAlso: Enumerator[Rdf#URI] = for {
-      ldr <-  web.~>(acldr,wac.include)()
+      ldr <- web.~>(acldr, wac.include)()
       uri <- authzWebIDs(ldr, on, method)
     } yield {
       uri
@@ -205,7 +205,7 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
     //todo: stop at the first discovery of a foaf:Agent?
     //todo: collapse all agents into one foaf:Agent
 
-    (agents andThen groupMembers).flatMap(uris=>Enumerator(uris.toSeq: _*)) andThen seeAlso
+    (agents andThen groupMembers).flatMap(uris => Enumerator(uris.toSeq: _*)) andThen seeAlso
   }
 
 
@@ -259,8 +259,8 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
       }
     }
     //todo: it would be nice to have this process stop as soon as it has all the answers
-    val authzMethods = getAllowedMethodsForAgentEnum(acl2(on),on,user.map(p=>URI(p.webid.toString)))
-    Iteratees.enumeratorAsList(authzMethods).map{  listOfModes =>
+    val authzMethods = getAllowedMethodsForAgentEnum(acl2(on), on, user.map(p => URI(p.webid.toString)))
+    Iteratees.enumeratorAsList(authzMethods).map { listOfModes =>
       Logger.info(s"getAllowedMethodsForAgent($on,$user) is $listOfModes")
       listOfModes.flatMap(toMethod(_)).toSet
     }
@@ -278,25 +278,25 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
                                     on: Rdf#URI,
                                     user: List[Rdf#URI]): Enumerator[Rdf#URI] = {
     acls.flatMap { aclPing =>
-      val aclsInGraph= Enumerator(wac.Read,wac.Write,wac.Control,wac.Append)
-        .map(ctrl => aclPing.point(ctrl)) &> allowsMethodForAgent2(on,user)
+      val aclsInGraph = Enumerator(wac.Read, wac.Write, wac.Control, wac.Append)
+        .map(ctrl => aclPing.point(ctrl)) &> allowsMethodForAgent2(on, user)
 
-      val seeAlso = (aclPing.document ~> wac.include) &> Enumeratee.filter[PiNG[Rdf]](p=>ops.isURI(p.location))
-      aclsInGraph andThen getAllowedMethodsForAgentEnum(seeAlso,on,user)
+      val seeAlso = (aclPing.document ~> wac.include) &> Enumeratee.filter[PiNG[Rdf]](p => ops.isURI(p.location))
+      aclsInGraph andThen getAllowedMethodsForAgentEnum(seeAlso, on, user)
     }
   }
 
   def allowsMethodForAgent2(on: Rdf#URI,
                             webids: List[Rdf#URI])
-  : Enumeratee[PiNG[Rdf],Rdf#URI] = {
+  : Enumeratee[PiNG[Rdf], Rdf#URI] = {
 
     Enumeratee.mapFlatten { mode =>
       val modeBeingConsidered = mode.pointedGraph.pointer.asInstanceOf[Rdf#URI]
-      assert (List(wac.Read,wac.Write,wac.Control,wac.Append).exists(_ == modeBeingConsidered))
+      assert(List(wac.Read, wac.Write, wac.Control, wac.Append).exists(_ == modeBeingConsidered))
 
       val authsForMode = mode /- wac.mode
       // filter those pointedGraphs that give access to the required resource
-      val authsResourceAndMode = authsForMode.filter(ping=> authorizationPermitsAccessToResource(on)(ping.pointedGraph))
+      val authsResourceAndMode = authsForMode.filter(ping => authorizationPermitsAccessToResource(on)(ping.pointedGraph))
 
       val modeEnabled = authsResourceAndMode.exists { authsPg =>
         (authsPg / wac.agent).exists(pg => webids.contains(pg.pointedGraph.pointer))
@@ -310,10 +310,7 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
             Enumerator(modeBeingConsidered)
           } else {
             val containsUser = (agentClassPG.pointedGraph / foaf.member).exists { pg =>
-              pg.pointer match {
-                case u: Rdf#URI => webids.contains(u)
-                case _ => false
-              }
+              pg.pointer.fold(u=>webids.contains(u),_=>false,_=>false)
             }
             if (containsUser)
               Enumerator(modeBeingConsidered)
@@ -322,71 +319,71 @@ class WACAuthZ[Rdf<:RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) exten
           }
           result
         }
-        agentClassesPGsEnums &>  findMode
+        agentClassesPGsEnums &> findMode
       }
 
     }
   }
 
 
-//  /**
-//   * method to test if an ACL graph allows access for the given mode to the given user
-//   * @param mode selected mode in the Named Graph
-//   * @param on the resource on which access is being requested
-//   * @param webids the webids of the user requesting access
-//   * @return the mode if it is allowed
-//   **/
-//  protected
-//  def allowsMethodForAgent(mode: PiNG[Rdf],
-//                           on: Rdf#URI,
-//                           webids: List[Rdf#URI]): Future[(Rdf#URI,Boolean)] = {
-//
-//    val modeBeingConsidered = mode.pointedGraph.pointer.asInstanceOf[Rdf#URI]
-//    assert (List(wac.Read,wac.Write,wac.Control,wac.Append).exists(_ == modeBeingConsidered))
-//
-//    val authsForMode = mode /- wac.mode
-//    // filter those pointedGraphs that give access to the required resource
-//    val authsResourceAndMode = authsForMode.filter(ping=> authorizationPermitsAccessToResource(on)(ping.pointedGraph))
-//
-//    val modeEnabled = authsResourceAndMode.exists { authsPg =>
-//      (authsPg / wac.agent).exists(pg => webids.contains(pg.pointedGraph.pointer))
-//    }
-//
-//    if (modeEnabled) return Future.successful((modeBeingConsidered,true))
-//    else {
-//       val agentClassesPGs = PiNGs(authsResourceAndMode)~>(wac.agentClass,_.pointer!=foaf.Agent)
-//       val folder = Iteratee.fold2[PiNG[Rdf],(Rdf#URI,Boolean)]((modeBeingConsidered,false)){
-//         (cont,agentClassPG)=>
-//           val result = if (agentClassPG.pointedGraph.pointer == foaf.Agent) {
-//             true
-//           } else {
-//              (agentClassPG.pointedGraph/foaf.member).exists { pg =>
-//                pg.pointer match {
-//                  case u: Rdf#URI => webids.contains(u)
-//                  case _ => false
-//                }
-//             }
-//           }
-//         Future.successful(((modeBeingConsidered,result),result))
-//       }
-//
-//       agentClassesPGs |>>> folder
-//    }
-//
-////    val seeAlso: Enumerator[Rdf#URI] = for {
-////      ldr <- web.~>(acldr, wac.include)()
-////      uri <- authzAllWebIDs(ldr, on)
-////    } yield {
-////      uri
-////    }
-////
-////    val groupMembers: Enumerator[List[Rdf#URI]] = extractGroupMembers(agentClassLDRs)
-////
-////    //todo: stop at the first discovery of a foaf:Agent?
-////    //todo: collapse all agents into one foaf:Agent
-////
-////    (agents andThen groupMembers).flatMap(uris => Enumerator(uris.toSeq: _*)) andThen seeAlso
-//  }
+  //  /**
+  //   * method to test if an ACL graph allows access for the given mode to the given user
+  //   * @param mode selected mode in the Named Graph
+  //   * @param on the resource on which access is being requested
+  //   * @param webids the webids of the user requesting access
+  //   * @return the mode if it is allowed
+  //   **/
+  //  protected
+  //  def allowsMethodForAgent(mode: PiNG[Rdf],
+  //                           on: Rdf#URI,
+  //                           webids: List[Rdf#URI]): Future[(Rdf#URI,Boolean)] = {
+  //
+  //    val modeBeingConsidered = mode.pointedGraph.pointer.asInstanceOf[Rdf#URI]
+  //    assert (List(wac.Read,wac.Write,wac.Control,wac.Append).exists(_ == modeBeingConsidered))
+  //
+  //    val authsForMode = mode /- wac.mode
+  //    // filter those pointedGraphs that give access to the required resource
+  //    val authsResourceAndMode = authsForMode.filter(ping=> authorizationPermitsAccessToResource(on)(ping.pointedGraph))
+  //
+  //    val modeEnabled = authsResourceAndMode.exists { authsPg =>
+  //      (authsPg / wac.agent).exists(pg => webids.contains(pg.pointedGraph.pointer))
+  //    }
+  //
+  //    if (modeEnabled) return Future.successful((modeBeingConsidered,true))
+  //    else {
+  //       val agentClassesPGs = PiNGs(authsResourceAndMode)~>(wac.agentClass,_.pointer!=foaf.Agent)
+  //       val folder = Iteratee.fold2[PiNG[Rdf],(Rdf#URI,Boolean)]((modeBeingConsidered,false)){
+  //         (cont,agentClassPG)=>
+  //           val result = if (agentClassPG.pointedGraph.pointer == foaf.Agent) {
+  //             true
+  //           } else {
+  //              (agentClassPG.pointedGraph/foaf.member).exists { pg =>
+  //                pg.pointer match {
+  //                  case u: Rdf#URI => webids.contains(u)
+  //                  case _ => false
+  //                }
+  //             }
+  //           }
+  //         Future.successful(((modeBeingConsidered,result),result))
+  //       }
+  //
+  //       agentClassesPGs |>>> folder
+  //    }
+  //
+  ////    val seeAlso: Enumerator[Rdf#URI] = for {
+  ////      ldr <- web.~>(acldr, wac.include)()
+  ////      uri <- authzAllWebIDs(ldr, on)
+  ////    } yield {
+  ////      uri
+  ////    }
+  ////
+  ////    val groupMembers: Enumerator[List[Rdf#URI]] = extractGroupMembers(agentClassLDRs)
+  ////
+  ////    //todo: stop at the first discovery of a foaf:Agent?
+  ////    //todo: collapse all agents into one foaf:Agent
+  ////
+  ////    (agents andThen groupMembers).flatMap(uris => Enumerator(uris.toSeq: _*)) andThen seeAlso
+  //  }
 
 
 }

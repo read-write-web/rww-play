@@ -2,6 +2,26 @@ package rww.rdf.util
 
 import org.w3.banana._
 
+object StatPrefix {
+  def apply[Rdf <: RDF](implicit ops: RDFOps[Rdf]) = new StatPrefix(ops)
+}
+
+class StatPrefix[Rdf <: RDF](ops: RDFOps[Rdf]) extends PrefixBuilder("stat", "http://www.w3.org/ns/posix/stat#")(ops) {
+  val atime = apply("atime")
+  val blksize = apply("blksize")
+  val blocks = apply("blocks")
+  val ctime = apply("ctime")
+  val dev = apply("dev")
+  val gid = apply("gid")
+  val ino = apply("ino")
+  val mode = apply("mode")
+  val mtime = apply("mtime")
+  val nlink = apply("nlink")
+  val rdev = apply("rdev")
+  val size = apply("size")
+  val uid = apply("uid")
+}
+
 
 object LDPPrefix {
   def apply[Rdf <: RDF](implicit ops: RDFOps[Rdf]) = new LDPPrefix(ops)

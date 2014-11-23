@@ -1,6 +1,7 @@
 package rww.ldp
 
 import org.w3.banana._
+import org.w3.banana.io.MimeType
 import scalaz.{ Free, Functor }
 import scalaz.Free.Suspend
 import scalaz.Free.Return

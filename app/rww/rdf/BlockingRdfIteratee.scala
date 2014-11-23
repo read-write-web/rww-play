@@ -16,16 +16,18 @@
 
 package rww.play.rdf
 
+import java.io.{IOException, PipedInputStream, PipedOutputStream}
 import java.net.URL
-import play.api.libs.iteratee.{Done, Error, Iteratee}
-import java.io.{IOException, PipedOutputStream, PipedInputStream}
-import org.w3.banana._
-import scalaz.Validation
-import scalax.io.Resource
-import concurrent.{Await, ExecutionContext, Future}
 import java.util.concurrent.TimeUnit
-import concurrent.duration.Duration
-import util.{Failure, Success, Try}
+
+import org.w3.banana._
+import org.w3.banana.io._
+import play.api.libs.iteratee.Iteratee
+import utils.FileUtils.using
+
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.Try
 
 
 /**
@@ -38,13 +40,13 @@ import util.{Failure, Success, Try}
  * @tparam Rdf the Rdf implementation this is based on
  * @tparam SyntaxType the mime type parsed
  */
-class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, SyntaxType])
+class
+BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, Try,SyntaxType])
 (implicit ops: RDFOps[Rdf])
   extends RDFIteratee[Rdf#Graph, SyntaxType] {
 
-  import webid.Logger.log
-  import syntax.GraphSyntax._
   import ops._
+  import webid.Logger.log
 
 
   //import shellac's rdfa parser:
@@ -53,12 +55,14 @@ class BlockingRDFIteratee[Rdf <: RDF, +SyntaxType](reader: RDFReader[Rdf, Syntax
 
   def apply(loc: Option[URL] = None)(implicit ec: ExecutionContext): Iteratee[Array[Byte], Try[Rdf#Graph]] = {
 
-    val in = new PipedInputStream()
-    val out = new PipedOutputStream(in)
+    val pin = new PipedInputStream()
+    val out = new PipedOutputStream(pin)
     val hack = URI("http://urn.bighack/")  //todo: remove
 
     val blockingIO: Future[Try[Rdf#Graph]] = Future {
-      val absGraph = reader.read(Resource.fromInputStream(in), loc.map(_.toString).getOrElse(hack.toString))
+      val absGraph = using(pin) { in =>
+        reader.read(in, loc.map(_.toString).getOrElse(hack.toString))
+      }
       if (loc==None) absGraph.map(_.relativize(hack))
       else absGraph
     }

@@ -1,22 +1,19 @@
 package rww.ldp
 
+import java.io.StringReader
+import java.util.concurrent.atomic.AtomicReference
+
 import com.ning.http.client.FluentCaseInsensitiveStringsMap
 import com.ning.http.util.DateUtil
-import concurrent.{ExecutionContext, Future}
 import org.slf4j.LoggerFactory
 import org.w3.banana._
-import org.w3.play.api.libs.ws.WS
-import util.Try
-import java.util.concurrent.atomic.AtomicReference
+import org.w3.banana.io._
+import org.w3.play.api.libs.ws.{Response, ResponseHeaders, WS}
+import rww.ldp.model.{RemoteLDPR, _}
+
 import scala.collection.immutable
-import rww.ldp.model._
-import scala.Exception
-import org.w3.play.api.libs.ws.Response
-import rww.ldp.model.RemoteLDPR
-import scala.util.Failure
-import scala.Some
-import scala.util.Success
-import org.w3.play.api.libs.ws.ResponseHeaders
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 /**
  * A Web Client interacts directly with http resources on the web.
@@ -25,21 +22,23 @@ import org.w3.play.api.libs.ws.ResponseHeaders
  *
  * @tparam Rdf
  */
-trait WebClient[Rdf<:RDF] {
+trait WebClient[Rdf <: RDF] {
 
   def get(url: Rdf#URI): Future[NamedResource[Rdf]]
-  def post[S](url: Rdf#URI, slug: Option[String], graph: Rdf#Graph,syntax: Syntax[S])
-             (implicit writer: Writer[Rdf#Graph,S]): Future[Rdf#URI]
+
+  def post[S](url: Rdf#URI, slug: Option[String], graph: Rdf#Graph, syntax: Syntax[S])
+             (implicit writer: Writer[Rdf#Graph, Try, S]): Future[Rdf#URI]
+
   def delete(url: Rdf#URI): Future[Unit]
-  def put[S](url: Rdf#URI, graph: Rdf#Graph, syntax: Syntax[S])(implicit writer: Writer[Rdf#Graph, S]): Future[Unit]
-  def patch(uri: Rdf#URI, remove: Iterable[TripleMatch[Rdf]], add: Iterable[Rdf#Triple]): Future[Void]  = ???
+
+  def put[S](url: Rdf#URI, graph: Rdf#Graph, syntax: Syntax[S])(implicit writer: Writer[Rdf#Graph,Try, S]): Future[Unit]
+
+  def patch(uri: Rdf#URI, remove: Iterable[TripleMatch[Rdf]], add: Iterable[Rdf#Triple]): Future[Void] = ???
 }
 
 object WebClient {
   val log = LoggerFactory.getLogger(this.getClass)
 }
-
-
 
 
 /**
@@ -48,12 +47,10 @@ object WebClient {
  * @param readerSelector
  * @tparam Rdf
  */
-class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWriter[Rdf,Turtle])
-                        (implicit ops: RDFOps[Rdf], ec: ExecutionContext) extends WebClient[Rdf] {
+class WSClient[Rdf <: RDF](readerSelector: ReaderSelector[Rdf, Try], rdfWriter: RDFWriter[Rdf, Try, Turtle])
+                          (implicit ops: RDFOps[Rdf], ec: ExecutionContext) extends WebClient[Rdf] {
 
   import ops._
-  import org.w3.banana.syntax.graphW
-  import org.w3.banana.syntax.URISyntax._
 
   val parser = new LinkHeaderParser[Rdf]
 
@@ -62,18 +59,18 @@ class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWrit
    * todo: map all the other headers to RDF graphs where it makes sense
    */
   def parseHeaders(base: Rdf#URI, headers: FluentCaseInsensitiveStringsMap): Try[PointedGraph[Rdf]] = {
-    import collection.convert.wrapAsScala._
+    import scala.collection.convert.wrapAsScala._
     WebClient.log.info(s"Link headers (temporary disabled) are: ${headers.get("Link")}")
     val linkHeaders = headers.get("Link")
-    parser.parse(linkHeaders:_*).map{ graph =>
-      PointedGraph(base,graph.resolveAgainst(base))
+    parser.parse(linkHeaders: _*).map { graph =>
+      PointedGraph(base, graph.resolveAgainst(base))
     }
   }
 
   //todo: the HashMap does not give enough information on how the failure occurred. It should contain metadata on the
   //todo: response, so that decisions can be taken to fetch anew
   //cache does not need to be strongly synchronised, as losses are permissible
-  val cache = new AtomicReference(immutable.HashMap[Rdf#URI,Future[NamedResource[Rdf]]]())
+  val cache = new AtomicReference(immutable.HashMap[Rdf#URI, Future[NamedResource[Rdf]]]())
 
   protected def fetch(url: Rdf#URI): Future[NamedResource[Rdf]] = {
     WebClient.log.info(s"WebClient: fetching $url")
@@ -95,7 +92,7 @@ class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWrit
           WebClient.log.info(s"WebClient fetched content successfully for $url -> [${response.status}][${response.statusText}]")
           val maybeContentType = response.header("Content-Type")
           val responseBody: String = response.body
-          tryToReadAsGraph(maybeContentType,responseBody,url.toString) match {
+          tryToReadAsGraph(maybeContentType, responseBody, url.toString) match {
             case Success(graph) => {
               val headers: FluentCaseInsensitiveStringsMap = response.ahcResponse.getHeaders
               val meta = parseHeaders(URI(url.toString), headers)
@@ -123,7 +120,6 @@ class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWrit
   }
 
 
-
   /**
    * Try to read the given body as an RDF graph.
    * If the contentType is not provided left to a default value like text/plain,
@@ -135,42 +131,43 @@ class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWrit
    */
   private def tryToReadAsGraph(maybeContentType: Option[String], body: String, url: String): Try[Rdf#Graph] = {
     val mimeTypes = getParsingMimeTypesToTry(maybeContentType)
-    tryToReadWithMimeTypes(body,url)(mimeTypes) recoverWith {
-      case e: Exception => Failure(ParserException(s"Can't parse $url with any mime types of $mimeTypes. Original contentType was $maybeContentType",e))
+    tryToReadWithMimeTypes(body, url)(mimeTypes) recoverWith {
+      case e: Exception => Failure(ParserException(s"Can't parse $url with any mime types of $mimeTypes. Original contentType was $maybeContentType", e))
     }
   }
 
   private val AllRdfMimeTypes: Set[MimeType] = Set(
-    MimeType("text/turtle"),
-    MimeType("application/rdf+xml"),
-    MimeType("text/n3")
+     MimeType("text","turtle"),
+    MimeType("application","rdf+xml"),
+    MimeType("text","n3")
   )
 
 
   /**
    * On some answers the content type header is not appropriately set while the body contains valid RDF.
    * This code permits to compute some mime types to try if this is the case.
-   * This generally happens when the ContentType header is left to text/plain or not provided for exemple
+   * This generally happens when the ContentType header is left to text/plain or not provided for example
    * @param maybeContentType
    * @return
    */
   private def getParsingMimeTypesToTry(maybeContentType: Option[String]): Set[MimeType] = {
-    val maybeMimeType = maybeContentType.map(ct => MimeType(MimeType.extract(ct)))
-    maybeMimeType match {
-      case None => AllRdfMimeTypes
-      case Some(MimeType("text/plain")) => AllRdfMimeTypes
-      case Some(MimeType("application/xml")) => Set(MimeType("application/xml"),MimeType("application/rdf+xml"))
-      case Some(MimeType("text/xml")) => Set(MimeType("text/xml"),MimeType("application/rdf+xml"))
-      case Some(mimeType @ MimeType(_)) => Set(mimeType)
-    }
+    val maybeMimeType = maybeContentType.flatMap(ct => MimeType.parse(ct))
+    maybeMimeType.map {
+      _ match {
+        case MimeType("text", "plain", _) => AllRdfMimeTypes
+        case MimeType("application", "xml", _) => Set(MimeType("application", "xml"), MimeType("application", "rdf+xml"))
+        case MimeType("text", "xml", _) => Set(MimeType("text", "xml"), MimeType("application", "rdf+xml"))
+        case mimeT => Set(mimeT)
+      }
+    }.getOrElse(AllRdfMimeTypes)
   }
 
 
-  private def readGraph(mimeType: MimeType, body: String,url: String): Try[Rdf#Graph] = {
-    readerSelector(mimeType)  match {
+  private def readGraph(mimeType: MimeType, body: String, url: String): Try[Rdf#Graph] = {
+    readerSelector(mimeType) match {
       case Some(reader) => {
-        reader.read(body, url) recoverWith {
-          case e: Exception => Failure(ParserException(s"Can't read graph $url as mimeType=$mimeType with reader $reader",e))
+        reader.read(new StringReader(body), url) recoverWith {
+          case e: Exception => Failure(ParserException(s"Can't read graph $url as mimeType=$mimeType with reader $reader", e))
         }
       }
       case None => Failure(MissingParserException(s"no RDF Reader found for mime type ${mimeType} for reading $url"))
@@ -179,7 +176,9 @@ class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWrit
 
   private def tryToReadWithMimeTypes(body: String, url: String)(mimeTypes: Set[MimeType]): Try[Rdf#Graph] = {
     val baseTry: Try[Rdf#Graph] = Failure(new IllegalStateException(s"No mime type provided: $mimeTypes"))
-    val foldFunction: (Try[Rdf#Graph],MimeType) => Try[Rdf#Graph] = (baseTry,mimeType) => baseTry recoverWith { case e: Exception => readGraph(mimeType,body,url) }
+    val foldFunction: (Try[Rdf#Graph], MimeType) => Try[Rdf#Graph] = (baseTry, mimeType) => baseTry recoverWith {
+      case e: Exception => readGraph(mimeType, body, url)
+    }
     mimeTypes.foldLeft(baseTry)(foldFunction)
   }
 
@@ -191,9 +190,9 @@ class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWrit
     c.get(url).getOrElse {
       val result = fetch(url)
       cache.set(c + (url -> result))
-      result.onFailure{ case _ =>
+      result.onFailure { case _ =>
         val futureCache = cache.get
-        futureCache.get(url).foreach{ futNamedRes =>
+        futureCache.get(url).foreach { futNamedRes =>
           if (futNamedRes == result) cache.set(futureCache - url) //todo: slight possibility that we loose a cache
         }
       }
@@ -209,8 +208,8 @@ class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWrit
    * @return The Future URL of the created resource
    */
   def post[S](url: Rdf#URI, slug: Option[String], graph: Rdf#Graph, syntax: Syntax[S])
-             (implicit writer: Writer[Rdf#Graph, S]): Future[Rdf#URI] = {
-    val headers = ("Content-Type" -> syntax.mime) :: slug.toList.map(slug => ("Slug" -> slug))
+             (implicit writer: Writer[Rdf#Graph, Try, S]): Future[Rdf#URI] = {
+    val headers = ("Content-Type" -> syntax.defaultMimeType.mime) :: slug.toList.map(slug => ("Slug" -> slug))
     val futureResp = WS.url(url.toString).withHeaders(headers: _*).post(graph, syntax)
     futureResp.flatMap { resp =>
       if (resp.status == 201) {
@@ -227,20 +226,20 @@ class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWrit
 
   def delete(url: Rdf#URI): Future[Unit] = {
     val futureResp = WS.url(url.toString).delete()
-    futureResp.flatMap{ resp =>
+    futureResp.flatMap { resp =>
       if (resp.status == 200 || resp.status == 202 || resp.status == 204) {
         cache.set(cache.get() - url.fragmentLess)
         Future.successful(())
       } else {
-        Future.failed(RemoteException.netty("resource deletion failed",resp))
+        Future.failed(RemoteException.netty("resource deletion failed", resp))
       }
     }
   }
 
   override
   def put[S](url: Rdf#URI, graph: Rdf#Graph, syntax: Syntax[S])
-            (implicit writer: Writer[Rdf#Graph, S]): Future[Unit] = {
-    val headers = ("Content-Type" -> syntax.mime)::Nil
+            (implicit writer: Writer[Rdf#Graph, Try, S]): Future[Unit] = {
+    val headers = ("Content-Type" -> syntax.defaultMimeType.mime) :: Nil
     val futureResp = WS.url(url.toString).withHeaders(headers: _*).put(graph, syntax)
     futureResp.flatMap { resp =>
       if (resp.status == 200) {
@@ -259,16 +258,22 @@ class WSClient[Rdf<:RDF](readerSelector: ReaderSelector[Rdf], rdfWriter: RDFWrit
 trait FetchException extends BananaException
 
 case class RemoteException(msg: String, remote: ResponseHeaders) extends Exception(msg) with FetchException
+
 object RemoteException {
   def netty(msg: String, resp: Response) = {
-    RemoteException(msg,ResponseHeaders(resp.status, WS.ningHeadersToMap(resp.ahcResponse.getHeaders)))
+    RemoteException(msg, ResponseHeaders(resp.status, WS.ningHeadersToMap(resp.ahcResponse.getHeaders)))
   }
 }
 
 
 case class BadStatusException(msg: String, status: Int) extends Exception(msg) with FetchException
+
 case class LocalException(msg: String) extends Exception(msg) with FetchException
+
 case class WrappedException(msg: String, e: Throwable) extends Exception(msg) with FetchException
+
 case class WrongTypeException(msg: String) extends Exception(msg) with FetchException
+
 case class MissingParserException(msg: String) extends Exception(msg) with FetchException
-case class ParserException(msg: String, e: Throwable) extends Exception(msg,e) with FetchException
+
+case class ParserException(msg: String, e: Throwable) extends Exception(msg, e) with FetchException

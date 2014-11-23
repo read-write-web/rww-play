@@ -2,7 +2,6 @@ package utils.subdomain
 
 import org.w3.banana._
 import rww.StampleOntologies
-import org.w3.banana._
 
 
 /**
@@ -20,10 +19,7 @@ class SubdomainAdminGraphWrapper[Rdf<:RDF](uri: Rdf#URI,underlyingGraph: Rdf#Gra
 
 
 
-  import ops._
-  import ops.Graph
-  import diesel._
-  import syntax.GraphSyntax._
+  import org.w3.banana.diesel._
 
   val ldp = LDPPrefix[Rdf]
   val cert = CertPrefix[Rdf]

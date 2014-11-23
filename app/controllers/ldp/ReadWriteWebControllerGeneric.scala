@@ -5,7 +5,7 @@ import java.net.{URLDecoder, URI => jURI}
 import _root_.play.{api => PlayApi}
 import com.google.common.base.Throwables
 import org.w3.banana._
-import org.w3.banana.plantain.Plantain
+import org.w3.banana.io.{BooleanWriter, Syntax, WriterSelector}
 import play.api.Logger
 import play.api.http.Status._
 import play.api.libs.iteratee.Enumerator
@@ -26,17 +26,17 @@ import scala.util.Try
 /**
  * ReadWriteWeb Controller for Play
  */
-trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTrait {
-
+trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
+  type Rdf <: RDF
   def resourceManager: ResourceMgr[Rdf]
 
   implicit def rwwBodyParser: RwwBodyParser[Rdf]
   implicit def ec: ExecutionContext
   implicit val ops: RDFOps[Rdf]
-  implicit def graphWriterSelector: WriterSelector[Rdf#Graph]
-  implicit def solutionsWriterSelector: WriterSelector[Rdf#Solutions]
-  implicit val boolWriterSelector: WriterSelector[Boolean] = BooleanWriter.selector
-  implicit val sparqlUpdateSelector: IterateeSelector[Plantain#UpdateQuery]
+  implicit def graphWriterSelector: WriterSelector[Rdf#Graph,Try]
+  implicit def solutionsWriterSelector: WriterSelector[Rdf#Solutions,Try]
+  implicit val boolWriterSelector: WriterSelector[Boolean,Try] = BooleanWriter.selector
+  implicit val sparqlUpdateSelector: IterateeSelector[Rdf#UpdateQuery]
 
   import ops._
   import rww.play.PlayWriterBuilder._
@@ -141,20 +141,20 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
   val wac = WebACLPrefix[Rdf]
 
   /**
-   * return a number of Link headers for each element of the graph that can be thus tranformed
+   * return a number of Link headers for each element of the graph that can be thus transformed
    * @param ldpr: the LDPR with the metadata
    * @return a Link header #Stupid play only allows one header type
    * //todo: move to a util library
    */
   private def linkHeaders(ldpr: NamedResource[Rdf]): (String,String) = {
-    import org.w3.banana.syntax.URISyntax._
     val ldprUri: Rdf#URI = ldpr.location
-    val l = ldprUri.underlying
+    val l = new jURI(ldprUri.getString)
     val path = l.getPath.substring(0,l.getPath.lastIndexOf('/'))
     val hostUri = new jURI(l.getScheme,l.getUserInfo,l.getHost,l.getPort,path,"","")
+    val hostRDFURI = URI(hostUri.toString)
     val res = for {
       pg <- ldpr.meta.toOption.toList
-      rel <- graphToIterable(pg.graph).toList
+      rel <- pg.graph.triples.toList
       (subject, relation, obj) = ops.fromTriple(rel)
       if (isURI(subject) && isURI(obj))
       objURI = obj.asInstanceOf[Rdf#URI]
@@ -164,7 +164,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
         case wac.accessTo => "acl"
         case URI(uristr) => s"<$uristr>"
       }
-      val relativeObject = hostUri.relativize(objURI.underlying)
+      val relativeObject = hostRDFURI.relativize(objURI)
       s"<${relativeObject}>; rel=$rel"
     }
     "Link" -> res.mkString(", ")
@@ -302,7 +302,7 @@ trait ReadWriteWebControllerGeneric[Rdf <: RDF] extends ReadWriteWebControllerTr
 
   private def postBinaryContent(binaryContent: BinaryRwwContent)(implicit request: PlayApi.mvc.Request[RwwContent]) = {
     for {
-      answer <- resourceManager.postBinary(request.path, slug, binaryContent.file, MimeType(binaryContent.mime) )
+      answer <- resourceManager.postBinary(request.path, slug, binaryContent.file, binaryContent.mime )
     } yield {
       Created.withHeaders("Location" -> answer.result.toString::userHeader(answer.id):_*)
     }

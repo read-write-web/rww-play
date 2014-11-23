@@ -80,13 +80,13 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
   //    else wiv
   //  }
 
-  val query = sparqlOps.SelectQuery("""
+  val query = parseSelect("""
       PREFIX : <http://www.w3.org/ns/auth/cert#>
       SELECT ?m ?e
       WHERE {
           ?webid :key [ :modulus ?m ;
                         :exponent ?e ].
-      }""")
+      }""").get
 
   /**
    * transform an RDF#Node to a positive Integer if possible
@@ -98,21 +98,20 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
     foldNode(node)(
       _=> Failure(FailedConversion("node must be a typed literal; it was: "+node)),
       _=> Failure(FailedConversion("node must be a typed literal; it was: "+node)),
-      lit => foldLiteral(lit)( tl => try {
-        fromTypedLiteral(tl) match {
-          case (hexStr: String, xsd("hexBinary")) => Success(new BigInteger(stripSpace(hexStr), 16))
-          case (base10Str: String, base10Tp) if base10Types.contains(base10Tp) =>
+      lit => try {
+        fromLiteral(lit) match {
+          case (hexStr, xsd("hexBinary"), None) => Success(new BigInteger(stripSpace(hexStr), 16))
+          case (base10Str, base10Tp, None) if base10Types.contains(base10Tp) =>
             Success(new BigInteger(base10Str))
-          case (_,tp) => Failure(
-            FailedConversion("do not recognise datatype "+tp+" as one of the legal numeric ones in node: " + node)
+          case (_, tp, None) => Failure(
+            FailedConversion("do not recognise datatype " + tp + " as one of the legal numeric ones in node: " + node)
           )
+          case _ => Failure(FailedConversion("require a TypedLiteral not a LangLiteral. Received " + node))
         }
       } catch {
         case num: NumberFormatException =>
           Failure(FailedConversion("failed to convert to integer "+node+" - "+num.getMessage))
-      },
-        langLit => Failure(FailedConversion("numbers don't have language tags: "+langLit))
-      )
+      }
     )
 
 
@@ -137,7 +136,7 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
       case rsaKey: RSAPublicKey =>  {
         val wid = URI(san)
         rww.execute(selectLDPR(URI(ir),query,Map("webid" -> wid))).flatMap { sols=>
-          val s: Iterable[Try[WebIDPrincipal]] = solutionIterator(sols).map { sol: Rdf#Solution =>
+          val s: Iterator[Try[WebIDPrincipal]] = solutionIterator(sols).map { sol: Rdf#Solution =>
 
             val keyVal = for { mod <- getNode(sol,"m") flatMap { toPositiveInteger(_) }
                                exp <- getNode(sol,"e") flatMap { toPositiveInteger(_) }

@@ -1,33 +1,22 @@
 package rww.ldp.actor.plantain
 
-import scala.language.reflectiveCalls
-
-import org.w3.banana._
-import java.nio.file._
-import akka.actor._
-import java.net.{URI => jURI}
-import org.w3.banana.RDF
-import java.nio.file.attribute.BasicFileAttributes
-import java.util
-import java.nio.file.Path
-import scala.util.Try
-import java.util.{UUID, Date}
 import java.io.File
-import rww.ldp._
-import rww.ldp.actor.common.CommonActorMessages
-import rww.ldp.CreateContainer
-import rww.ldp.DeleteResource
-import scala.util.Failure
-import scala.Some
-import scala.util.Success
-import rww.ldp.LDPExceptions._
-import CommonActorMessages.ScriptMessage
-import rww.ldp.CreateBinary
-import akka.actor.InvalidActorNameException
-import rww.ldp.CreateLDPR
-import rww.ldp.model._
-import org.w3.banana.plantain.LDPatch
+import java.net.{URI => jURI}
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{Path, _}
+import java.util
+import java.util.{Date, UUID}
 
+import akka.actor.{InvalidActorNameException, _}
+import org.w3.banana.io._
+import org.w3.banana.{RDF, _}
+import rww.ldp.LDPExceptions._
+import rww.ldp.actor.common.CommonActorMessages.ScriptMessage
+import rww.ldp.model._
+import rww.ldp.{CreateBinary, CreateContainer, CreateLDPR, DeleteResource, _}
+
+import scala.language.reflectiveCalls
+import scala.util.{Failure, Success, Try}
 
 /**
  * A LDP Container actor that is responsible for the equivalent of a directory
@@ -36,19 +25,16 @@ import org.w3.banana.plantain.LDPatch
  * @param ldpcUri the URI for the container
  * @param root the path on the file system where data is saved to
  * @param ops
- * @param sparqlGraph
  */
 class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
                                  (implicit ops: RDFOps[Rdf],
-                                  sparqlGraph: SparqlGraph[Rdf],
-                                  reader: RDFReader[Rdf, Turtle],
-                                  writer: RDFWriter[Rdf, Turtle],
-                                  patch: LDPatch[Rdf, Try]
+//                                  sparqlGraph: SparqlGraph[Rdf],
+                                  reader: RDFReader[Rdf, Try, Turtle],
+                                  writer: RDFWriter[Rdf, Try, Turtle]
+//                                  patch: LDPatch[Rdf, Try]
 //                                  adviceSelector: AdviceSelector[Rdf] = new EmptyAdviceSelector
                                    ) extends LDPRActor[Rdf](ldpcUri,root) {
   import ops._
-  import syntax._
-  import diesel._
 
   override lazy val fileName = ""
 
@@ -85,9 +71,7 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
 
   override
   def localName(uri: Rdf#URI): String = {
-    val requestedPath = uri.underlying.getPath
-    val ldpcPath = ldpcUri.underlying.getPath
-    if (ldpcPath.length > requestedPath.length) fileName
+    if (uri/"" == ldpcUri) fileName
     else super.localName(uri)
   }
 
@@ -98,13 +82,13 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
     def graphFor(uri: Rdf#URI) = {
       var res = Graph(
         Triple(ldpcUri, ldp.contains, uri),
-        Triple(uri, stat.mtime, TypedLiteral(attrs.lastModifiedTime().toMillis.toString,xsd.integer))
+        Triple(uri, stat.mtime, Literal(attrs.lastModifiedTime().toMillis.toString,xsd.integer))
       )
       if (attrs.isDirectory)
         res union Graph(Triple(uri, rdf.typ, ldp.BasicContainer))
       else if (attrs.isSymbolicLink) {
         val target: Path = root.resolve(Files.readSymbolicLink(path))
-        res union Graph(Triple(uri, stat.size, TypedLiteral((target.toFile.length()).toString, xsd.integer)))
+        res union Graph(Triple(uri, stat.size, Literal((target.toFile.length()).toString, xsd.integer)))
       } else {
         res
       }
@@ -116,14 +100,14 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
     } else Graph.empty
   }
 
-  def absoluteUri(pathSegment: String): Rdf#URI =  uriW[Rdf](ldpcUri)/pathSegment
+  def absoluteUri(pathSegment: String): Rdf#URI =  ldpcUri/pathSegment
 
   /**
    *
    * @param name the name of the file ( only the index file in the case of LPDCs
-   * @throws ResourceDoesNotExist
    * @return
    */
+  @throws[ResourceDoesNotExist]
   override def getResource(name: String): Try[LocalNamedResource[Rdf]] = {
     super.getResource(name) match {
       case ok @ Success(ldpr: LocalLDPR[Rdf]) => {
@@ -207,7 +191,7 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
         val linkedGraph = graph union Graph(Triple(ldpcUri, ldp.contains, iri))
 
         //todo: should these be in the header?
-        val scrpt = LDPCommand.updateLDPR[Rdf](iri, add = graphToIterable(linkedGraph)).flatMap(_ => k(iri))
+        val scrpt = LDPCommand.updateLDPR[Rdf](iri, add = linkedGraph.triples).flatMap(_ => k(iri))
         actor forward ScriptMessage(scrpt)
       }
       case CreateBinary(_, slugOpt, mime: MimeType, k) => {
@@ -245,12 +229,12 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
       case CreateContainer(_,slugOpt,graph,k) => {
         val (uri, pathSegment) = mkDir(slugOpt)
         val p = root.resolve(pathSegment)
-        val dirUri = uriW[Rdf](uri) / ""
+        val dirUri = uri / ""
         val ldpc = context.actorOf(Props(new LDPCActor(dirUri, p)), pathSegment.getFileName.toString)
         val creationRel = Triple(ldpcUri, ldp.contains, dirUri)
         val linkedGraph = graph union Graph(creationRel)
         //todo: should these be in the header?
-        val scrpt = LDPCommand.updateLDPR[Rdf](dirUri, add = graphToIterable(linkedGraph)).flatMap(_ => k(dirUri))
+        val scrpt = LDPCommand.updateLDPR[Rdf](dirUri, add = linkedGraph.triples).flatMap(_ => k(dirUri))
         ldpc forward ScriptMessage(scrpt)
       }
       case DeleteResource(uri, a) => {
@@ -314,7 +298,7 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
       Files.createFile(slugAcl)
       log.debug(s"Created file $slugFile with acl file $slugAcl")
       val symPath = Files.createSymbolicLink(slugLink, slugFile.getFileName)
-      val uri = uriW[Rdf](ldpcUri) / symPath.getFileName.toString
+      val uri = ldpcUri / symPath.getFileName.toString
       (uri, symPath)
     }
   }

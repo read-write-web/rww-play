@@ -20,7 +20,7 @@ object Global extends GlobalSettings {
       || uri.getHost().startsWith("www") ) {
       super.onRouteRequest(req)
     }
-    else if (uri.getHost != controllers.plantain.host) {
+    else if (uri.getHost != controllers.RdfSetup.host) {
       req.method match {
         case "GET" => Some(ReadWriteWebController.get(req.path))
         case "POST" => Some(ldp.ReadWriteWebController.post(req.path))

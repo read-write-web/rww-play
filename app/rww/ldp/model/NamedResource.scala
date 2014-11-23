@@ -1,11 +1,11 @@
 package rww.ldp.model
 
 import java.nio.file.Path
-import org.w3.banana.syntax.URISyntax
-import scala.util.Try
-import org.w3.banana.{LDPPrefix=>_,_}
-import scala.util.Success
+
+import org.w3.banana.{LDPPrefix => _, _}
 import rww.rdf.util.LDPPrefix
+
+import scala.util.{Success, Try}
 
 /**
  * A resource on the server ( Resource is already taken. )
@@ -40,7 +40,6 @@ trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
   def path: Path
 
   import ops._
-  import syntax._
   import org.w3.banana.diesel._
 
   protected val wac = WebACLPrefix[Rdf] //todo, should be a static object somewhere
@@ -68,11 +67,10 @@ trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
     } else if (loc.endsWith(".acl.ttl")) {
       ops.URI(loc.substring(0,loc.length-4))
     } else {
-      import URISyntax._
       val fileName = location.lastPathSegment
       val i = fileName.indexOf('.')
       val coreName = if ( i > 0) fileName.substring(0,i) else fileName
-      location.resolve(coreName+".acl")
+      location.resolve(URI(coreName+".acl"))
     }
   }
 }

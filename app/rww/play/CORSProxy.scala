@@ -18,7 +18,8 @@ package rww.play
 
 import _root_.play.api.Logger
 import _root_.play.api.mvc.{AnyContent, SimpleResult, Controller, Action,Request => PlayRequest}
-import org.w3.banana.{RDFOps, WriterSelector, RDF,Writer}
+import org.w3.banana.io.{ Writer, WriterSelector}
+import org.w3.banana.{RDFOps, RDF}
 import rww.play.PlayWriterBuilder._
 import akka.actor.ActorSystem
 import rww.ldp._
@@ -29,6 +30,8 @@ import java.nio.channels.UnresolvedAddressException
 import java.util.concurrent.TimeoutException
 import com.google.common.base.Throwables
 
+import scala.util.Try
+
 /**
  * A <a href="http://www.w3.org/TR/cors/">CORS</a> proxy that allows a client to fetch remote RDF
  * resources that do not have the required CORS headers.
@@ -38,7 +41,7 @@ import com.google.common.base.Throwables
  *
  */
 class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
-                         (implicit ops: RDFOps[Rdf], writerSelector: WriterSelector[Rdf#Graph])
+                         (implicit ops: RDFOps[Rdf], writerSelector: WriterSelector[Rdf#Graph,Try])
   extends Controller {
 
   import ops._
@@ -110,7 +113,7 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
   }
 
 
-  private def createResultForLDPR(ldpr: LDPR[Rdf], writer: Writer[Rdf#Graph, Any])(implicit request: PlayRequest[AnyContent]): SimpleResult = {
+  private def createResultForLDPR(ldpr: LDPR[Rdf], writer: Writer[Rdf#Graph, Try, Any])(implicit request: PlayRequest[AnyContent]): SimpleResult = {
     // TODO maybe it's not a good idea to put AllowCredentialsHeader here? needs to be checked
     val hdrs = request.headers.toSimpleMap - "ContentType" + AllowCredentialsHeader
     //todo: this needs to be refined a lot, and thought through quite a lot more carefully

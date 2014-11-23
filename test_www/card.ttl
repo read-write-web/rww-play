@@ -2,8 +2,7 @@
 @prefix cert: <http://www.w3.org/ns/auth/cert#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<card> a foaf:PersonalProfileDocument;
-   foaf:primaryTopic <card#me> .
+
 <card#me>
      a foaf:Person ;
      foaf:name "Me (StampleIO test webid)";

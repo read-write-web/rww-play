@@ -8,11 +8,12 @@ import java.util.concurrent.TimeUnit
 import _root_.play.api.{Logger, Play}
 import akka.actor.ActorSystem
 import akka.util.Timeout
-import org.w3.banana.plantain._
-import rww.ldp._
-import rww.ldp.actor._
+import org.w3.banana.io.WriterSelector
+import org.w3.banana.{RDF, RDFOps, SparqlOps, SparqlSolutionsWriterSelector}
+import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
+import rww.ldp.{WSClient, WebClient}
 import rww.play.rdf.IterateeSelector
-import rww.play.rdf.plantain._
+import rww.play.rdf.sesame.{SesameBlockingRDFIteratee, SesameSparqlQueryIteratee, SesameSparqlUpdateIteratee}
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try
@@ -23,8 +24,6 @@ import scala.util.Try
  **/
 trait Setup {
 
-  implicit val system = ActorSystem("MySystem")
-  implicit val executionContext: ExecutionContext = system.dispatcher
 
   val logger = Logger("rww")
   val httpsPortKey = "https.port"
@@ -112,35 +111,77 @@ trait Setup {
     """)
 }
 
+trait RdfSetup  {
+  type Rdf <: RDF
+  implicit val system = ActorSystem("MySystem")
+  implicit val ec: ExecutionContext = system.dispatcher
 
-object plantain extends Setup {
-  type Rdf = Plantain
-
-  implicit val ops = Plantain.ops
-  implicit val sparqlOps = Plantain.sparqlOps
-  val blockingIteratee = new PlantainBlockingRDFIteratee
-  //note this writer selector also contains a writer for html that knows how to return an html full of JS
-  //todo: this is done in too hidden a manner. The writers should be rewritten using the Play request objects
-  // in order to allow more flexibility. Eg: one should be able to only server html if the client is a web browser
-  // (that accepts JS for example - if it were possible to determine that)
-  implicit val writerSelector = _root_.rww.play.rdf.plantain.PlantainRDFWriter.selector
-
-  implicit val solutionsWriterSelector = Plantain.solutionsWriterSelector
-  implicit val patch: LDPatch[Rdf,Try] = PlantainLDPatch
+  implicit val ops: RDFOps[Rdf]
+  implicit val sparqlOps: SparqlOps[Rdf]
   implicit val timeout = Timeout(30,TimeUnit.SECONDS)
 
-  //we don't have an iteratee selector for Plantain
-  implicit val iterateeSelector: IterateeSelector[Rdf#Graph] = blockingIteratee.BlockingIterateeSelector
-  implicit val sparqlSelector:  IterateeSelector[Rdf#Query] =  PlantainSparqlQueryIteratee.sparqlSelector
-  implicit val sparqlupdateSelector:  IterateeSelector[Rdf#UpdateQuery] =  PlantainSparqlUpdateIteratee.sparqlSelector
-  implicit val webClient: WebClient[Plantain] = new WSClient(Plantain.readerSelector,Plantain.turtleWriter)
+  implicit val graphIterateeSelector: IterateeSelector[Rdf#Graph]
+  implicit val sparqlSelector:  IterateeSelector[Rdf#Query]
+  implicit val sparqlUpdateSelector:  IterateeSelector[Rdf#UpdateQuery]
+  implicit val graphWriterSelector: WriterSelector[Rdf#Graph,Try]
+  implicit val solutionsWriterSelector: SparqlSolutionsWriterSelector[Rdf]
+  
 
-  val rww: RWWActorSystem[Plantain] = {
+  //  implicit val solutionsWriterSelector = Plantain.solutionsWriterSelector
+  //  implicit val patch: LDPatch[Rdf,Try] = PlantainLDPatch
+
+  val webClient: WebClient[Rdf]
+
+  //constants
+}
+
+trait SesameSetup extends RdfSetup with Setup {
+  import org.w3.banana.sesame.Sesame
+
+  type Rdf = Sesame
+  implicit val ops: RDFOps[Rdf] = Sesame.ops
+  implicit val sparqlOps: SparqlOps[Rdf] = Sesame.sparqlOps
+
+  val blockingIteratee = new SesameBlockingRDFIteratee
+  implicit val graphIterateeSelector: IterateeSelector[Rdf#Graph] = blockingIteratee.BlockingIterateeSelector
+  implicit val sparqlUpdateSelector: IterateeSelector[Rdf#UpdateQuery] = SesameSparqlUpdateIteratee.sparqlSelector
+  implicit val sparqlSelector: IterateeSelector[Rdf#Query] = SesameSparqlQueryIteratee.sparqlSelector
+  implicit val graphWriterSelector: WriterSelector[Rdf#Graph,Try]  = Sesame.writerSelector
+  implicit val solutionsWriterSelector: SparqlSolutionsWriterSelector[Rdf] = Sesame.sparqlSolutionsWriterSelector
+
+  val webClient: WebClient[Rdf] =  new WSClient(Sesame.readerSelector,Sesame.turtleWriter)
+
+  val rww: RWWActorSystem[Rdf] = {
     val rootURI = ops.URI(rwwRoot.toString)
-    if (plantain.rwwSubdomainsEnabled) RWWActorSystemImpl.withSubdomains[Plantain](rootURI, rootContainerPath, webClient)
-    else RWWActorSystemImpl.plain[Plantain](rootURI, rootContainerPath, webClient)
+    if (RdfSetup.rwwSubdomainsEnabled) RWWActorSystemImpl.withSubdomains[Rdf](rootURI, rootContainerPath, webClient)
+    else RWWActorSystemImpl.plain[Rdf](rootURI, rootContainerPath, webClient)
   }
-
 
 }
 
+
+//class PlantainSetup extends RdfSetup {
+//    type Rdf = Plantain
+//
+//    implicit val ops = Plantain.ops
+//    implicit val sparqlOps = Plantain.sparqlOps
+//    val blockingIteratee = new PlantainBlockingRDFIteratee
+//    //note this writer selector also contains a writer for html that knows how to return an html full of JS
+//    //todo: this is done in too hidden a manner. The writers should be rewritten using the Play request objects
+//    // in order to allow more flexibility. Eg: one should be able to only server html if the client is a web browser
+//    // (that accepts JS for example - if it were possible to determine that)
+//    implicit val writerSelector = org.w3.banana.plantain.Plantain.writerSelector
+//
+//
+//
+//    //we don't have an iteratee selector for Plantain
+//    implicit val iterateeSelector: IterateeSelector[Rdf#Graph] = blockingIteratee.BlockingIterateeSelector
+//    implicit val sparqlSelector:  IterateeSelector[Rdf#Query] =  PlantainSparqlQueryIteratee.sparqlSelector
+//    implicit val sparqlupdateSelector:  IterateeSelector[Rdf#UpdateQuery] =  PlantainSparqlUpdateIteratee.sparqlSelector
+//    implicit val webClient: WebClient[Plantain] = new WSClient(Plantain.readerSelector,Plantain.turtleWriter)
+//
+//
+//}
+
+
+object RdfSetup extends SesameSetup with Setup

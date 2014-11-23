@@ -1,13 +1,13 @@
 package rww.ldp
 
-import _root_.play.api.libs.iteratee.{Input, Iteratee, Enumerator}
+import _root_.play.api.libs.iteratee.{Enumerator, Input, Iteratee}
 import org.w3.banana._
 import rww.ldp.LDPCommand._
-import scala.concurrent.{ExecutionContext, Future}
 import rww.ldp.actor.RWWActorSystem
-import scala.Some
-import scala.util.{Failure, Success, Try}
 import utils.Iteratees
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 
 /**
@@ -57,7 +57,6 @@ trait PiNG[Rdf <: RDF]  {
    * @return
    */
   def jump(implicit ops: RDFOps[Rdf],  rww: RWWActorSystem[Rdf], ec: ExecutionContext): Enumerator[PiNG[Rdf]] = {
-    import org.w3.banana.syntax.URISyntax._
     import ops._
 
     pointedGraph.pointer match {
@@ -76,7 +75,7 @@ trait PiNG[Rdf <: RDF]  {
   def ~>(relation: Rdf#URI, unlessFetchCondition: PointedGraph[Rdf]=>Boolean=(_=>false))
         (implicit ops: RDFOps[Rdf], rww: RWWActorSystem[Rdf], ec: ExecutionContext)
   : Enumerator[PiNG[Rdf]] = {
-    import diesel.toPointedGraphW
+    import org.w3.banana.diesel.toPointedGraphW
     val res = pointedGraph/relation
     follow(res, unlessFetchCondition )
   }
@@ -90,7 +89,7 @@ trait PiNG[Rdf <: RDF]  {
   def <~ (relation: Rdf#URI, unlessFetchCondition: PointedGraph[Rdf] => Boolean=(_=>false))
          (implicit rww: RWWActorSystem[Rdf], ops: RDFOps[Rdf],  ec: ExecutionContext)
   : Enumerator[PiNG[Rdf]] = {
-    import diesel.toPointedGraphW
+    import org.w3.banana.diesel.toPointedGraphW
 
     val res = pointedGraph/-relation
     follow(res, unlessFetchCondition)
@@ -107,7 +106,6 @@ trait PiNG[Rdf <: RDF]  {
   def follow(res: PointedGraphs[Rdf], unlessFetchCond: PointedGraph[Rdf]=>Boolean)
                       (implicit ops: RDFOps[Rdf], rww: RWWActorSystem[Rdf], ec: ExecutionContext): Enumerator[PiNG[Rdf]] = {
     import ops._
-    import syntax.URISyntax._
     val local_remote = res.groupBy {
       pg =>
         if (unlessFetchCond(pg)) "local"
@@ -175,7 +173,7 @@ object PiNG {
                      (implicit rww: RWWActorSystem[Rdf], ops: RDFOps[Rdf], ec: ExecutionContext)
   : Enumerator[PiNG[Rdf]] = {
     //todo: this code could be moved somewhere else see: Command.GET
-    import org.w3.banana.syntax.URISyntax._
+    import ops._
 
     val docUri = uri.fragmentLess
     val script = getLDPR(docUri).map{graph=>

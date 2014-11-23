@@ -4,7 +4,8 @@ import java.nio.file.{Files, Path, StandardCopyOption, StandardOpenOption}
 import java.util.Date
 
 import com.typesafe.scalalogging.slf4j.Logging
-import org.w3.banana.{MimeType, RDF, RDFOps}
+import org.w3.banana.io.MimeType
+import org.w3.banana.{ RDF, RDFOps}
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 import rww.ldp.SupportedBinaryMimeExtensions
 import utils.{FileUtils, Iteratees}

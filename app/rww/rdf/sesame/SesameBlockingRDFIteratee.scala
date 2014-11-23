@@ -16,10 +16,12 @@
 
 package rww.play.rdf.sesame
 
-import org.w3.banana.{Syntax, Turtle, RDFXML, RDFReader}
-import rww.play.rdf.{IterateeSelector, RDFIteratee, BlockingRDFIteratee}
-import concurrent.ExecutionContext
-import org.w3.banana.sesame.{SesameOperations, Sesame}
+import org.w3.banana.io._
+import org.w3.banana.sesame.Sesame
+import rww.play.rdf.{BlockingRDFIteratee, IterateeSelector, RDFIteratee}
+
+import scala.concurrent.ExecutionContext
+import scala.util.Try
 
 /**
  *
@@ -27,20 +29,22 @@ import org.w3.banana.sesame.{SesameOperations, Sesame}
  */
 
 class SesameBlockingRDFIteratee(implicit ec: ExecutionContext)  {
-  implicit val ops = SesameOperations
-  import org.w3.banana.sesame.Sesame.{turtleReader,rdfxmlReader}
+  implicit val ops = Sesame.ops
+  import org.w3.banana.sesame.Sesame.{rdfXMLReader, turtleReader,jsonldReader}
 
-  def apply[SyntaxType](reader: RDFReader[Sesame, SyntaxType]) =
+  def apply[SyntaxType](reader: RDFReader[Sesame, Try, SyntaxType]) =
     new BlockingRDFIteratee[Sesame,SyntaxType](reader)
 
-  implicit val RDFXMLIteratee: RDFIteratee[Sesame#Graph,RDFXML] = apply[RDFXML](rdfxmlReader)
+  implicit val RDFXMLIteratee: RDFIteratee[Sesame#Graph,RDFXML] = apply[RDFXML](rdfXMLReader)
   implicit val TurtleIteratee: RDFIteratee[Sesame#Graph,Turtle] = apply[Turtle](turtleReader)
+  implicit val JSonLDIteratee: RDFIteratee[Sesame#Graph,JsonLd] = apply[JsonLd](jsonldReader)
 
   val rdfxmlSelector = IterateeSelector[Sesame#Graph, RDFXML](Syntax.RDFXML,RDFXMLIteratee)
   val turtleSelector = IterateeSelector[Sesame#Graph, Turtle](Syntax.Turtle,TurtleIteratee)
+  val jsonLDSelector = IterateeSelector[Sesame#Graph, JsonLd](Syntax.JsonLd,JSonLDIteratee)
 
   implicit val BlockingIterateeSelector: IterateeSelector[Sesame#Graph] =
-    rdfxmlSelector combineWith turtleSelector
+    rdfxmlSelector combineWith turtleSelector combineWith jsonLDSelector
 
 
 }

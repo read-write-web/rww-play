@@ -1,6 +1,7 @@
 package test.ldp
 
 import org.w3.banana._
+import io._
 import org.w3.banana.plantain._
 import org.scalatest._
 import org.scalatest.matchers._

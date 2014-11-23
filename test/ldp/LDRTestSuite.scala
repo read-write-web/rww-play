@@ -9,6 +9,7 @@ import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.w3.banana._
 import rww.ldp.LDPCommand._
 import org.w3.banana.plantain.{LDPatch, Plantain}
+import org.w3.banana.io._
 import play.api.libs.iteratee._
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

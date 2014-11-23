@@ -16,15 +16,18 @@
 
 package rww.play.rdf.jena
 
-import rww.play.rdf.{IterateeSelector, SparqlQueryIteratee}
+import org.w3.banana.RDF
 import org.w3.banana.jena.Jena
-import org.w3.banana.SparqlQuery
+import rww.play.rdf.{IterateeSelector, RDFIteratee, SparqlQueryIteratee}
+
 import scala.concurrent.ExecutionContext
 
 object JenaSparqlQueryIteratee {
+ import org.w3.banana.jena.Jena._
 
- implicit def apply(implicit ec: ExecutionContext) = new SparqlQueryIteratee[Jena, SparqlQuery]
+ implicit def apply(implicit ec: ExecutionContext): RDFIteratee[Jena#Query,RDF#Query] =
+  new SparqlQueryIteratee[Jena,RDF#Query]
 
- def sparqlSelector(implicit ec: ExecutionContext) = IterateeSelector[Jena#Query, SparqlQuery]
+ def sparqlSelector(implicit ec: ExecutionContext) = IterateeSelector[Jena#Query, RDF#Query]
 
 }

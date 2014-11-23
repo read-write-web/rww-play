@@ -1,15 +1,13 @@
 package controllers
 
 import play.api.mvc._
-import rww.auth.BrowserCertBehavior
-import scala.concurrent.Future
 
 
 object Certificates {
-  import Results._
+  import play.api.mvc.Results._
 
   def display() = Action.async { request=>
-    import plantain.executionContext //todo: what EC should one use?
+    import controllers.RdfSetup.ec //todo: what EC should one use?
     val res = for {
       certs <- request.certs(true)
     } yield {

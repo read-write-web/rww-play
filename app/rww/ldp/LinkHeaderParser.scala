@@ -64,9 +64,9 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
   lazy val param: Parser[List[Param]] = (("rel"~>"="~>relation_types)^^{strs => strs.map(Rel(_,false))}) |
     ("anchor"~>"="~>"\""~>uriRef<~"\"")^^{ref=>List(Anchor(URI(ref)))} |
     ("rev"~>"="~>relation_types)^^{strs => strs.map(Rel(_,true))} |
-    ("title"~>"="~>quoted_string)^^{str=>List(Title(TypedLiteral(str)))} |
+    ("title"~>"="~>quoted_string)^^{str=>List(Title(Literal(str)))} |
     ("title*"~>"="~>ext_value)^^{lit=>List(Title(lit))} |
-    ("hreflang"~>"="~>language)^^{l=>List(HrefLang(TypedLiteral(l)))}
+    ("hreflang"~>"="~>language)^^{l=>List(HrefLang(Literal(l)))}
 
   val paramName = """[\w!#$%&+\-^_`{}~]+""".r
 
@@ -82,8 +82,8 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
   lazy val qdtext = """[^"]+""".r
   lazy val qdpair = """\\\p{ASCII}""".r
   lazy val ext_value: Parser[Rdf#Literal] = (charset~>("'"~>opt(language)<~"'")~valueChars)^^{
-    case Some(lang)~str => makeLangLiteral(str,makeLang(lang)) //todo: verify that this is the same sequence RDF uses
-    case None~str => TypedLiteral(str).asInstanceOf[Rdf#Literal]
+    case Some(lang)~str => makeLangTaggedLiteral(str,makeLang(lang)) //todo: verify that this is the same sequence RDF uses
+    case None~str => Literal(str).asInstanceOf[Rdf#Literal]
   }
   lazy val charset = "UTF-8" | "ISO-8859-1" //| mime_charset (the mime_charsets are reserved for future use )
   lazy val mime_charset = """[\p{Alnum}!#$%&+\-^_`{}]+""".r

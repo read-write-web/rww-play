@@ -16,10 +16,11 @@
 
 package rww.play.rdf.jena
 
-import org.w3.banana.jena.{Jena, JenaOperations}
-import org.w3.banana.{Syntax, Turtle, RDFXML, RDFReader}
+import org.w3.banana.jena.Jena
+import org.w3.banana.io.{Syntax, Turtle, RDFXML, RDFReader}
 import rww.play.rdf.{IterateeSelector, RDFIteratee, BlockingRDFIteratee}
 import concurrent.ExecutionContext
+import scala.util.Try
 
 /**
  *
@@ -27,13 +28,13 @@ import concurrent.ExecutionContext
  */
 
 class JenaBlockingRDFIteratee(implicit ec: ExecutionContext)  {
-  implicit val ops = JenaOperations
-  import org.w3.banana.jena.Jena.{turtleReader,rdfxmlReader}
+  implicit val ops = Jena.ops
+  import org.w3.banana.jena.Jena.{turtleReader,rdfXMLReader}
 
-  def apply[SyntaxType](reader: RDFReader[Jena, SyntaxType]) =
+  def apply[SyntaxType](reader: RDFReader[Jena, Try, SyntaxType]) =
     new BlockingRDFIteratee[Jena,SyntaxType](reader)
 
-  implicit val RDFXMLIteratee: RDFIteratee[Jena#Graph,RDFXML] = apply[RDFXML](rdfxmlReader)
+  implicit val RDFXMLIteratee: RDFIteratee[Jena#Graph,RDFXML] = apply[RDFXML](rdfXMLReader)
   implicit val TurtleIteratee: RDFIteratee[Jena#Graph,Turtle] = apply[Turtle](turtleReader)
 
   val rdfxmlSelector = IterateeSelector[Jena#Graph, RDFXML](Syntax.RDFXML,RDFXMLIteratee)

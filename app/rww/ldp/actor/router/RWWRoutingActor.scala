@@ -1,15 +1,16 @@
 package rww.ldp.actor.router
 
-import org.w3.banana.{syntax, RDFOps, RDF}
-import akka.util.Timeout
+import java.net.{URI => jURI}
+
 import akka.actor.ActorRef
-import scalaz.{\/-, -\/}
-import java.net.{URI=>jURI}
-import rww.ldp._
-import rww.ldp.actor.common.CommonActorMessages
-import CommonActorMessages._
-import rww.ldp.actor.common.RWWBaseActor
+import akka.util.Timeout
+import org.w3.banana.{RDF, RDFOps}
 import rww.ldp.LDPExceptions.ServerException
+import rww.ldp._
+import rww.ldp.actor.common.CommonActorMessages._
+import rww.ldp.actor.common.RWWBaseActor
+
+import scalaz.{-\/, \/-}
 
 
 object RWWRoutingActor {
@@ -72,12 +73,9 @@ object RWWRoutingActor {
  */
 class RWWRoutingActor[Rdf<:RDF](val baseUri: Rdf#URI)
                           (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RWWBaseActor {
-  import syntax.URISyntax.uriW
-  import RWWRoutingActor._
-
+  import rww.ldp.actor.router.RWWRoutingActor._
   var rootContainer: Option[ActorRef] = None
   var web : Option[ActorRef] = None
-
 
   def receive = returnErrors {
     case ScriptMessage(script) => {
@@ -101,7 +99,9 @@ class RWWRoutingActor[Rdf<:RDF](val baseUri: Rdf#URI)
   /** We in fact ignore the R and A types, since we cannot capture */
   // TODO doc! local vs remote
   protected def forwardSwitch[A](cmd: CmdMessage[Rdf,A]) {
-    local(cmd.command.uri.underlying,baseUri.underlying).map { path=>
+    import ops._
+    implicit def toJURI(u: Rdf#URI) = new jURI(u.getString)
+    local(cmd.command.uri,baseUri).map { path=>
       rootContainer match {
         case Some(root) => {
           val p = root.path / path.split('/').toIterable

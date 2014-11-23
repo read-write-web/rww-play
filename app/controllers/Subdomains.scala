@@ -1,30 +1,27 @@
 package controllers
 
-import org.w3.banana._
-import play.api.mvc.Action
-import play.api.mvc.Results._
+import java.net.{URI => jURI, URL => jURL}
+import java.nio.file.Path
+import java.security.PublicKey
 import java.security.cert.X509Certificate
-import java.net.{URL=>jURL, URI => jURI}
-import spray.http.Uri
-import rww.ldp.LDPCommand._
-import scala.concurrent.Future
-import org.w3.banana.plantain.Plantain
+import java.security.interfaces.RSAPublicKey
+
+import org.w3.banana._
+import play.api.Logger
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.Logger
-import java.security.PublicKey
 import play.api.libs.iteratee.Enumerator
-import utils.subdomain.{SubdomainAdminGraphWrapper, SubdomainConfirmationMailUtils, SubdomainGraphUtils}
-import java.nio.file.Path
+import play.api.mvc.Results._
+import play.api.mvc.{Action, ResponseHeader, SimpleResult}
 import play.api.templates.{Html, Txt}
+import rww.ldp.LDPCommand._
+import rww.ldp.actor.RWWActorSystem
+import spray.http.Uri
 import utils.ActionUtils.SignedQueryStringAction
-import scala.Some
-import play.api.mvc.SimpleResult
-import play.api.mvc.ResponseHeader
 import utils.subdomain.SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
-import java.security.interfaces.RSAPublicKey
-import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
-import controllers.plantain
+import utils.subdomain.{SubdomainAdminGraphWrapper, SubdomainConfirmationMailUtils, SubdomainGraphUtils}
+
+import scala.concurrent.Future
 
 case class CreateUserSpaceForm(subdomain: String, key: PublicKey, email: String)
 
@@ -51,8 +48,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
 
   // TODO try to avoid these global imports on controller which rather not manipulate any graph but delegate this to other classes like SubdomainGraphUtils
-  import ops._
-  import ops.Graph
+  import ops.{Graph, _}
   val ldp = LDPPrefix[Rdf]
   val container = Graph(Triple(URI(""), rdf.typ, ldp.Container))
   val subDomainContainerUri = URI(subdomainContainer.toString)
@@ -121,10 +117,10 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
   }
 
   def sendSubdomainConfirmationEmail(subdomain: String, email: String,confirmationPassword: SubdominConfirmationPassword): Unit = {
-    import SubdomainConfirmationMailUtils._
     import utils.Mailer._
+    import utils.subdomain.SubdomainConfirmationMailUtils._
     val linkData = SubdomainConfirmationLinkData(subdomain,email,confirmationPassword)
-    val baseLinkUrl = plantain.hostRoot.toString + routes.Subdomains.confirmSubdomain.url
+    val baseLinkUrl = RdfSetup.hostRoot.toString + routes.Subdomains.confirmSubdomain.url
     val link = createSignedSubdomainConfirmationLinkPath(baseLinkUrl,linkData)
     // TODO email templating
     val txt = Txt("Click here: " + link)
@@ -138,11 +134,11 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
   }
 
   def confirmSubdomain() = SignedQueryStringAction.async { implicit request =>
-    import SubdomainConfirmationMailUtils._
+    import utils.subdomain.SubdomainConfirmationMailUtils._
     getSubdomainConfirmationLinkData(request) map { linkData =>
       doConfirmSubdomain(linkData) map { subdomainCreated =>
         Logger.info(s"Subdomain has been created: $subdomainCreated")
-        val subdomainURL = plantain.hostRootSubdomain(linkData.subdomain).toString
+        val subdomainURL = RdfSetup.hostRootSubdomain(linkData.subdomain).toString
         // TODO maybe the session is not the best way to transmit the domain info to the next request???
         Ok(views.html.subdomain.subdomainConfirmation(linkData.subdomain,subdomainURL))
           .withSession(SessionGenerateCertificateForSubdomain -> linkData.subdomain)
@@ -209,14 +205,13 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
   private
   def createSubdomain(subdomainName: String, email: String): Future[SubdomainCreated] = {
-    import syntax.GraphSyntax._
     // TODO this should not be a slug normally because it may create another domain if the asked domain is already taken or invalid domain name etc...
     val subdomainSlug = Some(subdomainName)
     rww.execute {
       for {
         subdomainC <- createContainer(subDomainContainerUri, subdomainSlug, container)
         subdomainMeta <- getMeta(subdomainC)
-        _ <- updateLDPR(subdomainMeta.acl.get, add = subdomainGraphUtils.domainAcl(subdomainName.toString).toIterable )
+        _ <- updateLDPR(subdomainMeta.acl.get, add = subdomainGraphUtils.domainAcl(subdomainName.toString).triples )
         card <- subdomainGraphUtils.createAndSetAcl(subdomainC, "card", subdomainGraphUtils.createSubdomainWebIdCardGraph(email))
         calendar <- subdomainGraphUtils.createAndSetAcl(subdomainC,calendar, subdomainGraphUtils.calendarEventEmptyGraph)
         adminResource <- updateLDPR(getAdminResourceURI(subdomainName), add=subdomainGraphUtils.getSubdomainValidationTriples(subdomainC,card).toIterable)
@@ -270,7 +265,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
   def createX509Certificate(webid: Rdf#URI,subdomain: String, key: PublicKey): X509Certificate = {
     Logger.info(s"Adding new certificate for owner of domain $subdomain")
     val webIdUrl = new jURL(Uri(webid.toString).toString())
-    val subdomainURL = plantain.hostRootSubdomain(subdomain).toString
+    val subdomainURL = RdfSetup.hostRootSubdomain(subdomain).toString
     val commonName = "WebID Cert for " +subdomainURL
     val certReq = CertReq(commonName,List(webIdUrl),key,ClientCertificateApp.tenMinutesAgo,ClientCertificateApp.yearsFromNow(2))
     certReq.certificate
@@ -379,6 +374,4 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
 }
 
-object Subdomains extends Subdomains[Plantain](plantain.rwwRoot,plantain.rootContainerPath,plantain.rww) {
-
-}
+object Subdomains extends Subdomains(RdfSetup.rwwRoot,RdfSetup.rootContainerPath,RdfSetup.rww)

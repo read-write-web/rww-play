@@ -20,30 +20,23 @@
 package org.w3.play.api.libs.ws
 
 import java.util.concurrent.atomic.AtomicReference
+
 import scala.concurrent._
+import scala.util.Try
 
 //import play.api.http.{ContentTypeOf, Writeable}
-import com.ning.http.client.{
-AsyncHttpClient,
-AsyncHttpClientConfig,
-RequestBuilderBase,
-FluentCaseInsensitiveStringsMap,
-HttpResponseBodyPart,
-HttpResponseHeaders,
-HttpResponseStatus,
-Response => AHCResponse,
-PerRequestConfig
-}
-import collection.immutable.TreeMap
+import com.ning.http.client.{AsyncHttpClient, AsyncHttpClientConfig, FluentCaseInsensitiveStringsMap, HttpResponseBodyPart, HttpResponseHeaders, HttpResponseStatus, PerRequestConfig, RequestBuilderBase, Response => AHCResponse}
+
+import scala.collection.immutable.TreeMap
 //import play.core.utils.CaseInsensitiveOrdered
+import java.io.File
+
 import com.ning.http.client.Realm.AuthScheme
 import com.ning.http.util.AsyncHttpProviderUtils
-import java.io.File
-import org.w3.banana.{Writer, Syntax}
+import org.w3.banana.io.{Syntax, Writer}
 import play.api.libs.iteratee.Input.El
 import play.api.libs.iteratee._
-import scala.Some
-import scala.Tuple3
+
 import scala.collection.JavaConverters._
 
 //import play.core.Execution.Implicits.internalContext
@@ -64,7 +57,7 @@ import scala.collection.JavaConverters._
  */
 object WS extends WSTrait {
 
-  import com.ning.http.client.Realm.{ AuthScheme, RealmBuilder }
+  import com.ning.http.client.Realm.{AuthScheme, RealmBuilder}
   implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
   private val clientHolder: AtomicReference[Option[AsyncHttpClient]] = new AtomicReference(None)
@@ -359,7 +352,7 @@ trait  WSTrait {
                              timeout: Option[Int],
                              virtualHost: Option[String]) {
 
-    import WS.WSRequest
+    import org.w3.play.api.libs.ws.WS.WSRequest
 
     /**
      * sets the signature calculator for the request
@@ -428,7 +421,7 @@ trait  WSTrait {
     /**
      * Perform a POST on the request asynchronously.
      */
-    def post[T,S](body: T, syntax: Syntax[S])(implicit wrt: Writer[T,S]): Future[Response] =
+    def post[T,S](body: T, syntax: Syntax[S])(implicit wrt: Writer[T,Try, S]): Future[Response] =
       prepare("POST", body, syntax).execute
 
     /**
@@ -443,13 +436,13 @@ trait  WSTrait {
      */
     def postAndRetrieveStream[A, T, S](body: T, syntax: Syntax[S])
                                       (consumer: ResponseHeaders => Iteratee[Array[Byte], A])
-                                      (implicit wrt: Writer[T,S]): Future[Iteratee[Array[Byte], A]] =
+                                      (implicit wrt: Writer[T,Try,S]): Future[Iteratee[Array[Byte], A]] =
       prepare("POST", body, syntax).executeStream(consumer)
 
     /**
      * Perform a PUT on the request asynchronously.
      */
-    def put[T,S](body: T, syntax: Syntax[S])(implicit wrt: Writer[T,S]): Future[Response] = prepare("PUT", body,syntax).execute
+    def put[T,S](body: T, syntax: Syntax[S])(implicit wrt: Writer[T,Try,S]): Future[Response] = prepare("PUT", body,syntax).execute
 
     /**
      * Perform a PUT on the request asynchronously.
@@ -463,7 +456,7 @@ trait  WSTrait {
      */
     def putAndRetrieveStream[A, T, S](body: T, syntax: Syntax[S])
                                                 (consumer: ResponseHeaders => Iteratee[Array[Byte], A])
-                                                (implicit wrt: Writer[T,S]): Future[Iteratee[Array[Byte], A]] =
+                                                (implicit wrt: Writer[T,Try,S]): Future[Iteratee[Array[Byte], A]] =
       prepare("PUT", body, syntax).executeStream(consumer)
 
     /**
@@ -526,9 +519,9 @@ trait  WSTrait {
       request
     }
 
-    private[play] def prepare[T,S](method: String, body: T, syntax: Syntax[S])(implicit wrt: Writer[T,S]) = {
+    private[play] def prepare[T,S](method: String, body: T, syntax: Syntax[S])(implicit wrt: Writer[T,Try,S]) = {
       val request = new WSRequest(method, auth, calc).setUrl(url)
-        .setHeaders(Map("Content-Type" -> Seq(syntax.mime)) ++ headers)
+        .setHeaders(Map("Content-Type" -> Seq(syntax.defaultMimeType.mime)) ++ headers)
         .setQueryString(queryString)
         .setBody(wrt.asString(body,"").get) //todo: this only works for strings. Adapt Writer for binaries. Also deal better with Try
       followRedirects.map(request.setFollowRedirects(_))

@@ -16,13 +16,6 @@
 
 package rww.play.rdf.plantain
 
-import org.w3.banana._
-import org.w3.banana.plantain.Plantain
-import org.w3.banana.sesame.SesameOperations
-import rww.play.rdf.{BlockingRDFIteratee, IterateeSelector, RDFIteratee}
-
-import scala.concurrent.ExecutionContext
-
 /**
  * As Plantain does not have its own serializers we go through Sesame for the moment.
  * Slow.
@@ -30,20 +23,20 @@ import scala.concurrent.ExecutionContext
  * Date: 09/01/2013
  */
 
-class PlantainBlockingRDFIteratee(implicit ec: ExecutionContext)  {
-  implicit val ops = SesameOperations
-  import org.w3.banana.plantain.Plantain.{turtleReader,rdfxmlReader}
-
-  def apply[SyntaxType](reader: RDFReader[Plantain, SyntaxType]) =
-    new BlockingRDFIteratee[Plantain,SyntaxType](reader)
-
-  implicit val RDFXMLIteratee: RDFIteratee[Plantain#Graph,RDFXML] = apply[RDFXML](rdfxmlReader)
-  implicit val TurtleIteratee: RDFIteratee[Plantain#Graph,Turtle] = apply[Turtle](turtleReader)
-
-  val rdfxmlSelector = IterateeSelector[Plantain#Graph, RDFXML](Syntax.RDFXML,RDFXMLIteratee)
-  val turtleSelector = IterateeSelector[Plantain#Graph, Turtle](Syntax.Turtle,TurtleIteratee)
-
-  implicit val BlockingIterateeSelector: IterateeSelector[Plantain#Graph] =
-    turtleSelector combineWith rdfxmlSelector
-
-}
+//class PlantainBlockingRDFIteratee(implicit ec: ExecutionContext)  {
+//  implicit val ops = Plantain.ops
+//  import org.w3.banana.plantain.Plantain.{turtleReader,rdfXMLReader}
+//
+//  def apply[SyntaxType](reader: RDFReader[Plantain, Try, SyntaxType]) =
+//    new BlockingRDFIteratee[Plantain,SyntaxType](reader)
+//
+//  implicit val RDFXMLIteratee: RDFIteratee[Plantain#Graph,RDFXML] = apply[RDFXML](rdfXMLReader)
+//  implicit val TurtleIteratee: RDFIteratee[Plantain#Graph,Turtle] = apply[Turtle](turtleReader)
+//
+//  val rdfxmlSelector = IterateeSelector[Plantain#Graph, RDFXML](Syntax.RDFXML,RDFXMLIteratee)
+//  val turtleSelector = IterateeSelector[Plantain#Graph, Turtle](Syntax.Turtle,TurtleIteratee)
+//
+//  implicit val BlockingIterateeSelector: IterateeSelector[Plantain#Graph] =
+//    turtleSelector combineWith rdfxmlSelector
+//
+//}

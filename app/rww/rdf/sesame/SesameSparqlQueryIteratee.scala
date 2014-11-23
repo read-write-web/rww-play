@@ -1,19 +1,29 @@
 package rww.play.rdf.sesame
 
-import rww.play.rdf.{IterateeSelector, SparqlQueryIteratee}
-import org.w3.banana.jena.Jena
-import org.w3.banana.SparqlQuery
+import org.w3.banana.RDF
 import org.w3.banana.sesame.Sesame
+import rww.play.rdf._
+
 import scala.concurrent.ExecutionContext
 
-/**
- * Date: 10/01/2013
- * Time: 19:43
- */
 object SesameSparqlQueryIteratee {
 
-  implicit def apply(implicit ec: ExecutionContext) = new SparqlQueryIteratee[Sesame, SparqlQuery]
+  import org.w3.banana.sesame.Sesame._
 
-  def sparqlSelector(implicit ec: ExecutionContext) = IterateeSelector[Sesame#Query, SparqlQuery]
+  implicit def apply(implicit ec: ExecutionContext): RDFIteratee[Sesame#Query,RDF#Query] =
+    new SparqlQueryIteratee[Sesame, RDF#Query]
 
+  def sparqlSelector(implicit ec: ExecutionContext) = IterateeSelector[Sesame#Query,RDF#Query]
+
+}
+
+object SesameSparqlUpdateIteratee {
+
+  import org.w3.banana.sesame.Sesame._
+
+  implicit def apply(implicit ec: ExecutionContext): RDFIteratee[Sesame#UpdateQuery,RDF#UpdateQuery] =
+    new SparqlUpdateIteratee[Sesame, RDF#UpdateQuery]
+
+  def sparqlSelector(implicit ec: ExecutionContext) =
+    IterateeSelector[Sesame#UpdateQuery, RDF#UpdateQuery]
 }

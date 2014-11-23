@@ -4,6 +4,7 @@ import _root_.play.api.mvc.Call
 import _root_.play.{api => PlayApi}
 
 import controllers.routes
+import org.w3.banana.plantain.Plantain
 
 
 /**
@@ -14,9 +15,6 @@ package object play {
 
 
 
-
-  implicit def toBananaURI (uri : java.net.URI): org.w3.banana.plantain.model.URI =
-    org.w3.banana.plantain.model.URI.fromString(uri.toString)
 
   implicit class EnhancedRequest(val request: PlayApi.mvc.Request[_]) extends AnyVal {
     private def buildRootURI(implicit request: PlayApi.mvc.Request[_])  : java.net.URI = {

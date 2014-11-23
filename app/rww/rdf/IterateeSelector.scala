@@ -16,7 +16,7 @@
 
 package rww.play.rdf
 
-import org.w3.banana.{Syntax, MimeType}
+import org.w3.banana.io.{Syntax, MimeType}
 import scala.concurrent.ExecutionContext
 
 

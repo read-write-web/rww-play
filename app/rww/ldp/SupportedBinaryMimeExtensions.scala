@@ -1,24 +1,26 @@
 package rww.ldp
 
-import org.w3.banana._
+import org.w3.banana.io.MimeType
 
 /**
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)
  */
 // TODO this mapping should be configurable through configuration and not hardcoded maybe
-object SupportedBinaryMimeExtensions extends MimeExtensions {
+object SupportedBinaryMimeExtensions {
 
-  object ApplicationPdf extends MimeType("application/pdf")
-  object ApplicationJs extends MimeType("application/javascript")
+  import org.w3.banana.io.MimeType._
+
+  object ApplicationPdf extends MimeType("application","pdf")
+  object ApplicationJs extends MimeType("application","javascript")
   // TODO add other supported mime types for binary files like Excel and Word files etc...
 
 
 
   val mimeExt = collection.immutable.Map(
-    ImageJpegMime -> ".jpg",
-    ImageGifMime -> ".gif",
-    ImagePngMime -> ".png",
-    TextHtmlMime -> ".html",
+    ImageJpeg -> ".jpg",
+    ImageGif -> ".gif",
+    ImagePng -> ".png",
+    TextHtml -> ".html",
     ApplicationJs -> ".js",
     ApplicationPdf -> ".pdf"
   )

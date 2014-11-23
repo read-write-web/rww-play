@@ -1,17 +1,22 @@
 package controllers
 
+import org.w3.banana.io.WriterSelector
+import org.w3.banana.{RDF, RDFOps}
 import play.api.mvc.Action
 import play.api.mvc.Results._
-import org.w3.banana.plantain.Plantain
+import rww.ldp.WebClient
 import rww.play.CORSProxy
 
+import scala.util.Try
 
-object CORSProxyController {
 
-  private val proxy = {
-    import controllers.plantain._
-    new CORSProxy[Plantain](webClient)
-  }
+class CORSProxyController[Rdf<:RDF](webclient: WebClient[Rdf])
+                                   (implicit
+                                    ops: RDFOps[Rdf],
+                                    selector: WriterSelector[Rdf#Graph,Try]) {
+
+  private val proxy = new CORSProxy(webclient)
+
 
   // TODO it would be cool for the client to be able to specify a timeout
   def action(url: Option[String]) = url match {
@@ -24,3 +29,7 @@ object CORSProxyController {
   }
 
 }
+
+import controllers.RdfSetup._
+
+object CORSProxyController extends CORSProxyController(RdfSetup.webClient)

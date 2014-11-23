@@ -16,15 +16,15 @@
 
 package rww.play.rdf.jena
 
-import org.w3.banana.jena.{BareJenaGraph, Jena}
-import org.w3.banana.RDFXML
+import com.hp.hpl.jena.rdfxml.xmlinput.SAX2Model
+import org.w3.banana.io.RDFXML
+import org.w3.banana.jena.Jena
 import java.net.URL
 import play.api.libs.iteratee.Iteratee
 import com.fasterxml.aalto.{AsyncInputFeeder, AsyncXMLStreamReader}
 import com.fasterxml.aalto.stax.InputFactoryImpl
 import com.hp.hpl.jena.rdf.model.{ModelFactory, Model}
 import patch.AsyncJenaParser
-import com.hp.hpl.jena.rdf.arp.SAX2Model
 import rww.play.rdf.RDFIteratee
 import scala.concurrent.{ExecutionContext, Future}
 import util.{Failure, Success, Try}
@@ -60,7 +60,7 @@ object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
     var err: Option[Exception] = None
 
     def result: Try[Jena#Graph] = err match {
-      case None    => Success( BareJenaGraph(model.getGraph) )
+      case None    => Success( model.getGraph )
       case Some(e) => Failure(e)
     }
 

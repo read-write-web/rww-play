@@ -2,11 +2,11 @@ package rww.ldp
 
 import _root_.play.api.libs.iteratee._
 import org.w3.banana._
+import rww.ldp.actor.RWWActorSystem
+import utils.Iteratees
+
 import scala.concurrent._
 import scala.util.{Failure, Success, Try}
-import utils.Iteratees
-import rww.ldp.actor.RWWActorSystem
-import controllers.plantain.Rdf
 
 /** A resource that can be found with its URI, and is linked to other
   * resources through links as URIs
@@ -48,11 +48,10 @@ trait LinkedMeta[Rdf <: RDF] {
 trait LinkedWebResource[Rdf <: RDF] extends LinkedResource[Rdf] with LinkedMeta[Rdf]
 
 
-class WebResource[Rdf <:RDF](val rww: RWWActorSystem[Rdf])(implicit ops: RDFOps[Rdf], ec: ExecutionContext) extends LinkedResource[Rdf] {
-  import LDPCommand._
+class WebResource[Rdf <:RDF](val rwwActorSys: RWWActorSystem[Rdf])(implicit ops: RDFOps[Rdf], ec: ExecutionContext) extends LinkedResource[Rdf] {
   import ops._
-  import diesel._
-  import syntax._
+  import org.w3.banana.diesel._
+  import rww.ldp.LDPCommand._
 
   /** retrieves a resource based on its URI */
   def ~(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]] = {
@@ -62,7 +61,7 @@ class WebResource[Rdf <:RDF](val rww: RWWActorSystem[Rdf])(implicit ops: RDFOps[
       val pointed = PointedGraph(uri, graph)
       LinkedDataResource(docUri, pointed)
     }
-    val futureLDR: Future[LinkedDataResource[Rdf]] = rww.execute(script)
+    val futureLDR: Future[LinkedDataResource[Rdf]] = rwwActorSys.execute(script)
     Iteratees.singleElementEnumerator(futureLDR)
   }
 
@@ -129,7 +128,7 @@ class WebResource[Rdf <:RDF](val rww: RWWActorSystem[Rdf])(implicit ops: RDFOps[
         val pgDoc = pgUri.fragmentLess
         //todo: the following code does not take redirects into account
         //todo: we need a GET that returns a LinkedDataResource, that knows how to follow redirects
-        rww.execute(getLDPR(pgDoc)).map {
+        rwwActorSys.execute(getLDPR(pgDoc)).map {
           g => LinkedDataResource(pgDoc, PointedGraph(pgUri, g))
         }
       }

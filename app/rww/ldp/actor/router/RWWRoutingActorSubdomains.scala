@@ -1,18 +1,16 @@
 package rww.ldp.actor.router
 
-import org.w3.banana.{syntax, RDFOps, RDF}
-import akka.util.Timeout
+import java.net.{URI => jURI}
+
 import akka.actor.ActorRef
-import java.net.{URI=>jURI}
-import scalaz.-\/
-import scala.Some
-import scalaz.\/-
+import akka.util.Timeout
+import org.w3.banana.{RDF, RDFOps}
+import rww.ldp.LDPExceptions.ServerException
 import rww.ldp._
-import rww.ldp.actor.common.CommonActorMessages
-import CommonActorMessages._
+import rww.ldp.actor.common.CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
-import java.nio.file.Path
-import rww.ldp.LDPExceptions.{ServerException, ResourceDoesNotExist}
+
+import scalaz.{-\/, \/-}
 
 object RWWRoutingActorSubdomains {
 
@@ -70,8 +68,7 @@ object RWWRoutingActorSubdomains {
  */
 class RWWRoutingActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
                           (implicit ops: RDFOps[Rdf], timeout: Timeout) extends RWWBaseActor {
-  import syntax.URISyntax.uriW
-  import RWWRoutingActorSubdomains._
+  import rww.ldp.actor.router.RWWRoutingActorSubdomains._
 
   var rootContainer: Option[ActorRef] = None
   var web : Option[ActorRef] = None
@@ -99,7 +96,7 @@ class RWWRoutingActorSubdomains[Rdf<:RDF](val baseUri: Rdf#URI)
 
   /** We in fact ignore the R and A types, since we cannot capture */
   protected def forwardSwitch[A](cmd: CmdMessage[Rdf,A]) {
-    local(cmd.command.uri.underlying,baseUri.underlying).map { switch =>
+    local(new jURI(cmd.command.uri.toString),new jURI(baseUri.toString)).map { switch =>
       rootContainer match {
         case Some(root) => {
           val pathList = switch.path.split('/').toList

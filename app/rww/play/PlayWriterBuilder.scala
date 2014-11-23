@@ -16,19 +16,21 @@
 
 package rww.play
 
-import play.api.mvc.{ResponseHeader, SimpleResult, RequestHeader}
-import org.w3.banana.{WriterSelector, Writer, MediaRange}
 import java.io.ByteArrayOutputStream
+
+import org.w3.banana.io.{MediaRange, Writer, WriterSelector}
 import play.api.libs.iteratee.Enumerator
-import scalax.io.Resource
+import play.api.mvc.{RequestHeader, ResponseHeader, SimpleResult}
+
+import scala.util.Try
 
 /**
  * Helps building Play Writers using RDFWriterSelectors
  */
 object PlayWriterBuilder {
-  import play.api.http.{MediaRange=>PlayMediaRange}
+  import play.api.http.{MediaRange => PlayMediaRange}
   //return writer from request header
-  def writerFor[Obj](req: RequestHeader)(implicit writerSelector: WriterSelector[Obj]): Option[Writer[Obj, Any]] = {
+  def writerFor[Obj](req: RequestHeader)(implicit writerSelector: WriterSelector[Obj,Try]): Option[Writer[Obj,Try, Any]] = {
     //todo: the range selection should really be done completely within play
     def toBananaRange(range: PlayMediaRange): MediaRange = {
       MediaRange(range.mediaType+"/"+range.mediaSubType)
@@ -46,9 +48,9 @@ object PlayWriterBuilder {
    * @tparam Obj The type of the object to publish
    * @return A simple result
    */
-  def result[Obj](code: Int, writer: Writer[Obj,_], headers: Map[String,String]=Map.empty)(obj: Obj) = {
+  def result[Obj](code: Int, writer: Writer[Obj,Try,_], headers: Map[String,String]=Map.empty)(obj: Obj) = {
     SimpleResult(
-      header = ResponseHeader(200, headers + ("Content-Type" -> writer.syntax.mime)),  //todo
+      header = ResponseHeader(200, headers + ("Content-Type" -> writer.transformsTo.defaultMimeType.mime)),  //todo
       body   = toEnum(writer)(obj)
     )
   }
@@ -62,11 +64,12 @@ object PlayWriterBuilder {
    * @tparam Obj
    * @return
    */
-  def toEnum[Obj](writer: Writer[Obj,_]) =
+  def toEnum[Obj](writer: Writer[Obj,Try,_]) =
     (obj: Obj) => {
-      val out = new ByteArrayOutputStream()
-      val tw = writer.write(obj,  Resource.fromOutputStream(out), "http://localhost:8888/") // TODO ???????
-      Enumerator(out.toByteArray)
+      utils.FileUtils.using(new ByteArrayOutputStream()) { out =>
+        val tw = writer.write(obj, out, "http://localhost:8888/") // TODO ???????
+        Enumerator(out.toByteArray)
+      }
     }
 
 

@@ -1,31 +1,16 @@
 package rww.ldp.actor.remote
 
-import org.w3.banana._
 import akka.actor.ActorRef
-import concurrent.{ExecutionContext, Future}
-import rww.ldp._
-import rww.ldp.CreateContainer
-import scalaz.-\/
-import rww.ldp.DeleteResource
-import rww.ldp.UpdateLDPR
-import rww.ldp.WrappedException
-import rww.ldp.WrongTypeException
-import rww.ldp.GetMeta
-import scala.util.Failure
-import rww.ldp.GetResource
-import rww.ldp.AskLDPC
-import rww.ldp.SelectLDPC
-import scala.util.Success
-import scalaz.\/-
-import rww.ldp.ConstructLDPC
-import rww.ldp.AskLDPR
-import rww.ldp.SelectLDPR
-import rww.ldp.ConstructLDPR
-import rww.ldp.CreateLDPR
-import rww.ldp.actor.common.CommonActorMessages
-import CommonActorMessages._
+import org.w3.banana._
+import org.w3.banana.io._
+import rww.ldp.actor.common.CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
 import rww.ldp.model.{LDPR, Meta}
+import rww.ldp.{AskLDPC, AskLDPR, ConstructLDPC, ConstructLDPR, CreateContainer, CreateLDPR, DeleteResource, GetMeta, GetResource, SelectLDPC, SelectLDPR, UpdateLDPR, WrappedException, WrongTypeException, _}
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
+import scalaz.{-\/, \/-}
 
 /**
 * A LDP actor that interacts with remote LDP resources
@@ -35,12 +20,11 @@ import rww.ldp.model.{LDPR, Meta}
 * @tparam Rdf
 */
 class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
-                           (implicit ops: RDFOps[Rdf], sparqlGraph: SparqlGraph[Rdf],
-                            writer: Writer[Rdf#Graph,Turtle],
+                           (implicit ops: RDFOps[Rdf], sparqlGraph: SparqlEngine[Rdf,Try,Rdf#Graph],
+                            writer: Writer[Rdf#Graph,Try,Turtle],
                             ec: ExecutionContext) extends RWWBaseActor {
 
   import ops._
-  import org.w3.banana.syntax._
 
 
   def fetchGraph(uri: Rdf#URI): Future[LDPR[Rdf]] = {
@@ -176,9 +160,8 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         val sender = context.sender  //very important. Calling in function onComplete will return deadLetter
         val result = fetchGraph(uri)
         result.onComplete{ tryRes =>
-          tryRes match {
-            case Success(ldpr) => {
-              val solutions = sparqlGraph(ldpr.graph).executeSelect(query, bindings)
+          tryRes.flatMap(ldpr=> sparqlGraph.executeSelect(ldpr.graph,query, bindings)) match {
+            case Success(solutions) => {
               rwwRouterActor.tell(ScriptMessage(k(solutions)),sender)
             }
             case Failure(e) => sender ! akka.actor.Status.Failure({
@@ -195,9 +178,8 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         val sender = context.sender  //very important. Calling in function onComplete will return deadLetter
         val result = fetchGraph(uri)
         result.onComplete{ tryRes =>
-          tryRes match {
-            case Success(ldpr) => {
-              val solutions = sparqlGraph(ldpr.graph).executeConstruct(query, bindings)
+          tryRes.flatMap(ldpr=>sparqlGraph.executeConstruct(ldpr.graph,query, bindings)) match {
+            case Success(solutions) => {
               rwwRouterActor tell  (ScriptMessage(k(solutions)),sender)
             }
             case Failure(e) => sender ! akka.actor.Status.Failure({
@@ -213,9 +195,8 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
         val sender = context.sender  //very important. Calling in function onComplete will return deadLetter
         val result = fetchGraph(uri)
         result.onComplete{ tryRes =>
-          tryRes match {
-            case Success(ldpr) => {
-              val solutions = sparqlGraph(ldpr.graph).executeAsk(query, bindings)
+          tryRes.flatMap(ldpr=>sparqlGraph.executeAsk(ldpr.graph,query, bindings)) match {
+            case Success(solutions) => {
               rwwRouterActor tell  (ScriptMessage(k(solutions)),sender)
             }
             case Failure(e) => sender ! akka.actor.Status.Failure({

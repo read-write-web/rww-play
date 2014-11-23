@@ -16,18 +16,18 @@
 
 package rww.play
 
-import org.w3.banana._
-import rww.play.rdf.IterateeSelector
-import play.api.mvc.{SimpleResult, Result, RequestHeader, BodyParser}
-import play.api.libs.iteratee.{Iteratee, Done}
-import play.api.libs.iteratee.Input.Empty
-import scala.Left
-import scala.Right
-import scala.Some
 import java.net.URL
-import util.{Success, Failure}
+
+import org.w3.banana._
+import org.w3.banana.io.MimeType
 import play.api.libs.Files.TemporaryFile
+import play.api.libs.iteratee.Input.Empty
+import play.api.libs.iteratee.{Done, Iteratee}
+import play.api.mvc.{BodyParser, RequestHeader, SimpleResult}
+import rww.play.rdf.IterateeSelector
+
 import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success}
 
 /**
  * a RWW bodyParser, like all body parsers, parses content sent from the client
@@ -37,7 +37,6 @@ import scala.concurrent.ExecutionContext
  * @param ops
  * @param sparqlOps
  * @param graphSelector
- * @param sparqlSelector
  * @tparam Rdf
  */
 //todo: pass the base URL
@@ -49,8 +48,8 @@ class RwwBodyParser[Rdf <: RDF](base: URL)(implicit ops: RDFOps[Rdf],
                                 ec: ExecutionContext)
   extends BodyParser[RwwContent] {
 
-  import play.api.mvc.Results._
   import play.api.mvc.BodyParsers.parse
+  import play.api.mvc.Results._
 
 
   def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[SimpleResult,RwwContent]] =  {
@@ -60,8 +59,8 @@ class RwwBodyParser[Rdf <: RDF](base: URL)(implicit ops: RDFOps[Rdf],
     if (rh.method == "GET" || rh.method == "HEAD" || rh.method == "OPTIONS") Done(Right(emptyContent), Empty)
     else if ( ! rh.headers.get("Content-Length").exists( Integer.parseInt(_) > 0 )) {
       Done(Right(emptyContent), Empty)
-    } else rh.contentType.map { str =>
-      MimeType(str) match {
+    } else rh.contentType.flatMap(MimeType.parse(_)) map { mime: MimeType =>
+       mime match {
         case sparqlSelector(iteratee) => iteratee(Option(new URL(base,rh.path))).map {
           case Failure(e) => Left(BadRequest(messageAndCause(e)))
           case Success(sparql) => Right(QueryRwwContent(sparql))
@@ -78,12 +77,12 @@ class RwwBodyParser[Rdf <: RDF](base: URL)(implicit ops: RDFOps[Rdf],
         //todo: on systems where the result may be on a remote file system this would be very important.
         case mime: MimeType => {
           val parser = parse.temporaryFile.map {
-            file => BinaryRwwContent(file, mime.mime)
+            file => BinaryRwwContent(file, mime)
           }
           parser(rh)
         }
       }
-    }.getOrElse {
+    } getOrElse {
       Done(Left(BadRequest("missing Content-type header. Please set the content type in the HTTP header of your message ")),
         Empty)
     }
@@ -105,7 +104,7 @@ case class QueryRwwContent[Rdf<:RDF](query: Rdf#Query) extends RwwContent
 
 case class PatchRwwContent[Rdf<:RDF](query: Rdf#UpdateQuery) extends RwwContent
 
-case class BinaryRwwContent(file: TemporaryFile, mime: String) extends RwwContent
+case class BinaryRwwContent(file: TemporaryFile, mime: MimeType) extends RwwContent
 
 
 

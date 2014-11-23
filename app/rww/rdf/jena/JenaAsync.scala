@@ -16,8 +16,8 @@
 
 package rww.play.rdf.jena
 
+import org.w3.banana.io.RDFXML
 import org.w3.banana.jena.Jena
-import org.w3.banana.RDFXML
 import rww.play.rdf.{IterateeSelector, RDFIteratee}
 import concurrent.ExecutionContext
 

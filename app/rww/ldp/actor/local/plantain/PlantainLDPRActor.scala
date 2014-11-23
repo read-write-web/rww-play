@@ -1,70 +1,57 @@
 package rww.ldp.actor.plantain
 
-import org.w3.banana.plantain.{LDPatch, PlantainLDPatch, Plantain}
-import java.nio.file.{Files, Path}
-import org.w3.banana._
-import com.google.common.cache.{CacheLoader, CacheBuilder, LoadingCache}
-import scala.util.Try
-import java.util.Date
+//import org.w3.banana.plantain.{LDPatch, PlantainLDPatch, Plantain}
+import java.io.{File, FileInputStream, FileOutputStream}
 import java.nio.file.DirectoryStream.Filter
-import java.io.{FileOutputStream, File}
-import scala.io.Codec
-import scala._
+import java.nio.file.{Files, Path}
+import java.util.Date
+
 import akka.actor.ActorRef
-import rww.ldp._
 import com.google.common.base.Throwables
-import scala.collection.convert.decorateAsScala._
-import rww.ldp.DeleteResource
-import rww.ldp.GetMeta
-import rww.ldp.PatchLDPR
-import scala.util.Failure
-import scala.Some
-import org.w3.banana.StoreProblem
-import scala.util.Success
-import scalaz.\/-
-import rww.ldp.AskLDPR
-import rww.ldp.ConstructLDPR
-import scalaz.-\/
-import rww.ldp.UpdateLDPR
+import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
+import org.w3.banana.io.{RDFReader, RDFWriter, Turtle}
+import org.w3.banana.{StoreProblem, _}
 import rww.ldp.LDPExceptions._
-import rww.ldp.GetResource
-import rww.ldp.SelectLDPR
-import rww.ldp.actor.common.CommonActorMessages
-import CommonActorMessages._
+import rww.ldp.actor.common.CommonActorMessages._
 import rww.ldp.actor.common.RWWBaseActor
 import rww.ldp.model._
-import java.net.{URI=>jURI}
+import rww.ldp.{DeleteResource, GetMeta, GetResource, UpdateLDPR, _}
+import rww.rdf.util.StatPrefix
 import spray.http.Uri
+import utils.FileUtils._
+
+import scala.collection.convert.decorateAsScala._
+import scala.io.Codec
+import scala.util.{Failure, Success, Try}
+import scalaz.{-\/, \/-}
 
 
 class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
                        (implicit ops: RDFOps[Rdf],
-                        sparqlGraph: SparqlGraph[Rdf],
-                        reader: RDFReader[Rdf,Turtle],
-                        writer: RDFWriter[Rdf,Turtle],
-                        patch: LDPatch[Rdf,Try]
+//                        sparqlGraph: SparqlGraph[Rdf],
+                        reader: RDFReader[Rdf,Try, Turtle],
+                        writer: RDFWriter[Rdf,Try, Turtle]
+//                        patch: LDPatch[Rdf,Try]
 //                        adviceSelector: AdviceSelector[Rdf]= new EmptyAdviceSelector
                          ) extends RWWBaseActor {
   var ext = ".ttl"
   val acl = ".acl"
+
   import ops._
 
   val ldp = rww.rdf.util.LDPPrefix[Rdf]
   val rdfs = RDFSPrefix[Rdf]
   val rdf = RDFPrefix[Rdf]
-  val stat = STATPrefix[Rdf]
+  val stat = StatPrefix[Rdf]
 
-  import org.w3.banana.syntax._
-  import diesel._
-
-  lazy val basejURI = baseUri.underlying
   lazy val baseSprayUri = Uri(baseUri.toString)
 
   //google cache with soft values: at least it will remove the simplest failures
-  val resourceCache: LoadingCache[String,Try[LocalNamedResource[Rdf]]] = CacheBuilder.newBuilder()
+  val resourceCache: LoadingCache[String, Try[LocalNamedResource[Rdf]]] = CacheBuilder.newBuilder()
     .softValues()
-    .build(new CacheLoader[String,Try[LocalNamedResource[Rdf]]]() {
-    import scalax.io.{Resource=>xResource}
+    .build(new CacheLoader[String, Try[LocalNamedResource[Rdf]]]() {
+
+    import scalax.io.{Resource => xResource}
 
     def load(key: String) = {
       //at this point it is still very easy - only two cases! but won't stay like this...
@@ -73,11 +60,13 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       if (file.exists()) {
 
         if (file.toString.endsWith(ext)) {
-          val res = xResource.fromFile(file)
-          reader.read(res, iri.toString).map { g =>
-            LocalLDPR[Rdf](iri, g, path, Option(new Date(path.toFile.lastModified())) )
-          } recover {
-            case RDFParseExceptionMatcher(e) => throw UnparsableSource(s"Can't parse resource $iri as an RDF file",e)
+          using(new FileInputStream(file)) { in =>
+
+            reader.read(in, iri.toString).map { g =>
+              LocalLDPR[Rdf](iri, g, path, Option(new Date(path.toFile.lastModified())))
+            } recover {
+              case RDFParseExceptionMatcher(e) => throw UnparsableSource(s"Can't parse resource $iri as an RDF file", e)
+            }
           }
         } else Success(LocalBinaryResource[Rdf](file.toPath, iri))
 
@@ -86,12 +75,12 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
   })
 
 
-
   def filter = new Filter[Path]() {
     val fileName = path.getFileName.toString
+
     def accept(entry: Path) = {
       val ename = entry.getFileName.toString
-      val result = matches(fileName,ename)
+      val result = matches(fileName, ename)
       result
     }
 
@@ -99,9 +88,9 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       entryName.startsWith(fileName) && (
         entryName.length == fileName.length ||
           entryName.charAt(fileName.length) == '.' ||
-          (entryName.length >= fileName.length+4 && entryName.substring(fileName.length, fileName.length + 4) == ".acl"
-            && ( entryName.length == fileName.length+4 ||
-            entryName.charAt(fileName.length+4) == '.' )
+          (entryName.length >= fileName.length + 4 && entryName.substring(fileName.length, fileName.length + 4) == ".acl"
+            && (entryName.length == fileName.length + 4 ||
+            entryName.charAt(fileName.length + 4) == '.')
             )
         )
     }
@@ -116,27 +105,26 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
   /**
    *
    * @param name the name of the file - with extensions.
-   * @throws ResourceDoesNotExist
    * @return
    */
   @throws[ResourceDoesNotExist]
   def getResource(name: String): Try[LocalNamedResource[Rdf]] = {
-    import scalax.io.{Resource=>xResource}
+    import scalax.io.{Resource => xResource}
     //todo: the file should be verified to see if it is up to date.
     val resourceGet = resourceCache.get(name) match {
-      case success @ Success(LocalLDPR(_,_,path,updated,_)) if (path.toFile.lastModified() > updated.get.getTime) => {
+      case success@Success(LocalLDPR(_, _, path, updated, _)) if (path.toFile.lastModified() > updated.get.getTime) => {
         resourceCache.invalidate(name)
         resourceCache.get(name)
       }
-      case failure @ Failure(exception: UnparsableSource) => {
+      case failure@Failure(exception: UnparsableSource) => {
         resourceCache.invalidate(name)
         failure
       }
       case otherResult => otherResult
     }
     log.debug(s"getResource with name=$name , found success?=${resourceGet.isSuccess}")
-    if ( resourceGet.isFailure ) {
-      log.error(resourceGet.failed.get,s"getResource with name=$name failure")
+    if (resourceGet.isFailure) {
+      log.error(resourceGet.failed.get, s"getResource with name=$name failure")
     }
     resourceGet
   }
@@ -146,12 +134,11 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
    * @param name
    * @return
    */
-  private def fileAndURIFor(name: String): (File,Rdf#URI) = {
+  private def fileAndURIFor(name: String): (File, Rdf#URI) = {
     //note: this is really simple at present, but is bound to get more complex,...
     val file = fileFrom(name)
-    val uriw =uriW[Rdf](baseUri)
-    val iri = uriw.resolve(name)
-    (file,iri)
+    val iri = baseUri resolve URI(name)
+    (file, iri)
   }
 
   /**
@@ -161,27 +148,28 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
    */
   def fileFrom(name: String): File = {
     if (name.endsWith(acl)) path.resolveSibling(name + ext).toFile
-    else if (name.endsWith(acl+ext)) path.resolveSibling(name).toFile
+    else if (name.endsWith(acl + ext)) path.resolveSibling(name).toFile
     else if (Files.isSymbolicLink(path)) path.resolveSibling(Files.readSymbolicLink(path)).toFile
     else path.resolveSibling(name + ext).toFile
   }
 
   def setResource(name: String, graph: Rdf#Graph) {
-    import scalax.io.{Resource=>xResource}
     implicit val codec = Codec.UTF8
-    val (file,iri) = fileAndURIFor(name)
+    val (file, iri) = fileAndURIFor(name)
     file.createNewFile()
-    val cleanGr = rww.rdf.util.GraphUtil.normalise(baseSprayUri,graph)
-    val dirUri = baseUri.toString.substring(0,baseUri.toString.length- baseUri.lastPathSegment.length)
-    writer.write(cleanGr,xResource.fromOutputStream(new FileOutputStream(file)),dirUri) match {
-      case scala.util.Failure(t) => throw new StoreProblem(t)
-      case x => x
+    val cleanGr = rww.rdf.util.GraphUtil.normalise(baseSprayUri, graph)
+    val dirUri = baseUri.toString.substring(0, baseUri.toString.length - baseUri.lastPathSegment.length)
+    using(new FileOutputStream(file)) { out =>
+      writer.write(cleanGr, out, dirUri) match {
+        case scala.util.Failure(t) => throw new StoreProblem(t)
+        case x => x
+      }
     }
-    resourceCache.put(name,Success(LocalLDPR[Rdf](iri,graph, file.toPath, Some(new Date(file.lastModified())))))
+    resourceCache.put(name, Success(LocalLDPR[Rdf](iri, graph, file.toPath, Some(new Date(file.lastModified())))))
   }
 
 
-  def localName(uri: Rdf#URI): String = uriW[Rdf](uri).lastPathSegment
+  def localName(uri: Rdf#URI): String = uri.lastPathSegment
 
   /*
      * Runs a command that can be evaluated on this container.
@@ -189,13 +177,13 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
      * @tparam A The final return type of the script
      * @return a script for further evaluation
      */
-  def runLocalCmd[A](cmd: LDPCommand[Rdf, LDPCommand.Script[Rdf,A]]) {
+  def runLocalCmd[A](cmd: LDPCommand[Rdf, LDPCommand.Script[Rdf, A]]) {
     log.debug(s"received $cmd")
     cmd match {
       case GetResource(uri, agent, k) => {
         getResource(localName(uri)) match {
-          case Success(res) => rwwRouterActor.tell(ScriptMessage(k(res)),context.sender)
-          case Failure(fail) =>  context.sender ! akka.actor.Status.Failure(fail)
+          case Success(res) => rwwRouterActor.tell(ScriptMessage(k(res)), context.sender)
+          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
         }
       }
       case GetMeta(uri, k) => {
@@ -203,13 +191,13 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
         //The point of GetMeta is mostly to remove work if there were work that was very time
         //consuming ( such as serialising a graph )
         getResource(localName(uri)) match {
-          case Success(res) => rwwRouterActor.tell(ScriptMessage(k(res)),context.sender)
-          case Failure(fail) =>  context.sender ! akka.actor.Status.Failure(fail)
+          case Success(res) => rwwRouterActor.tell(ScriptMessage(k(res)), context.sender)
+          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
         }
 
       }
       case DeleteResource(uri, a) => {
-        val pathStream = Files.newDirectoryStream(path.getParent,filter)
+        val pathStream = Files.newDirectoryStream(path.getParent, filter)
         try {
           for (p <- pathStream.asScala) {
             Files.delete(p)
@@ -218,35 +206,35 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
           pathStream.close()
         }
         context.stop(self)
-        rwwRouterActor.tell(ScriptMessage(a),context.sender)
+        rwwRouterActor.tell(ScriptMessage(a), context.sender)
       }
       case UpdateLDPR(uri, remove, add, a) => {
         val nme = localName(uri)
         getResource(nme) match {
-          case Success(LocalLDPR(_,graph,_,updated,_)) => {
-            if (remove.size>0) throw LocalException("need to upgrade to a later version of banana that supports diffs")
-//            val temp = remove.foldLeft(graph) {
-//              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
-//            }
-            val graphName = uriW[Rdf](URI(nme)).resolveAgainst(baseUri)
-            val resultGraph = add.foldLeft(graph) {
-              (graph, triple) => graph union Graph(triple.resolveAgainst(graphName))
-            }
-            setResource(nme,resultGraph)
-            rwwRouterActor.tell(ScriptMessage(a),context.sender)
-          }
-          // TODO to verify for @bblfish: code duplicated from the LocalLDPR case! see #116
-          case Success(LocalLDPC(_,graph,_,updated,_)) => {
-            if (remove.size>0) throw LocalException("need to upgrade to a later version of banana that supports diffs")
+          case Success(LocalLDPR(_, graph, _, updated, _)) => {
+            if (remove.size > 0) throw LocalException("need to upgrade to a later version of banana that supports diffs")
             //            val temp = remove.foldLeft(graph) {
             //              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
             //            }
-            val graphName = uriW[Rdf](URI(nme)).resolveAgainst(baseUri)
+            val graphName = URI(nme).resolve(baseUri)
             val resultGraph = add.foldLeft(graph) {
               (graph, triple) => graph union Graph(triple.resolveAgainst(graphName))
             }
-            setResource(nme,resultGraph)
-            rwwRouterActor.tell(ScriptMessage(a),context.sender)
+            setResource(nme, resultGraph)
+            rwwRouterActor.tell(ScriptMessage(a), context.sender)
+          }
+          // TODO to verify for @bblfish: code duplicated from the LocalLDPR case! see #116
+          case Success(LocalLDPC(_, graph, _, updated, _)) => {
+            if (remove.size > 0) throw LocalException("need to upgrade to a later version of banana that supports diffs")
+            //            val temp = remove.foldLeft(graph) {
+            //              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
+            //            }
+            val graphName = URI(nme).resolve(baseUri)
+            val resultGraph = add.foldLeft(graph) {
+              (graph, triple) => graph union Graph(triple.resolveAgainst(graphName))
+            }
+            setResource(nme, resultGraph)
+            rwwRouterActor.tell(ScriptMessage(a), context.sender)
           }
           case Success(_) => throw RequestNotAcceptable(s"$uri does not contain a GRAPH, cannot Update")
           case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
@@ -254,55 +242,55 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       }
       case PutLDPR(uri, graph, a) => {
         val nme = localName(uri)
-        setResource(nme,graph)
-        rwwRouterActor.tell(ScriptMessage(a),context.sender)
+        setResource(nme, graph)
+        rwwRouterActor.tell(ScriptMessage(a), context.sender)
       }
-      case PatchLDPR(uri, update, bindings, k) => {
-        val nme = localName(uri)
-        getResource(nme) match {
-          case Success(LocalLDPR(_,graph,_,updated,_)) => {
-            patch.executePatch(graph,update,bindings) match {
-              case Success(gr) => {
-                setResource(nme, gr)
-                rwwRouterActor.tell(ScriptMessage(k(true)),context.sender)
-              }
-              case Failure(e) => throw e
-            }
-          }
-          case Success(_) =>  context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - PATCH is not possible")
-          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
-        }
-      }
-      case SelectLDPR(uri, query, bindings, k) => {
-        getResource(localName(uri)) match {
-          case Success(LocalLDPR(_,graph,_,_,_)) => {
-            val solutions = sparqlGraph(graph).executeSelect(query, bindings)
-            rwwRouterActor.tell(ScriptMessage(k(solutions)),context.sender)
-          }
-          case Success(_) => context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
-          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
-        }
-      }
-      case ConstructLDPR(uri, query, bindings, k) => {
-        getResource(localName(uri)).get match {
-          case LocalLDPR(_,graph,_,_,_) => {
-            val result = sparqlGraph(graph).executeConstruct(query, bindings)
-            rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
-          }
-          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
-        }
-
-      }
-      case AskLDPR(uri, query, bindings, k) => {
-        getResource(localName(uri)).get match {
-          case LocalLDPR(_,graph,_,_,_) => {
-            val result = sparqlGraph(graph).executeAsk(query, bindings)
-            rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
-          }
-          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
-        }
-      }
-      case cmd => throw RequestNotAcceptable(s"Cannot run ${cmd.getClass} on an LDPR that is not an LDPC ")
+      //      case PatchLDPR(uri, update, bindings, k) => {
+      //        val nme = localName(uri)
+      //        getResource(nme) match {
+      //          case Success(LocalLDPR(_,graph,_,updated,_)) => {
+      //            patch.executePatch(graph,update,bindings) match {
+      //              case Success(gr) => {
+      //                setResource(nme, gr)
+      //                rwwRouterActor.tell(ScriptMessage(k(true)),context.sender)
+      //              }
+      //              case Failure(e) => throw e
+      //            }
+      //          }
+      //          case Success(_) =>  context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - PATCH is not possible")
+      //          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
+      //        }
+      //      }
+      //      case SelectLDPR(uri, query, bindings, k) => {
+      //        getResource(localName(uri)) match {
+      //          case Success(LocalLDPR(_,graph,_,_,_)) => {
+      //            val solutions = sparqlGraph(graph).executeSelect(query, bindings)
+      //            rwwRouterActor.tell(ScriptMessage(k(solutions)),context.sender)
+      //          }
+      //          case Success(_) => context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
+      //          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
+      //        }
+      //      }
+      //      case ConstructLDPR(uri, query, bindings, k) => {
+      //        getResource(localName(uri)).get match {
+      //          case LocalLDPR(_,graph,_,_,_) => {
+      //            val result = sparqlGraph(graph).executeConstruct(query, bindings)
+      //            rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
+      //          }
+      //          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
+      //        }
+      //
+      //      }
+      //      case AskLDPR(uri, query, bindings, k) => {
+      //        getResource(localName(uri)).get match {
+      //          case LocalLDPR(_,graph,_,_,_) => {
+      //            val result = sparqlGraph(graph).executeAsk(query, bindings)
+      //            rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
+      //          }
+      //          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
+      //        }
+      //      }
+      //      case cmd => throw RequestNotAcceptable(s"Cannot run ${cmd.getClass} on an LDPR that is not an LDPC ")
     }
   }
 
@@ -356,10 +344,14 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
 // see https://github.com/w3c/banana-rdf/issues/80
 object RDFParseExceptionMatcher {
   private val ExceptionClass = classOf[org.openrdf.rio.RDFParseException]
-  def unapply(t: Throwable) = {
+
+  def unapply(t: Throwable): Option[Throwable] = {
     val list = Throwables.getCausalChain(t).asScala.filter(ex => ExceptionClass.isAssignableFrom(ex.getClass))
     // this may be strange that we return t and not list.headOption but we want to have the whole stacktrace...
-    if ( !list.isEmpty ) Some(t)
+    if (!list.isEmpty) Some(t)
     else None
   }
 }
+
+
+

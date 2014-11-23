@@ -1,12 +1,15 @@
 package rww.ldp.actor.plantain
 
-import org.w3.banana.plantain.LDPatch
-import java.nio.file.{FileVisitResult, SimpleFileVisitor, Files, Path}
-import org.w3.banana._
-import java.util
+//import org.w3.banana.plantain.LDPatch
+import java.net.{URI => jURL}
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{FileVisitResult, Files, Path, SimpleFileVisitor}
+import java.util
+
 import akka.actor.Props
-import java.net.{URL=>jURL}
+import org.w3.banana._
+import io._
+
 import scala.util.Try
 
 //import rww.ldp.{EmptyAdviceSelector, AdviceSelector}
@@ -17,16 +20,15 @@ import scala.util.Try
  */
 class LDPCSubdomainActor[Rdf<:RDF] (ldpcUri: Rdf#URI, root: Path)
                                  (implicit ops: RDFOps[Rdf],
-                                  sparqlGraph: SparqlGraph[Rdf],
-                                  reader: RDFReader[Rdf, Turtle],
-                                  writer: RDFWriter[Rdf, Turtle],
-                                  patch: LDPatch[Rdf, Try]
+//                                  sparqlGraph: SparqlGraph[Rdf],
+                                  reader: RDFReader[Rdf, Try, Turtle],
+                                  writer: RDFWriter[Rdf, Try, Turtle]
+//                                  patch: LDPatch[Rdf, Try]
 //                                adviceSelector: AdviceSelector[Rdf]=new EmptyAdviceSelector
                                    ) extends LDPCActor[Rdf](ldpcUri,root) {
 
   log.info(s"Creating LDPCSubdomainActor($ldpcUri,$root)")
-
-  import syntax._
+  val ju = new jURL(ldpcUri.toString)
 
   override def preStart {
     //start all agents for all files and subdirectories
@@ -62,10 +64,9 @@ class LDPCSubdomainActor[Rdf<:RDF] (ldpcUri: Rdf#URI, root: Path)
 
   override
   def absoluteUri(pathSegment: String): Rdf#URI = {
-    val u = ldpcUri.underlying
-    val host = if (pathSegment.endsWith("/")) pathSegment.substring(0,pathSegment.length-1) + "." + u.getHost else u.getHost
-    val path = if (pathSegment.endsWith("/")) "/" else u.getPath + pathSegment
-    val url = new jURL(u.getScheme, host, u.getPort, path)
+    val host = if (pathSegment.endsWith("/")) pathSegment.substring(0,pathSegment.length-1) + "." + ju.getHost else ju.getHost
+    val path = if (pathSegment.endsWith("/")) "/" else ju.getPath + pathSegment
+    val url = new jURL(ju.getScheme,"", host ,ju.getPort, path,"","")
     val res = ops.URI(url.toString)
     res
   }

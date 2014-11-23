@@ -5,6 +5,7 @@ import org.w3.banana._
 import java.nio.file.Path
 import akka.actor._
 import akka.util.Timeout
+import org.w3.banana.io._
 import scala.concurrent.{ExecutionContext, Future}
 import akka.pattern.ask
 import rww.ldp._
@@ -17,7 +18,6 @@ import rww.ldp.LDPExceptions.ResourceDoesNotExist
 import rww.ldp.actor.common.CommonActorMessages.LDPSActorSetterMessage
 import rww.ldp.actor.common.CommonActorMessages.CmdMessage
 import rww.ldp.actor.common.CommonActorMessages.WebActorSetterMessage
-import org.w3.banana.plantain.LDPatch
 import scala.util.Try
 import spray.http.Uri
 
@@ -40,10 +40,9 @@ object RWWActorSystemImpl {
    */
   def withSubdomains[Rdf<:RDF](baseUri: Rdf#URI, baseDir: Path, fetcher: WebClient[Rdf])(implicit
                                                  ops: RDFOps[Rdf],
-                                                 sparqlGraph: SparqlGraph[Rdf],
-                                                 reader: RDFReader[Rdf, Turtle],
-                                                 writer: RDFWriter[Rdf, Turtle],
-                                                 patch: LDPatch[Rdf, Try],
+                                                 sparqlGraph: SparqlEngine[Rdf, Try,Rdf#Graph],
+                                                 reader: RDFReader[Rdf, Try, Turtle],
+                                                 writer: RDFWriter[Rdf, Try, Turtle],
                                                  ec: ExecutionContext,
                                                  timeout: Timeout): RWWActorSystem[Rdf] = {
     val cleanBaseUri = ops.URI(Uri(baseUri.toString).toString())
@@ -55,10 +54,9 @@ object RWWActorSystemImpl {
 
   def plain[Rdf<:RDF](baseUri: Rdf#URI, baseDir: Path, fetcher: WebClient[Rdf])(implicit
                                         ops: RDFOps[Rdf],
-                                        sparqlGraph: SparqlGraph[Rdf],
-                                        reader: RDFReader[Rdf, Turtle],
-                                        writer: RDFWriter[Rdf, Turtle],
-                                        patch: LDPatch[Rdf, Try],
+                                        sparqlGraph:SparqlEngine[Rdf, Try, Rdf#Graph],
+                                        reader: RDFReader[Rdf, Try, Turtle],
+                                        writer: RDFWriter[Rdf, Try, Turtle],
                                         ec: ExecutionContext,
                                         timeout: Timeout): RWWActorSystem[Rdf] = {
     val cleanBaseUri = ops.URI(Uri(baseUri.toString).toString())
