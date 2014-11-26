@@ -32,6 +32,7 @@ object ApplicationBuild extends Build {
 //  Seq("core",)
   Seq(
     akkaHttpCore,
+    ws,
     "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
     "nu.validator.htmlparser" % "htmlparser" % "1.2.1",
     "io.spray" % "spray-http" % "1.2.0",
@@ -50,29 +51,31 @@ object ApplicationBuild extends Build {
   )
 
 
-  val main = Project(appName, file(".")).enablePlugins(play.PlayScala).settings(
-    resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
-    resolvers += "Typesafe snapshots" at "http://repo.typesafe.com/typesafe/snapshots",
-    resolvers += "sesame-repo-releases" at "http://maven.ontotext.com/content/repositories/aduna/",
-    resolvers += "spray repo" at "http://repo.spray.io",
+  val main = Project(id = appName,
+    base = file("."),
+    settings =  Seq(
+      resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
+      resolvers += "Typesafe snapshots" at "http://repo.typesafe.com/typesafe/snapshots",
+      resolvers += "sesame-repo-releases" at "http://maven.ontotext.com/content/repositories/aduna/",
+      resolvers += "spray repo" at "http://repo.spray.io",
+      libraryDependencies ++= appDependencies,
+      ideaExcludeFolders := Seq(".idea",".idea_modules" ),
+      //    excludeFilter in (Compile, unmanagedSources) ~= { _ || new FileFilter {
+      //      def accept(f: File) = f.getPath.containsSlice("rww/rdf/jena/")
+      //      }
+      //    },
+      //  unmanagedSources in Compile <<= unmanagedSources in Compile map {files => files.foreach(f=>print("~~"+f));files},
+      //    resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
+      scalaVersion := "2.10.4",
+      javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
+      initialize := {
+        //thanks to http://stackoverflow.com/questions/19208942/enforcing-java-version-for-scala-project-in-sbt/19271814?noredirect=1#19271814
+        val _ = initialize.value // run the previous initialization
+        val specVersion = sys.props("java.specification.version")
+        assert(java.lang.Float.parseFloat(specVersion) >= 1.7, "Java 1.7 or above required. Your version is " + specVersion)
+      }
+    )
+  ).enablePlugins(play.PlayScala)
 
-    ideaExcludeFolders := Seq(".idea",".idea_modules" ),
-//    excludeFilter in (Compile, unmanagedSources) ~= { _ || new FileFilter {
-//      def accept(f: File) = f.getPath.containsSlice("rww/rdf/jena/")
-//      }
-//    },
-//  unmanagedSources in Compile <<= unmanagedSources in Compile map {files => files.foreach(f=>print("~~"+f));files},
-//    resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
-    scalaVersion := "2.10.4",
-    javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
-    initialize := {
-      //thanks to http://stackoverflow.com/questions/19208942/enforcing-java-version-for-scala-project-in-sbt/19271814?noredirect=1#19271814
-      val _ = initialize.value // run the previous initialization
-      val specVersion = sys.props("java.specification.version")
-      assert(java.lang.Float.parseFloat(specVersion) >= 1.7, "Java 1.7 or above required. Your version is " + specVersion)
-    }
-
-
-  )
 
 }

@@ -65,6 +65,7 @@ import play.api.mvc.ResponseHeader
  *
  */
 class StreamingCORSProxy_unworkable extends Controller {
+  import play.api.Play.current
 
   implicit val system = ActorSystem("MySystem")
   implicit val executionContext = scala.concurrent.ExecutionContext.global //todo: make sure this is right
