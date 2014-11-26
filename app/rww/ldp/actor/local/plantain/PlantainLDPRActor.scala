@@ -51,7 +51,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
     .softValues()
     .build(new CacheLoader[String, Try[LocalNamedResource[Rdf]]]() {
 
-    import scalax.io.{Resource => xResource}
+   // import scalax.io.{Resource => xResource}
 
     def load(key: String) = {
       //at this point it is still very easy - only two cases! but won't stay like this...
@@ -109,7 +109,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
    */
   @throws[ResourceDoesNotExist]
   def getResource(name: String): Try[LocalNamedResource[Rdf]] = {
-    import scalax.io.{Resource => xResource}
+    //import scalax.io.{Resource => xResource}
     //todo: the file should be verified to see if it is up to date.
     val resourceGet = resourceCache.get(name) match {
       case success@Success(LocalLDPR(_, _, path, updated, _)) if (path.toFile.lastModified() > updated.get.getTime) => {
