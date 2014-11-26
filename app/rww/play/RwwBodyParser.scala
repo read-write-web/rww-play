@@ -23,7 +23,7 @@ import org.w3.banana.io.MimeType
 import play.api.libs.Files.TemporaryFile
 import play.api.libs.iteratee.Input.Empty
 import play.api.libs.iteratee.{Done, Iteratee}
-import play.api.mvc.{BodyParser, RequestHeader, SimpleResult}
+import play.api.mvc.{BodyParser, RequestHeader, Result}
 import rww.play.rdf.IterateeSelector
 
 import scala.concurrent.ExecutionContext
@@ -52,7 +52,7 @@ class RwwBodyParser[Rdf <: RDF](base: URL)(implicit ops: RDFOps[Rdf],
   import play.api.mvc.Results._
 
 
-  def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[SimpleResult,RwwContent]] =  {
+  def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[Result,RwwContent]] =  {
 
     def messageAndCause(e: Throwable) = e.getMessage+" due to " + e.getCause
 

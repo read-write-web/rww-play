@@ -14,14 +14,16 @@ import scala.concurrent.Future
 object ActionUtils {
 
   object LoggingAction extends ActionBuilder[Request] {
-    override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[SimpleResult]): Future[SimpleResult] = {
+    override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]):
+    Future[Result] = {
       Logger.info("Calling action")
       block(request)
     }
   }
 
   object SignedQueryStringAction extends ActionBuilder[Request] {
-    override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[SimpleResult]): Future[SimpleResult] = {
+    override def invokeBlock[A](request: Request[A],
+                                block: (Request[A]) => Future[Result]): Future[Result] = {
       tryUnsignRequest(request) match {
         case Success(newReq) =>  block(newReq)
         case Failure(e) => {

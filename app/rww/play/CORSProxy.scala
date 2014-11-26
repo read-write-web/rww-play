@@ -17,7 +17,7 @@
 package rww.play
 
 import _root_.play.api.Logger
-import _root_.play.api.mvc.{AnyContent, SimpleResult, Controller, Action,Request => PlayRequest}
+import _root_.play.api.mvc.{Result,AnyContent, Controller, Action,Request => PlayRequest}
 import org.w3.banana.io.{ Writer, WriterSelector}
 import org.w3.banana.{RDFOps, RDF}
 import rww.play.PlayWriterBuilder._
@@ -65,7 +65,8 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
 
   // see https://github.com/stample/rww-play/issues/77
   // we don't want security warning on browser if there's an error
-  private def errorResult(result: SimpleResult,t: Throwable)(implicit url:String,request: PlayRequest[AnyContent]): SimpleResult = {
+  private def errorResult(result: Result,t: Throwable)
+                         (implicit url:String,request: PlayRequest[AnyContent]): Result = {
     val rez = result.withHeaders(
       AllowOriginHeader(request),
       AllowCredentialsHeader
@@ -103,7 +104,8 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
     }
   }
 
-  private def createResultForNamedResource(namedResource: NamedResource[Rdf])(implicit request: PlayRequest[AnyContent]): SimpleResult = {
+  private def createResultForNamedResource(namedResource: NamedResource[Rdf])
+                                          (implicit request: PlayRequest[AnyContent]): Result = {
     writerFor(request)(writerSelector).map { writer =>
       namedResource match {
         case ldpr: LDPR[Rdf] => createResultForLDPR(ldpr,writer)
@@ -113,7 +115,8 @@ class CORSProxy[Rdf<:RDF](val wsClient: WebClient[Rdf])
   }
 
 
-  private def createResultForLDPR(ldpr: LDPR[Rdf], writer: Writer[Rdf#Graph, Try, Any])(implicit request: PlayRequest[AnyContent]): SimpleResult = {
+  private def createResultForLDPR(ldpr: LDPR[Rdf], writer: Writer[Rdf#Graph, Try, Any])
+                                 (implicit request: PlayRequest[AnyContent]): Result = {
     // TODO maybe it's not a good idea to put AllowCredentialsHeader here? needs to be checked
     val hdrs = request.headers.toSimpleMap - "ContentType" + AllowCredentialsHeader
     //todo: this needs to be refined a lot, and thought through quite a lot more carefully

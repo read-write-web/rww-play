@@ -20,7 +20,7 @@ import java.io.ByteArrayOutputStream
 
 import org.w3.banana.io.{MediaRange, Writer, WriterSelector}
 import play.api.libs.iteratee.Enumerator
-import play.api.mvc.{RequestHeader, ResponseHeader, SimpleResult}
+import play.api.mvc.{RequestHeader, Result, ResponseHeader}
 
 import scala.util.Try
 
@@ -48,8 +48,8 @@ object PlayWriterBuilder {
    * @tparam Obj The type of the object to publish
    * @return A simple result
    */
-  def result[Obj](code: Int, writer: Writer[Obj,Try,_], headers: Map[String,String]=Map.empty)(obj: Obj) = {
-    SimpleResult(
+  def result[Obj](code: Int, writer: Writer[Obj,Try,_], headers: Map[String,String]=Map.empty)(obj: Obj): Result = {
+    Result(
       header = ResponseHeader(200, headers + ("Content-Type" -> writer.transformsTo.defaultMimeType.mime)),  //todo
       body   = toEnum(writer)(obj)
     )

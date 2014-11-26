@@ -16,7 +16,7 @@
 
 package controllers
 
-import play.api.mvc.{ResponseHeader, SimpleResult, Action, Controller}
+import play.api.mvc.{ResponseHeader, Result, Action, Controller}
 import play.api.data.format.Formatter
 import java.net.{MalformedURLException, URISyntaxException, URI, URL}
 import views.html
@@ -243,7 +243,7 @@ object ClientCertificateApp extends Controller {
       certForm.bindFromRequest.fold(
         errors => BadRequest(html.webid.cert.genericCertCreator(errors)),
         certreq => {
-          SimpleResult(
+          Result(
             //https://developer.mozilla.org/en-US/docs/NSS_Certificate_Download_Specification
             header = ResponseHeader(200, Map("Content-Type" -> "application/x-x509-user-cert")),
             body   = Enumerator(certreq.certificate.getEncoded)

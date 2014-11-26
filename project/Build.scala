@@ -1,8 +1,9 @@
+import com.typesafe.sbt.web.SbtWeb
 import org.sbtidea.SbtIdeaPlugin._
+import play.Play.autoImport._
+import play.twirl.sbt.SbtTwirl
 import sbt.Keys._
 import sbt._
-import play.Play.autoImport._
-import PlayKeys._
 
 object ApplicationBuild extends Build {
 
@@ -75,7 +76,7 @@ object ApplicationBuild extends Build {
         assert(java.lang.Float.parseFloat(specVersion) >= 1.7, "Java 1.7 or above required. Your version is " + specVersion)
       }
     )
-  ).enablePlugins(play.PlayScala)
+  ).enablePlugins(play.PlayScala).enablePlugins(SbtWeb).enablePlugins(SbtTwirl)
 
 
 }

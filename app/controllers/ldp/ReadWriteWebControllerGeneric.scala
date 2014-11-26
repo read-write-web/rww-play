@@ -10,7 +10,7 @@ import play.api.Logger
 import play.api.http.Status._
 import play.api.libs.iteratee.Enumerator
 import play.api.mvc.Results._
-import play.api.mvc.{ResponseHeader, SimpleResult, _}
+import play.api.mvc._
 import rww.ldp.LDPExceptions._
 import rww.ldp.auth.WebIDPrincipal
 import rww.ldp.model.{LocalLDPC, _}
@@ -107,7 +107,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
    * @param request
    * @return
    */
-  private def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[SimpleResult] = {
+  private def getAsync(implicit request: PlayApi.mvc.Request[AnyContent]): Future[Result] = {
     val getResult = for {
       authResult <- resourceManager.get(request, request.getAbsoluteURI)
     } yield writeGetResult(authResult)
@@ -171,7 +171,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
   }
 
   private def writeGetResult(authResult: AuthResult[NamedResource[Rdf]])
-                            (implicit request: PlayApi.mvc.Request[AnyContent]): SimpleResult = {
+                            (implicit request: PlayApi.mvc.Request[AnyContent]): Result = {
     def commonHeaders: List[(String, String)] =
       allowHeaders(authResult) ::: userHeader(authResult.authInfo.user).toList
 
@@ -222,7 +222,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     val pathUri = new java.net.URI(correctedPath)
     val coll = pathUri.resolve(".")
 
-    def mk(graph: Option[Rdf#Graph]): Future[SimpleResult] = {
+    def mk(graph: Option[Rdf#Graph]): Future[Result] = {
       val path = correctedPath.toString.substring(coll.toString.length)
       for (answer <- resourceManager.makeCollection(coll.toString, Some(path), graph))
       yield {
@@ -282,7 +282,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       case umt: UnsupportedMediaType => Results.UnsupportedMediaType(umt.getMessage + stackTrace(umt))
       case e: WrongTypeException =>
         //todo: the Allow methods should not be hardcoded.
-        SimpleResult(
+        Result(
           ResponseHeader(METHOD_NOT_ALLOWED),
           Enumerator(e.msg.getBytes("UTF-8"))
         )
@@ -292,7 +292,8 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
 
   private def slug(implicit request: PlayApi.mvc.Request[RwwContent]) = request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8"))
 
-  private def postGraph(rwwGraph: Option[Rdf#Graph])(implicit request: PlayApi.mvc.Request[RwwContent]): Future[SimpleResult] = {
+  private def postGraph(rwwGraph: Option[Rdf#Graph])
+                       (implicit request: PlayApi.mvc.Request[RwwContent]): Future[Result] = {
     for {
       location <- resourceManager.postGraph(slug, rwwGraph)
     } yield {

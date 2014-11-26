@@ -22,7 +22,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import akka.actor.ActorSystem
 import play.api.libs.iteratee._
 import play.api.libs.ws.WS
-import play.api.mvc.SimpleResult
+import play.api.mvc.Result
 import play.api.mvc.ResponseHeader
 
 /**
@@ -74,8 +74,8 @@ class StreamingCORSProxy_unworkable extends Controller {
 
   def get(url: String) = EssentialAction { request =>
     implicit val timeout = Timeout(10 * 1000)
-    val res: Iteratee[Array[Byte],SimpleResult] = Iteratee.ignore[Array[Byte]].mapM { Unit =>
-      val resultPromise = Promise[SimpleResult]()
+    val res: Iteratee[Array[Byte], Result] = Iteratee.ignore[Array[Byte]].mapM { Unit =>
+      val resultPromise = Promise[Result]()
       WS.url(url) //todo: develop a WS for each client, so that one can separate their views
         .withHeaders(request.headers.toSimpleMap.toSeq: _*) //todo: this looses headers, must fix WS.withHeaders method
         .get {  response =>

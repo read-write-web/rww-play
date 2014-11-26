@@ -12,7 +12,7 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.iteratee.Enumerator
 import play.api.mvc.Results._
-import play.api.mvc.{Action, ResponseHeader, SimpleResult}
+import play.api.mvc.{Action, ResponseHeader, Result}
 import play.api.templates.{Html, Txt}
 import rww.ldp.LDPCommand._
 import rww.ldp.actor.RWWActorSystem
@@ -238,7 +238,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
           case Some(subdomain) => {
             val rsaPublicKey = form.key.asInstanceOf[RSAPublicKey] // TODO unsafe? check with henry
             doCreateCertificate(subdomain,rsaPublicKey) map { certificate =>
-              SimpleResult(
+              Result(
                 //https://developer.mozilla.org/en-US/docs/NSS_Certificate_Download_Specification
                 header = ResponseHeader(200, Map("Content-Type" -> "application/x-x509-user-cert")),
                 body = Enumerator(certificate.getEncoded)
