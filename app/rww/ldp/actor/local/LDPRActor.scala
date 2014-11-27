@@ -1,4 +1,4 @@
-package rww.ldp.actor.plantain
+package rww.ldp.actor.local
 
 //import org.w3.banana.plantain.{LDPatch, PlantainLDPatch, Plantain}
 import java.io.{File, FileInputStream, FileOutputStream}
@@ -265,7 +265,6 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       case SelectLDPR(uri, query, bindings, k) => {
         getResource(localName(uri)) match {
           case Success(LocalLDPR(_,graph,_,_,_)) => {
-            import sparqlOps._
             sparqlGraph.executeSelect( graph, query, bindings).map { solutions =>
               rwwRouterActor.tell(ScriptMessage(k(solutions)), context.sender)
             }.failed.map { e =>

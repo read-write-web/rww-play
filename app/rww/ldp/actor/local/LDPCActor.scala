@@ -1,4 +1,4 @@
-package rww.ldp.actor.plantain
+package rww.ldp.actor.local
 
 import java.io.File
 import java.net.{URI => jURI}
@@ -7,9 +7,8 @@ import java.nio.file.{Path, _}
 import java.util
 import java.util.{Date, UUID}
 
-import akka.actor.{InvalidActorNameException, _}
+import akka.actor.{InvalidActorNameException,Props}
 import org.w3.banana.io._
-import org.w3.banana.sesame.Sesame
 import org.w3.banana.{RDF, _}
 import rww.ldp.LDPExceptions._
 import rww.ldp.actor.common.CommonActorMessages.ScriptMessage

@@ -1,4 +1,4 @@
-package rww.ldp.actor.plantain
+package rww.ldp.actor.local
 
 //import org.w3.banana.plantain.LDPatch
 import java.net.{URI => jURL}
@@ -8,7 +8,7 @@ import java.util
 
 import akka.actor.Props
 import org.w3.banana._
-import io._
+import org.w3.banana.io._
 
 import scala.util.Try
 

@@ -6,12 +6,12 @@ import java.nio.file.Path
 import akka.actor._
 import akka.util.Timeout
 import org.w3.banana.io._
+import rww.ldp.actor.local.{LDPCSubdomainActor, LDPCActor}
 import scala.concurrent.{ExecutionContext, Future}
 import akka.pattern.ask
 import rww.ldp._
 import rww.ldp.actor.router._
 import rww.ldp.actor.remote.LDPWebActor
-import rww.ldp.actor.plantain.{LDPCSubdomainActor, LDPCActor}
 import rww.ldp.actor.common.CommonActorMessages.ScriptMessage
 import akka.actor.DeadLetter
 import rww.ldp.LDPExceptions.ResourceDoesNotExist
