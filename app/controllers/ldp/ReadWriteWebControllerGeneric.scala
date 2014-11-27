@@ -193,7 +193,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
         val contentType = bin.mime.mime
         val headers =  "Content-Type" -> contentType :: linkHeaders(bin)::commonHeaders
 
-        SimpleResult(
+        Result(
           header = ResponseHeader(200, Map(headers:_*)),
           body = bin.readerEnumerator(1024 * 8)
         )
@@ -207,7 +207,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     getAsync(request).transform(res =>
     //Todo: this returns a Content-Length of 0, when it should either return none or the exact same as the original
     //see: http://stackoverflow.com/questions/3854842/content-length-header-with-head-requests
-      SimpleResult(res.header, Enumerator(Array[Byte]())),
+      Result(res.header, Enumerator(Array[Byte]())),
       e => e
     )
   }

@@ -6,6 +6,7 @@ import java.security.PublicKey
 import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPublicKey
 
+import org.bouncycastle.cert.X509CertificateHolder
 import org.w3.banana._
 import play.api.Logger
 import play.api.data.Form
@@ -13,7 +14,7 @@ import play.api.data.Forms._
 import play.api.libs.iteratee.Enumerator
 import play.api.mvc.Results._
 import play.api.mvc.{Action, ResponseHeader, Result}
-import play.api.templates.{Html, Txt}
+import play.twirl.api._
 import rww.ldp.LDPCommand._
 import rww.ldp.actor.RWWActorSystem
 import spray.http.Uri
@@ -250,7 +251,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     )
   }
 
-  def doCreateCertificate(subdomain: String,publicKey: RSAPublicKey): Future[X509Certificate] = {
+  def doCreateCertificate(subdomain: String,publicKey: RSAPublicKey): Future[X509CertificateHolder] = {
     getAdminResource(subdomain) flatMap { adminResourceWrapper =>
     // TODO check the subdomain and webid have been created ?
       val cardUri = adminResourceWrapper.webIdCardCreated.get
@@ -262,9 +263,9 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     }
   }
 
-  def createX509Certificate(webid: Rdf#URI,subdomain: String, key: PublicKey): X509Certificate = {
+  def createX509Certificate(webid: Rdf#URI,subdomain: String, key: PublicKey): X509CertificateHolder = {
     Logger.info(s"Adding new certificate for owner of domain $subdomain")
-    val webIdUrl = new jURL(Uri(webid.toString).toString())
+    val webIdUrl = new jURI(Uri(webid.toString).toString())
     val subdomainURL = RdfSetup.hostRootSubdomain(subdomain).toString
     val commonName = "WebID Cert for " +subdomainURL
     val certReq = CertReq(commonName,List(webIdUrl),key,ClientCertificateApp.tenMinutesAgo,ClientCertificateApp.yearsFromNow(2))

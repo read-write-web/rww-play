@@ -1,6 +1,7 @@
 import com.typesafe.sbt.web.SbtWeb
 import org.sbtidea.SbtIdeaPlugin._
 import play.Play.autoImport._
+import play.twirl.sbt.Import.TwirlKeys
 import play.twirl.sbt.SbtTwirl
 import sbt.Keys._
 import sbt._
@@ -32,19 +33,22 @@ object ApplicationBuild extends Build {
   val appDependencies = Seq("sesame", "jena", "plantain_jvm", "ntriples_jvm").map(banana) ++
 //  Seq("core",)
   Seq(
-    akkaHttpCore,
+//    akkaHttpCore,
     ws,
     "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
     "nu.validator.htmlparser" % "htmlparser" % "1.2.1",
     "io.spray" % "spray-http" % "1.2.0",
-    "org.scalaz" % "scalaz-core_2.10" % "7.0.0-RC1", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"
-    "org.bouncycastle" % "bcprov-jdk15on" % "1.47",
-    "org.scala-lang" % "scala-actors" % "2.10.0", //for tests because of sbt for some reason
+    "org.scalaz" %% "scalaz-core" % "7.0.1", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"
+    "org.bouncycastle" % "bcprov-jdk15on" % "1.51",
+    "org.bouncycastle" % "bcpkix-jdk15on" % "1.51",
+//    "org.scala-lang" % "scala-actors" % "2.10.0", //for tests because of sbt for some reason
     "net.sf.uadetector" % "uadetector-resources" % "2014.01",
+    "com.typesafe.akka" %% "akka-actor" % "2.3.4",
     iterateeDeps,
     "org.scalatest" %% "scalatest" % "2.0.RC1-SNAP4",
     "org.scala-lang" % "scala-actors" % "2.10.2",
-    "com.google.guava" % "guava" % "15.0",
+    // https://code.google.com/p/guava-libraries/
+    "com.google.guava" % "guava" % "18.0",
     "com.google.code.findbugs" % "jsr305" % "2.0.2",
     "com.typesafe" %% "play-plugins-mailer" % "2.2.0",
     "com.typesafe" %% "scalalogging-slf4j" % "1.0.1"
@@ -55,8 +59,8 @@ object ApplicationBuild extends Build {
   val main = Project(id = appName,
     base = file("."),
     settings =  Seq(
-      resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
-      resolvers += "Typesafe snapshots" at "http://repo.typesafe.com/typesafe/snapshots",
+//      resolvers += "Sonatype snapshots 2" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
+//      resolvers += "Typesafe snapshots" at "http://repo.typesafe.com/typesafe/snapshots",
       resolvers += "sesame-repo-releases" at "http://maven.ontotext.com/content/repositories/aduna/",
       resolvers += "spray repo" at "http://repo.spray.io",
       libraryDependencies ++= appDependencies,
@@ -69,6 +73,7 @@ object ApplicationBuild extends Build {
       //    resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
       scalaVersion := "2.10.4",
       javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
+      sourceDirectories in (Compile, TwirlKeys.compileTemplates) := (unmanagedSourceDirectories in Compile).value,
       initialize := {
         //thanks to http://stackoverflow.com/questions/19208942/enforcing-java-version-for-scala-project-in-sbt/19271814?noredirect=1#19271814
         val _ = initialize.value // run the previous initialization

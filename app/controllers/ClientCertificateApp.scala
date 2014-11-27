@@ -16,110 +16,106 @@
 
 package controllers
 
-import play.api.mvc.{ResponseHeader, Result, Action, Controller}
-import play.api.data.format.Formatter
-import java.net.{MalformedURLException, URISyntaxException, URI, URL}
-import views.html
-import java.security.{KeyPairGenerator, SecureRandom, Security, PublicKey}
-import org.bouncycastle.util.encoders.Base64
-import org.bouncycastle.jce.netscape.NetscapeCertRequest
-import java.io.IOException
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import play.api.Logger
-import java.security.cert.X509Certificate
-import sun.security.x509._
-import java.util.Date
+import java.io.{ByteArrayInputStream, IOException}
 import java.math.BigInteger
-import play.api.libs.iteratee.Enumerator
-import webid.WebID
+import java.net.{MalformedURLException, URI, URISyntaxException}
+import java.security._
+import java.security.interfaces.RSAPrivateCrtKey
+import java.util.Date
 
-case class CertReq(cn: String, webids: List[URL], subjPubKey: PublicKey, validFrom: Date, validTo: Date) {//, email: List[URI], )
-  import CertReq._
+import org.bouncycastle.asn1._
+import org.bouncycastle.asn1.misc.{MiscObjectIdentifiers, NetscapeCertType}
+import org.bouncycastle.asn1.pkcs.RSAPrivateKey
+import org.bouncycastle.asn1.x500.X500Name
+import org.bouncycastle.asn1.x509._
+import org.bouncycastle.cert.{X509CertificateHolder, X509v3CertificateBuilder}
+import org.bouncycastle.crypto.params.{RSAKeyParameters, RSAPrivateCrtKeyParameters}
+import org.bouncycastle.jce.netscape.NetscapeCertRequest
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.operator.bc.BcRSAContentSignerBuilder
+import org.bouncycastle.operator.{DefaultDigestAlgorithmIdentifierFinder, DefaultSignatureAlgorithmIdentifierFinder}
+import org.bouncycastle.util.encoders.Base64
+import play.api.Logger
+import play.api.data.format.Formatter
+import play.api.libs.iteratee.Enumerator
+import play.api.mvc.{Action, Controller, ResponseHeader, Result}
+
+//import sun.security.x509._
+import views.html
+
+case class CertReq(cn: String, webids: List[URI], subjPubKey: PublicKey, validFrom: Date, validTo: Date) {//, email: List[URI], )
 
   /**
-   * We use sun.security.* for the moment in the hope that those will be placed on maven central
-   * at some point http://stackoverflow.com/questions/12982595/openjdk-sun-security-libs-on-maven
-   * @param req request information to build the certificate
-   * @return an X509Certificate signed by the ∅ organisation
+   * For more info on using bouncy castle to create certs see
+   * https://www.mayrhofer.eu.org/create-x509-certs-in-java
+   *
+   * Previous code used sun.security.* which is easier to code to, but not
+   * available on every platform, and prone to change between versions. If one could
+   * have it on maven central that would make it really useful. see
+   * http://stackoverflow.com/questions/12982595/openjdk-sun-security-libs-on-maven
+   *
+   * @return an X509CertificateHolder signed by the {} organisation
    */
-  lazy val certificate: X509Certificate = {
-    var info = new X509CertInfo
-    val interval = new CertificateValidity(validFrom, validTo)
-    val serialNumber = new BigInteger(64, new SecureRandom)
-    val subjectXN = new X500Name(subjectDN(cn))
-    val issuerXN = new X500Name(issuer)
+  lazy val certificate: X509CertificateHolder = {
 
-    info.set(X509CertInfo.VALIDITY, interval)
-    info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(serialNumber))
-    info.set(X509CertInfo.SUBJECT, new CertificateSubjectName(subjectXN))
-    info.set(X509CertInfo.ISSUER, new CertificateIssuerName(issuerXN))
-    info.set(X509CertInfo.KEY, new CertificateX509Key(subjPubKey))
-    info.set(X509CertInfo.VERSION, new CertificateVersion(CertificateVersion.V3))
+    val x509Builder = new X509v3CertificateBuilder(
+      new X500Name(CertReq.issuer),
+      BigInteger.valueOf(System.currentTimeMillis),
+      validFrom,
+      validTo,
+      new X500Name("DN="+cn),
+      new SubjectPublicKeyInfo(
+        new ASN1InputStream(
+          new ByteArrayInputStream(subjPubKey.getEncoded)
+        ).readObject().asInstanceOf[ASN1Sequence]
+      )
+    )
 
-    //
-    //extensions
-    //
-    val extensions = new CertificateExtensions
+    val ids = new GeneralNames(
+      webids.toArray.collect {
+          case webid if List("http","https").contains(webid.getScheme.toLowerCase) =>
+            new GeneralName(
+              GeneralName.uniformResourceIdentifier,
+              webid.toString
+            )
+          case mailUri if mailUri.getScheme.equalsIgnoreCase("mailto") =>
+            new GeneralName(GeneralName.rfc822Name, mailUri.getSchemeSpecificPart)
+        }
+    )
+    x509Builder.addExtension(
+      Extension.subjectAlternativeName,
+      true,
+      ids
+    )
+    x509Builder.addExtension(Extension.keyUsage, true, new KeyUsage(
+      KeyUsage.digitalSignature | KeyUsage.nonRepudiation
+        | KeyUsage.keyEncipherment | KeyUsage.keyAgreement
+        | KeyUsage.keyCertSign));
 
-    val sans = new GeneralNames()
-    for (webId <- webids){
-      sans.add(new GeneralName(new URIName(webId.toExternalForm)))
-    }
-    val sanExt =
-      new SubjectAlternativeNameExtension(false,sans)
+    x509Builder.addExtension(Extension.basicConstraints, true,
+      new BasicConstraints(false));
 
-    extensions.set(sanExt.getName, sanExt)
+    x509Builder.addExtension(MiscObjectIdentifiers.netscapeCertType,
+      false, new NetscapeCertType(NetscapeCertType.sslClient
+        | NetscapeCertType.smime))
 
-    val basicCstrExt = new BasicConstraintsExtension(false,1)
-    extensions.set(basicCstrExt.getName,basicCstrExt)
-
-    {
-      import KeyUsageExtension._
-      val keyUsage = new KeyUsageExtension
-      val usages =
-        List(DIGITAL_SIGNATURE, NON_REPUDIATION, KEY_ENCIPHERMENT, KEY_AGREEMENT)
-      usages foreach { usage => keyUsage.set(usage, true) }
-      extensions.set(keyUsage.getName,keyUsage)
-    }
-
-    {
-      import NetscapeCertTypeExtension._
-      val netscapeExt = new NetscapeCertTypeExtension
-      List(SSL_CLIENT, S_MIME) foreach { ext => netscapeExt.set(ext, true) }
-      extensions.set(
-        netscapeExt.getName,
-        new NetscapeCertTypeExtension(false, netscapeExt.getExtensionValue().clone))
-    }
-
-    val subjectKeyExt =
-      new SubjectKeyIdentifierExtension(new KeyIdentifier(subjPubKey).getIdentifier)
-
-    extensions.set(subjectKeyExt.getName, subjectKeyExt)
-
-    info.set(X509CertInfo.EXTENSIONS, extensions)
-
-    val algo = issuerKey.getPublic.getAlgorithm match {
-      case "DSA" => new AlgorithmId(AlgorithmId.sha1WithDSA_oid )
-      case "RSA" => new AlgorithmId(AlgorithmId.sha1WithRSAEncryption_oid)
-      case _ => sys.error("Don't know how to sign with this type of key")
+    val sigAlgId = new DefaultSignatureAlgorithmIdentifierFinder().find("SHA1withRSA")
+    val digAlgId = new DefaultDigestAlgorithmIdentifierFinder().find(sigAlgId)
+    val rsaParams = CertReq.issuerKey.getPrivate match {
+      case k: RSAPrivateCrtKey =>
+        new RSAPrivateCrtKeyParameters(
+          k.getModulus(), k.getPublicExponent(), k.getPrivateExponent(),
+          k.getPrimeP(), k.getPrimeQ(), k.getPrimeExponentP(), k.getPrimeExponentQ(),
+          k.getCrtCoefficient());
+      case k: RSAPrivateKey =>
+        new RSAKeyParameters(true, k.getModulus(), k.getPrivateExponent());
     }
 
-    info.set(X509CertInfo.ALGORITHM_ID, new CertificateAlgorithmId(algo))
 
-    // Sign the cert to identify the algorithm that's used.
-    val tmpCert = new X509CertImpl(info)
-    tmpCert.sign(issuerKey.getPrivate, algo.getName)
-
-    //update the algorithm and re-sign
-    val sigAlgo = tmpCert.get(X509CertImpl.SIG_ALG).asInstanceOf[AlgorithmId]
-    info.set(CertificateAlgorithmId.NAME + "." + CertificateAlgorithmId.ALGORITHM, sigAlgo)
-    val cert = new X509CertImpl(info)
-    cert.sign(issuerKey.getPrivate,algo.getName)
-
-    //no need to verify. perhaps only in test mode
-    cert.verify(issuerKey.getPublic)
-    cert
+    val sigGen = new BcRSAContentSignerBuilder(sigAlgId, digAlgId).build(rsaParams);
+    x509Builder.build(sigGen)
   }
+
 }
 /**
  * This could be improved later by creating a class that takes a certificate chain ending in a cert
@@ -128,12 +124,12 @@ case class CertReq(cn: String, webids: List[URL], subjPubKey: PublicKey, validFr
  */
 object CertReq {
   // a special issuer the empty set of Organisations, ie the organisation of anything that self signs.
-  val issuer = WebID.DnName;
+  lazy val issuer = "CN=WebID,O={}"
 
   //the ∅ user can have a different key every time. It is of no importance.
-  val issuerKey = {
+  lazy val issuerKey = {
     val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
-    keyPairGenerator.initialize(1024)
+    keyPairGenerator.initialize(2048)
     keyPairGenerator.generateKeyPair()
   }
   /**
@@ -150,8 +146,8 @@ object CertReq {
  *  Application to create client certificates
  */
 object ClientCertificateApp extends Controller {
-  import play.api.data._
   import play.api.data.Forms._
+  import play.api.data._
   //does it make sense to make the challenge random? what security benefits would be gained?
   val challenge = "AStaticallyEncodedString"
   val log = Logger("RWW").logger
@@ -160,8 +156,8 @@ object ClientCertificateApp extends Controller {
     Security.addProvider(new BouncyCastleProvider());
   }
 
-  implicit val absUrlFormat: Formatter[Option[URL]] = new Formatter[Option[URL]] {
-    def bind(key: String, data: Map[String, String]):  Either[Seq[FormError], Option[URL]] =
+  implicit val absUriFormat: Formatter[Option[URI]] = new Formatter[Option[URI]] {
+    def bind(key: String, data: Map[String, String]):  Either[Seq[FormError], Option[URI]] =
       data.get(key).map { san =>
         try {
           val trimmedSan = san.trim
@@ -169,7 +165,7 @@ object ClientCertificateApp extends Controller {
           else {
             val uri = new URI(trimmedSan)
             if (uri.isAbsolute && null != uri.getAuthority )
-              Right(Some(uri.toURL))
+              Right(Some(uri))
             else Left(Seq(FormError(key,"error.url.notabsolute",Nil)))
           }
         } catch {
@@ -179,7 +175,7 @@ object ClientCertificateApp extends Controller {
       }.getOrElse(Right(None))
 
 
-    def unbind(key: String, value: Option[URL]) = value match {
+    def unbind(key: String, value: Option[URI]) = value match {
       case Some(url) => Map(key -> value.toString)
       case None => Map()
     }
@@ -188,8 +184,6 @@ object ClientCertificateApp extends Controller {
   /**
    * Find the public key from a certificate request in spkac format
    *
-   * @param spkac a Base64 <a href="http://dev.w3.org/html5/spec/Overview.html#the-keygen-element">Signed Public Key
-   *              And Challenge</a> as sent by the browser's
    * @return a validation containing either a public key or an exception
    */
   val spkacFormatter: Formatter[PublicKey] =
@@ -224,14 +218,14 @@ object ClientCertificateApp extends Controller {
 
   //start ten minuted ago, in order to avoid problems with watch synchronisations. Should be longer
   def tenMinutesAgo = new Date(System.currentTimeMillis() - (10*1000*60).toLong)
-  def yearsFromNow(year: Int) =  new Date(System.currentTimeMillis() + (365L*24L*60L*60L*1000L).toLong)
+  def yearsFromNow(years: Long) =  new Date(System.currentTimeMillis() + (years*365L*24L*60L*60L*1000L).toLong)
 
 
   val certForm = Form(
     mapping(
       "CN" -> email,
-      "webids" -> list(of[Option[URL]]).
-        transform[List[URL]](_.flatten,_.map(e=>Some(e))).
+      "webids" -> list(of[Option[URI]]).
+        transform[List[URI]](_.flatten,_.map(e=>Some(e))).
         verifying("require at least one WebID", _.size > 0),
       "spkac" -> of(spkacFormatter),
       "years" -> number(min=1,max=20)
@@ -253,7 +247,7 @@ object ClientCertificateApp extends Controller {
   }
 
   def get = Action { req =>
-    val webids =  req.queryString.get("webid").toList.flatten.map(new URL(_))
+    val webids =  req.queryString.get("webid").toList.flatten.map(new URI(_))
     Ok(views.html.webid.cert.genericCertCreator(certForm.fill(CertReq("",webids,null,null,null))))
   }
 

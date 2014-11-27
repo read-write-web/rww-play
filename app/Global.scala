@@ -6,12 +6,13 @@
 import controllers.ldp
 import controllers.ldp.ReadWriteWebController
 import play.api._
-import mvc.RequestHeader
+import play.api.mvc.RequestHeader
+
 
 object Global extends GlobalSettings {
 
   override def onRouteRequest(req: RequestHeader) = {
-    import rww.play.EnhancedRequestHeader
+    import _root_.rww.play.EnhancedRequestHeader
 
     val uri = req.getAbsoluteURI
     if (
@@ -20,7 +21,7 @@ object Global extends GlobalSettings {
       || uri.getHost().startsWith("www") ) {
       super.onRouteRequest(req)
     }
-    else if (uri.getHost != controllers.RdfSetup.host) {
+    else if (uri.getHost != _root_.controllers.RdfSetup.host) {
       req.method match {
         case "GET" => Some(ReadWriteWebController.get(req.path))
         case "POST" => Some(ldp.ReadWriteWebController.post(req.path))

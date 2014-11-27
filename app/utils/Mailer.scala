@@ -1,6 +1,6 @@
 package utils
 
-import play.api.templates.{Html, Txt}
+import play.twirl.api.{Html, Txt}
 import play.api.Logger
 import play.api.libs.concurrent.Akka
 import play.api.Play._

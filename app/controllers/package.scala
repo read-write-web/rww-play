@@ -9,7 +9,7 @@ import _root_.play.api.{Logger, Play}
 import akka.actor.ActorSystem
 import akka.util.Timeout
 import org.w3.banana.io.WriterSelector
-import org.w3.banana.{RDF, RDFOps, SparqlOps, SparqlSolutionsWriterSelector}
+import org.w3.banana._
 import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
 import rww.ldp.{WSClient, WebClient}
 import rww.play.rdf.IterateeSelector
@@ -115,10 +115,11 @@ trait RdfSetup  {
   type Rdf <: RDF
   implicit val system = ActorSystem("MySystem")
   implicit val ec: ExecutionContext = system.dispatcher
+  implicit val timeout = Timeout(30,TimeUnit.SECONDS)
 
   implicit val ops: RDFOps[Rdf]
   implicit val sparqlOps: SparqlOps[Rdf]
-  implicit val timeout = Timeout(30,TimeUnit.SECONDS)
+  implicit val sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph]
 
   implicit val graphIterateeSelector: IterateeSelector[Rdf#Graph]
   implicit val sparqlSelector:  IterateeSelector[Rdf#Query]
@@ -141,6 +142,8 @@ trait SesameSetup extends RdfSetup with Setup {
   type Rdf = Sesame
   implicit val ops: RDFOps[Rdf] = Sesame.ops
   implicit val sparqlOps: SparqlOps[Rdf] = Sesame.sparqlOps
+  implicit val sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] = Sesame.sparqlGraph
+
 
   val blockingIteratee = new SesameBlockingRDFIteratee
   implicit val graphIterateeSelector: IterateeSelector[Rdf#Graph] = blockingIteratee.BlockingIterateeSelector

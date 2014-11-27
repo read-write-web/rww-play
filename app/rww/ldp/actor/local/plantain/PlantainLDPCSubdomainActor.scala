@@ -20,7 +20,8 @@ import scala.util.Try
  */
 class LDPCSubdomainActor[Rdf<:RDF] (ldpcUri: Rdf#URI, root: Path)
                                  (implicit ops: RDFOps[Rdf],
-//                                  sparqlGraph: SparqlGraph[Rdf],
+                                    sparqlOps: SparqlOps[Rdf],
+                                    sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph],
                                   reader: RDFReader[Rdf, Try, Turtle],
                                   writer: RDFWriter[Rdf, Try, Turtle]
 //                                  patch: LDPatch[Rdf, Try]

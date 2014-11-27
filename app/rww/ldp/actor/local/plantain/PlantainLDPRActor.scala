@@ -28,9 +28,10 @@ import scalaz.{-\/, \/-}
 
 class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
                        (implicit ops: RDFOps[Rdf],
-//                        sparqlGraph: SparqlGraph[Rdf],
-                        reader: RDFReader[Rdf,Try, Turtle],
-                        writer: RDFWriter[Rdf,Try, Turtle]
+                         sparqlOps: SparqlOps[Rdf],
+                         sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph],
+                         reader: RDFReader[Rdf, Try, Turtle],
+                         writer: RDFWriter[Rdf, Try, Turtle]
 //                        patch: LDPatch[Rdf,Try]
 //                        adviceSelector: AdviceSelector[Rdf]= new EmptyAdviceSelector
                          ) extends RWWBaseActor {
@@ -261,16 +262,20 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       //          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
       //        }
       //      }
-      //      case SelectLDPR(uri, query, bindings, k) => {
-      //        getResource(localName(uri)) match {
-      //          case Success(LocalLDPR(_,graph,_,_,_)) => {
-      //            val solutions = sparqlGraph(graph).executeSelect(query, bindings)
-      //            rwwRouterActor.tell(ScriptMessage(k(solutions)),context.sender)
-      //          }
-      //          case Success(_) => context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
-      //          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
-      //        }
-      //      }
+      case SelectLDPR(uri, query, bindings, k) => {
+        getResource(localName(uri)) match {
+          case Success(LocalLDPR(_,graph,_,_,_)) => {
+            import sparqlOps._
+            sparqlGraph.executeSelect( graph, query, bindings).map { solutions =>
+              rwwRouterActor.tell(ScriptMessage(k(solutions)), context.sender)
+            }.failed.map { e =>
+              context.sender ! akka.actor.Status.Failure(e)
+            }
+          }
+          case Success(_) => context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
+          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
+        }
+      }
       //      case ConstructLDPR(uri, query, bindings, k) => {
       //        getResource(localName(uri)).get match {
       //          case LocalLDPR(_,graph,_,_,_) => {

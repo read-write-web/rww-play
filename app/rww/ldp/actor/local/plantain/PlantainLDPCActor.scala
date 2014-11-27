@@ -9,6 +9,7 @@ import java.util.{Date, UUID}
 
 import akka.actor.{InvalidActorNameException, _}
 import org.w3.banana.io._
+import org.w3.banana.sesame.Sesame
 import org.w3.banana.{RDF, _}
 import rww.ldp.LDPExceptions._
 import rww.ldp.actor.common.CommonActorMessages.ScriptMessage
@@ -28,7 +29,8 @@ import scala.util.{Failure, Success, Try}
  */
 class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
                                  (implicit ops: RDFOps[Rdf],
-//                                  sparqlGraph: SparqlGraph[Rdf],
+                                  sparqlOps: SparqlOps[Rdf],
+                                  sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph],
                                   reader: RDFReader[Rdf, Try, Turtle],
                                   writer: RDFWriter[Rdf, Try, Turtle]
 //                                  patch: LDPatch[Rdf, Try]
