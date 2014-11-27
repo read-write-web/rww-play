@@ -52,39 +52,58 @@ class RwwBodyParser[Rdf <: RDF](base: URL)(implicit ops: RDFOps[Rdf],
   import play.api.mvc.Results._
 
 
-  def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[Result,RwwContent]] =  {
+  def apply(rh: RequestHeader): Iteratee[Array[Byte],Either[Result,RwwContent]] = {
 
-    def messageAndCause(e: Throwable) = e.getMessage+" due to " + e.getCause
+    def messageAndCause(e: Throwable): String = e.getMessage + " due to " + e.getCause
 
-    if (rh.method == "GET" || rh.method == "HEAD" || rh.method == "OPTIONS") Done(Right(emptyContent), Empty)
-    else if ( ! rh.headers.get("Content-Length").exists( Integer.parseInt(_) > 0 )) {
+    if (rh.method == "GET" || rh.method == "HEAD" || rh.method == "OPTIONS")
+      Done(Right(emptyContent), Empty)  //todo: should this consume all the input?
+    else if (!rh.headers.get("Content-Length").exists(Integer.parseInt(_) > 0)) {
       Done(Right(emptyContent), Empty)
-    } else rh.contentType.flatMap(MimeType.parse(_)) map { mime: MimeType =>
-       mime match {
-        case sparqlSelector(iteratee) => iteratee(Option(new URL(base,rh.path))).map {
-          case Failure(e) => Left(BadRequest(messageAndCause(e)))
-          case Success(sparql) => Right(QueryRwwContent(sparql))
-        }
-        case graphSelector(iteratee) => iteratee().map {
-          case Failure(e) => Left(BadRequest(messageAndCause(e)))
-          case Success(graph) => Right(GraphRwwContent(graph))
-        }
-        case sparqlUpdateSelector(iteratee) => iteratee(Option(new URL(base,rh.path))).map {
-          case Failure(e) => Left(BadRequest(messageAndCause(e)))
-          case Success(update) => Right(PatchRwwContent(update))
-        }
-        //todo: it would nice not to have to go through temporary files, but be able to pass on the iteratee
-        //todo: on systems where the result may be on a remote file system this would be very important.
-        case mime: MimeType => {
-          val parser = parse.temporaryFile.map {
-            file => BinaryRwwContent(file, mime)
+    } else {
+      rh.contentType.flatMap(MimeType.parse(_)) map { mime: MimeType =>
+        rh.method match {
+          case "SEARCH" => mime match {
+            case sparqlSelector(iteratee) => iteratee(Option(new URL(base, rh.path))).map {
+              case Failure(e) => Left(BadRequest(messageAndCause(e)))
+              case Success(sparql) => Right(QueryRwwContent(sparql))
+            }
+            case other => Iteratee.consume[Array[Byte]]().map(_ =>
+              Left(UnsupportedMediaType(
+                "The SEARCH verb only allows SPARQL Queries at present. You sent " + other
+              ))
+            )
           }
-          parser(rh)
+          case "PATCH" => mime match {
+            case sparqlUpdateSelector(iteratee) => iteratee(Option(new URL(base, rh.path))).map {
+              case Failure(e) => Left(BadRequest(messageAndCause(e)))
+              case Success(update) => Right(PatchRwwContent(update))
+            }
+            case other => Iteratee.consume[Array[Byte]]().map(_ =>
+              Left(UnsupportedMediaType(
+                "The PATCH verb only allows SPARQL PATCH Queries at present. You sent " + other
+              ))
+            )
+          }
+          case "PUT" | "POST" => mime match {
+            case graphSelector(iteratee) => iteratee().map {
+              case Failure(e) => Left(BadRequest(messageAndCause(e)))
+              case Success(graph) => Right(GraphRwwContent(graph))
+            }
+            //todo: it would nice not to have to go through temporary files, but be able to pass on the iteratee
+            //todo: on systems where the result may be on a remote file system this would be very important.
+            case mime: MimeType => {
+              val parser = parse.temporaryFile.map {
+                file => BinaryRwwContent(file, mime)
+              }
+              parser(rh)
+            }
+          }
         }
+      } getOrElse {
+        Done(Left(BadRequest("missing Content-type header. Please set the content type in the HTTP header of your message ")),
+          Empty)
       }
-    } getOrElse {
-      Done(Left(BadRequest("missing Content-type header. Please set the content type in the HTTP header of your message ")),
-        Empty)
     }
   }
 

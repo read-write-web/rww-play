@@ -69,7 +69,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
         case Method.Append => {
           if (isLDPC) "POST" else ""
         }
-        case Method.Read => "GET, HEAD"
+        case Method.Read => "GET, HEAD, SEARCH"
         case Method.Write => "PUT, PATCH, DELETE" + {
           if (isLDPC) ", POST" else ""
         }
@@ -87,7 +87,6 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
   }
 
   def options(file: String) = head(file)
-
 
 
   /**
@@ -270,10 +269,9 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
 
 
   def post(path: String) = Action.async(rwwBodyParser) { implicit request =>
-    Logger.debug(s"Post on $path some body of type ${request.body.getClass}")
+    Logger.debug(s"POST on $path some body of type ${request.body.getClass}")
     val future = request.body match {
       case rwwGraph: GraphRwwContent[Rdf] => postGraph(Some(rwwGraph.graph))
-      case rwwQuery: QueryRwwContent[Rdf] => postRwwQuery(rwwQuery)
       case rwwBinaryContent: BinaryRwwContent => postBinaryContent(rwwBinaryContent)
       case emptyContent => postGraph(None)
     }
@@ -289,6 +287,28 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
     }
   }
+
+  def search(path: String) = Action.async(rwwBodyParser) { implicit request =>
+    Logger.debug(s"SEARCH on $path some body of type ${request.body.getClass}")
+    val future = request.body match {
+      case rwwQuery: QueryRwwContent[Rdf] => postRwwQuery(rwwQuery)
+      case other => Future.failed(
+        rww.ldp.LDPExceptions.UnsupportedMediaType("We only support SPARQL Queries at present")
+      )
+    }
+    future recover {
+      case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
+      case umt: UnsupportedMediaType => Results.UnsupportedMediaType(umt.getMessage + stackTrace(umt))
+      case e: WrongTypeException =>
+        //todo: the Allow methods should not be hardcoded.
+        Result(
+          ResponseHeader(METHOD_NOT_ALLOWED),
+          Enumerator(e.msg.getBytes("UTF-8"))
+        )
+      case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
+    }
+  }
+
 
   private def slug(implicit request: PlayApi.mvc.Request[RwwContent]) = request.headers.get("Slug").map(t => URLDecoder.decode(t, "UTF-8"))
 
@@ -309,7 +329,8 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     }
   }
 
-  private def postRwwQuery(query: QueryRwwContent[Rdf])(implicit request: PlayApi.mvc.Request[RwwContent]) = {
+  private def postRwwQuery(query: QueryRwwContent[Rdf])
+                          (implicit request: PlayApi.mvc.Request[RwwContent]): Future[Result] = {
     for {
       answer <- resourceManager.postQuery(request.path, query)
     } yield {

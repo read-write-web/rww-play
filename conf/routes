@@ -34,7 +34,7 @@ DELETE        /2013/$file<.*>                          controllers.ldp.ReadWrite
 PATCH         /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.patch(file)
 HEAD          /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.head(file)
 OPTIONS       /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.options(file)
-
+SEARCH        /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.search(file)
 
 POST          /srv/certgen                             controllers.ClientCertificateApp.generate
 GET           /srv/certgen                             controllers.ClientCertificateApp.get
