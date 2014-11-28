@@ -21,8 +21,6 @@ import scala.util.Try
  */
 trait BinaryResource[Rdf<:RDF] extends NamedResource[Rdf]  {
 
-  def size: Option[Long]
-
   def mime: MimeType
 
   // creates a new BinaryResource, with new time stamp, etc...
@@ -46,10 +44,6 @@ case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI,metaData:
   /** context specific metadata */
   override def contextualMetadata = None
 
-  // also should be on a metadata trait, since all resources have update times
-  def updated = Try { new Date(Files.getLastModifiedTime(path).toMillis) }.toOption
-
-  val size = Try { Files.size(path) }.toOption
 
   def mime = {
     (for {

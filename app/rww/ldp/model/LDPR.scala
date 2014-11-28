@@ -42,7 +42,6 @@ trait LDPC[Rdf <: RDF] extends LDPR[Rdf]
 case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
                                graph: Rdf#Graph,
                                path: Path,
-                               updated: Option[Date] = Some(new Date),
                                contextualMetadata: Option[Rdf#Graph] = None)
                               (implicit val ops: RDFOps[Rdf])
   extends LDPR[Rdf] with LocalNamedResource[Rdf] {
@@ -56,8 +55,6 @@ case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
   def typeMetadata =  (location -- rdf.typ ->- ldp.Resource).graph
 
 
-  //todo: build up aclPath from local info
-  def size = None
 
 }
 
@@ -68,7 +65,6 @@ case class LocalLDPR[Rdf<:RDF](location: Rdf#URI,
 case class LocalLDPC[Rdf<:RDF](location: Rdf#URI,
                                graph: Rdf#Graph,
                                path: Path,
-                               updated: Option[Date] = Some(new Date),
                                contextualMetadata: Option[Rdf#Graph] = None)
                               (implicit val ops: RDFOps[Rdf])
   extends LDPR[Rdf] with LocalNamedResource[Rdf] {
@@ -81,13 +77,13 @@ case class LocalLDPC[Rdf<:RDF](location: Rdf#URI,
   def typeMetadata =  (location -- rdf.typ ->- ldp.BasicContainer).graph
 
 
-  //todo: build up aclPath from local info
-  def size = None
-
 }
 
 
-case class RemoteLDPR[Rdf<:RDF](location: Rdf#URI, graph: Rdf#Graph, meta: Try[PointedGraph[Rdf]], updated: Option[Date])
+case class RemoteLDPR[Rdf<:RDF](location: Rdf#URI,
+                                graph: Rdf#Graph,
+                                meta: Try[PointedGraph[Rdf]],
+                                updated: Try[Date])
                                (implicit val ops: RDFOps[Rdf]) extends LDPR[Rdf] {
   import org.w3.banana.diesel._
 
@@ -103,5 +99,8 @@ case class RemoteLDPR[Rdf<:RDF](location: Rdf#URI, graph: Rdf#Graph, meta: Try[P
     }
     optURI.getOrElse(Failure(new InformationNotFound("No acl to be found in Link headers")))
   }
-  def size = None
+
+  def size = Failure(???) //todo, implement correctly
+
+  override def etag = Failure(???) //todo, implement correctly
 }

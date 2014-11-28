@@ -1,7 +1,7 @@
 package rww.rdf.util
 
 import org.w3.banana.{RDFOps, RDF}
-import spray.http.Uri
+import akka.http.model.Uri
 /**
  * Created by hjs on 19/02/2014.
  */

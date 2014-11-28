@@ -99,7 +99,7 @@ class WSClient[Rdf <: RDF](readerSelector: ReaderSelector[Rdf, Try], rdfWriter: 
               val updated = Try {
                 DateUtil.parseDate(headers.getFirstValue("Last-Modified"))
               }
-              Future.successful(RemoteLDPR(URI(url.toString), graph, meta, updated.toOption))
+              Future.successful(RemoteLDPR(URI(url.toString), graph, meta, updated))
             }
             case Failure(e) => {
               val msg = s"WebClient for $url -> ContentType=[${maybeContentType}] -> Can't parse body as an RDF graph" +

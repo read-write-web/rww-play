@@ -17,7 +17,7 @@ import rww.ldp.actor.common.RWWBaseActor
 import rww.ldp.model._
 import rww.ldp.{DeleteResource, GetMeta, GetResource, UpdateLDPR, _}
 import rww.rdf.util.StatPrefix
-import spray.http.Uri
+import akka.http.model.Uri
 import utils.FileUtils._
 
 import scala.collection.convert.decorateAsScala._
@@ -64,7 +64,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
           using(new FileInputStream(file)) { in =>
 
             reader.read(in, iri.toString).map { g =>
-              LocalLDPR[Rdf](iri, g, path, Option(new Date(path.toFile.lastModified())))
+              LocalLDPR[Rdf](iri, g, path)
             } recover {
               case RDFParseExceptionMatcher(e) => throw UnparsableSource(s"Can't parse resource $iri as an RDF file", e)
             }
@@ -113,7 +113,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
     //import scalax.io.{Resource => xResource}
     //todo: the file should be verified to see if it is up to date.
     val resourceGet = resourceCache.get(name) match {
-      case success@Success(LocalLDPR(_, _, path, updated, _)) if (path.toFile.lastModified() > updated.get.getTime) => {
+      case Success(lnr) if (lnr.updated.filter(t=>path.toFile.lastModified()>t.getTime).isSuccess) => {
         resourceCache.invalidate(name)
         resourceCache.get(name)
       }
@@ -166,7 +166,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
         case x => x
       }
     }
-    resourceCache.put(name, Success(LocalLDPR[Rdf](iri, graph, file.toPath, Some(new Date(file.lastModified())))))
+    resourceCache.put(name, Success(LocalLDPR[Rdf](iri, graph, file.toPath)))
   }
 
 
@@ -212,26 +212,26 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       case UpdateLDPR(uri, remove, add, a) => {
         val nme = localName(uri)
         getResource(nme) match {
-          case Success(LocalLDPR(_, graph, _, updated, _)) => {
+          case Success(ldpr: LocalLDPR[Rdf]) => {
             if (remove.size > 0) throw LocalException("need to upgrade to a later version of banana that supports diffs")
             //            val temp = remove.foldLeft(graph) {
             //              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
             //            }
             val graphName = URI(nme).resolve(baseUri)
-            val resultGraph = add.foldLeft(graph) {
+            val resultGraph = add.foldLeft(ldpr.graph) {
               (graph, triple) => graph union Graph(triple.resolveAgainst(graphName))
             }
             setResource(nme, resultGraph)
             rwwRouterActor.tell(ScriptMessage(a), context.sender)
           }
           // TODO to verify for @bblfish: code duplicated from the LocalLDPR case! see #116
-          case Success(LocalLDPC(_, graph, _, updated, _)) => {
+          case Success(ldpc: LocalLDPC[Rdf]) => {
             if (remove.size > 0) throw LocalException("need to upgrade to a later version of banana that supports diffs")
             //            val temp = remove.foldLeft(graph) {
             //              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
             //            }
             val graphName = URI(nme).resolve(baseUri)
-            val resultGraph = add.foldLeft(graph) {
+            val resultGraph = add.foldLeft(ldpc.graph) {
               (graph, triple) => graph union Graph(triple.resolveAgainst(graphName))
             }
             setResource(nme, resultGraph)
@@ -264,8 +264,8 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
       //      }
       case SelectLDPR(uri, query, bindings, k) => {
         getResource(localName(uri)) match {
-          case Success(LocalLDPR(_,graph,_,_,_)) => {
-            sparqlGraph.executeSelect( graph, query, bindings).map { solutions =>
+          case Success(ldpr: LocalLDPR[Rdf]) => {
+            sparqlGraph.executeSelect( ldpr.graph, query, bindings).map { solutions =>
               rwwRouterActor.tell(ScriptMessage(k(solutions)), context.sender)
             }.failed.map { e =>
               context.sender ! akka.actor.Status.Failure(e)

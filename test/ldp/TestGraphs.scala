@@ -215,7 +215,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
     }
 
     case class TestLDPR(location: Rdf#URI, graph: Rdf#Graph, metaGraph: Rdf#Graph=Graph.empty)(implicit val ops: RDFOps[Rdf]) extends LDPR[Rdf] {
-      def updated = Some(new Date())
+      def updated = Success(new Date())
 
       /**
        * location of initial ACL for this resource

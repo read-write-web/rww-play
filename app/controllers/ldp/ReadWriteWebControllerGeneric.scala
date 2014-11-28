@@ -3,6 +3,8 @@ package controllers.ldp
 import java.net.{URLDecoder, URI => jURI}
 
 import _root_.play.{api => PlayApi}
+import akka.http.model.headers.`Last-Modified`
+import akka.http.util.DateTime
 import com.google.common.base.Throwables
 import org.w3.banana._
 import org.w3.banana.io.{BooleanWriter, Syntax, WriterSelector}
@@ -60,6 +62,17 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
 
   private def allowHeaders(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
     allowHeaders(authResult.authInfo.modesAllowed, authResult.result.isInstanceOf[LocalLDPC[_]])
+  }
+
+  private def etagHeader(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
+     authResult.result.etag.toOption.map(("ETag",_)).toList
+  }
+
+  private def updatedHeader(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
+    authResult.result.updated.toOption.map{ u =>
+      val lm = `Last-Modified`(DateTime(u.getTime))
+      (lm.name(),lm.value())
+    }.toList
   }
 
 
@@ -172,7 +185,10 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
   private def writeGetResult(authResult: AuthResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): Result = {
     def commonHeaders: List[(String, String)] =
-      allowHeaders(authResult) ::: userHeader(authResult.authInfo.user).toList
+      allowHeaders(authResult) :::
+        etagHeader(authResult) :::
+        updatedHeader(authResult) :::
+        userHeader(authResult.authInfo.user).toList
 
     authResult.result match {
       case ldpr: LDPR[Rdf] => {

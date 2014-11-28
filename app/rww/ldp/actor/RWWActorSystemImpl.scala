@@ -19,7 +19,7 @@ import rww.ldp.actor.common.CommonActorMessages.LDPSActorSetterMessage
 import rww.ldp.actor.common.CommonActorMessages.CmdMessage
 import rww.ldp.actor.common.CommonActorMessages.WebActorSetterMessage
 import scala.util.Try
-import spray.http.Uri
+import akka.http.model.Uri
 
 object RWWActorSystemImpl {
 

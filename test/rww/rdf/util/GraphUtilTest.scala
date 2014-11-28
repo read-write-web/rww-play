@@ -6,7 +6,7 @@ import org.scalatest._
 import org.scalatest.matchers._
 import org.w3.banana.binder._
 import org.w3.banana.plantain.Plantain
-import spray.http.Uri
+import akka.http.model.Uri
 
 
 class PlantainGraphUtilTest extends GraphUtilTest[Plantain]

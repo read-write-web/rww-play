@@ -1,6 +1,6 @@
 @prefix acl: <http://www.w3.org/ns/auth/acl#> . 
 
-[] acl:accessTo <card> ;
+[] acl:accessTo <card>, <card.ttl> ;
 	acl:agentClass <http://xmlns.com/foaf/0.1/Agent> ;
 	acl:mode acl:Read .
 

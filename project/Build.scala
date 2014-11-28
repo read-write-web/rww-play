@@ -33,11 +33,11 @@ object ApplicationBuild extends Build {
   val appDependencies = Seq("sesame", "jena", "plantain_jvm", "ntriples_jvm").map(banana) ++
 //  Seq("core",)
   Seq(
-//    akkaHttpCore,
+    akkaHttpCore,
     ws,
     "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
     "nu.validator.htmlparser" % "htmlparser" % "1.2.1",
-    "io.spray" % "spray-http" % "1.2.0",
+//    "io.spray" % "spray-http" % "1.2.0",
     "org.scalaz" %% "scalaz-core" % "7.0.1", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"
     "org.bouncycastle" % "bcprov-jdk15on" % "1.51",
     "org.bouncycastle" % "bcpkix-jdk15on" % "1.51",
@@ -62,7 +62,7 @@ object ApplicationBuild extends Build {
 //      resolvers += "Sonatype snapshots 2" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
 //      resolvers += "Typesafe snapshots" at "http://repo.typesafe.com/typesafe/snapshots",
       resolvers += "sesame-repo-releases" at "http://maven.ontotext.com/content/repositories/aduna/",
-      resolvers += "spray repo" at "http://repo.spray.io",
+//      resolvers += "spray repo" at "http://repo.spray.io",
       libraryDependencies ++= appDependencies,
       ideaExcludeFolders := Seq(".idea",".idea_modules" ),
       //    excludeFilter in (Compile, unmanagedSources) ~= { _ || new FileFilter {

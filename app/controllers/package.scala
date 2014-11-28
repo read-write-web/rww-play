@@ -8,8 +8,10 @@ import java.util.concurrent.TimeUnit
 import _root_.play.api.{Logger, Play}
 import akka.actor.ActorSystem
 import akka.util.Timeout
-import org.w3.banana.io.WriterSelector
+import org.openrdf.rio.helpers.JSONLDMode
+import org.w3.banana.io._
 import org.w3.banana._
+import org.w3.banana.sesame.io.{SesameRDFWriter, SesameSyntax}
 import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
 import rww.ldp.{WSClient, WebClient}
 import rww.play.rdf.IterateeSelector
@@ -52,7 +54,7 @@ trait Setup {
     Play.current.configuration.getString(httpHostnameKey).getOrElse("localhost")
 
   // This permits to remove the default http 80 / https 443 port from the String
-  def normalizeUri(uri: String): String = spray.http.Uri(uri).toString()
+  def normalizeUri(uri: String): String = akka.http.model.Uri(uri).toString()
 
   def normalizeURL(url: URL): URL = new URL(normalizeUri(url.toString))
 
@@ -149,7 +151,19 @@ trait SesameSetup extends RdfSetup with Setup {
   implicit val graphIterateeSelector: IterateeSelector[Rdf#Graph] = blockingIteratee.BlockingIterateeSelector
   implicit val sparqlUpdateSelector: IterateeSelector[Rdf#UpdateQuery] = SesameSparqlUpdateIteratee.sparqlSelector
   implicit val sparqlSelector: IterateeSelector[Rdf#Query] = SesameSparqlQueryIteratee.sparqlSelector
-  implicit val graphWriterSelector: WriterSelector[Rdf#Graph,Try]  = Sesame.writerSelector
+  implicit val graphWriterSelector: WriterSelector[Rdf#Graph,Try]  = {
+    import Sesame._
+    implicit val jsonLd: SesameSyntax[JsonLd] = SesameSyntax.jsonldSyntax(JSONLDMode.COMPACT)
+    implicit val jsonldWriter: SesameRDFWriter[JsonLd] = new SesameRDFWriter[JsonLd]
+    WriterSelector[Sesame#Graph, Try, Turtle] combineWith
+      WriterSelector[Sesame#Graph, Try, JsonLd] combineWith
+      WriterSelector[Sesame#Graph, Try, JsonLdCompacted] combineWith
+      WriterSelector[Sesame#Graph, Try, JsonLdExpanded] combineWith
+      WriterSelector[Sesame#Graph, Try, JsonLdFlattened] combineWith
+      WriterSelector[Sesame#Graph, Try, RDFXML]
+  }
+
+
   implicit val solutionsWriterSelector: SparqlSolutionsWriterSelector[Rdf] = Sesame.sparqlSolutionsWriterSelector
 
   val webClient: WebClient[Rdf] =  new WSClient(Sesame.readerSelector,Sesame.turtleWriter)

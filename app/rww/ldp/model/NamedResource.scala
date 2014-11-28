@@ -1,6 +1,7 @@
 package rww.ldp.model
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
+import java.util.Date
 
 import org.w3.banana.{LDPPrefix => _, _}
 import rww.rdf.util.LDPPrefix
@@ -51,6 +52,10 @@ trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
   /** type specific metadata */
   def typeMetadata: Rdf#Graph
 
+  val size = Try(Files.size(path))
+
+  val updated =
+    Try(new Date(Files.getLastModifiedTime(path).toMillis))
 
   lazy val meta:  Try[PointedGraph[Rdf]] = {
     val aclgr = (for (u <- acl) yield {
@@ -72,5 +77,13 @@ trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
       val coreName = if ( i > 0) fileName.substring(0,i) else fileName
       location.resolve(URI(coreName+".acl"))
     }
+  }
+
+  //todo: create strong etags for RDF Sources
+  def etag = for {
+    date <- updated
+    //sz <- size
+  } yield {
+    s""""${date.getTime}|""""
   }
 }

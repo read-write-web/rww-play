@@ -23,14 +23,15 @@ trait Meta[Rdf <: RDF] {
 
   def ops: RDFOps[Rdf]
 
-  def size: Option[Long]
+  def size: Try[Long]
 
-  def updated: Option[Date]
+  def updated: Try[Date]
   /*
  * A resource should ideally be versioned, so any change would get a version URI
  **/
   def version: Option[Rdf#URI] = None
 
+  def etag: Try[String]
   /**
    * location of initial ACL for this resource
    **/

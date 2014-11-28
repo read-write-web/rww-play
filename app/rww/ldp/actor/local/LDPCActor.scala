@@ -132,8 +132,7 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
             LocalLDPC[Rdf](
               ldpcUri,
               contentGrph,
-              root,
-              Some(new Date(Files.getLastModifiedTime(root).toMillis))
+              root
             )
           )
         } else ok

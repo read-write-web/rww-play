@@ -3,9 +3,9 @@ package controllers
 import java.net.{URI => jURI, URL => jURL}
 import java.nio.file.Path
 import java.security.PublicKey
-import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPublicKey
 
+import akka.http.model.Uri
 import org.bouncycastle.cert.X509CertificateHolder
 import org.w3.banana._
 import play.api.Logger
@@ -17,10 +17,9 @@ import play.api.mvc.{Action, ResponseHeader, Result}
 import play.twirl.api._
 import rww.ldp.LDPCommand._
 import rww.ldp.actor.RWWActorSystem
-import spray.http.Uri
 import utils.ActionUtils.SignedQueryStringAction
 import utils.subdomain.SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
-import utils.subdomain.{SubdomainAdminGraphWrapper, SubdomainConfirmationMailUtils, SubdomainGraphUtils}
+import utils.subdomain.{SubdomainAdminGraphWrapper, SubdomainGraphUtils}
 
 import scala.concurrent.Future
 
