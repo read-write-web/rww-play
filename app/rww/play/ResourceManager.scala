@@ -100,13 +100,18 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
     content match {
       case updatedQuery: PatchRwwContent[Rdf] => for {
         id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
-        x <- rww.execute(patchLDPR(URI(path), updatedQuery.query, Map()))
+        x <- rww.execute(
+          for {
+            resrc <- getResource(URI(request.getAbsoluteURI.toString))
+            x <- if (HttpResourceUtils.ifMatch(resrc))
+              patchLDPR(URI(path), updatedQuery.query, Map())
+            else throw ETagsDoNotMatch("in PATCH")
+          } yield x
+        )
       } yield IdResult(id, x)
       case _ => Future.failed(new Exception("PATCH requires application/sparql-update message content"))
     }
   }
-
-
 
 
   def put(content: RwwContent)(implicit request: PlayRequestHeader): Future[IdResult[Rdf#URI]] = {
@@ -339,20 +344,20 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
   }
 
 
-  def delete(implicit request: PlayRequestHeader): Future[IdResult[Unit]] = {
-    for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
-      e <- rww.execute(deleteResource(URI(request.getAbsoluteURI.toString)))
-    } yield IdResult(id, e)
-    //    rww.execute{
-    //        for {
-    //          x <- deleteResource(URI(file))
-    //          y <- updateLDPR(URI(""),remove=List(
-    //              Tuple3[Rdf#NodeMatch,Rdf#NodeMatch,Rdf#NodeMatch](ldpc.uri,dsl.ops.ANY,URI(file))).toIterable)
-    //        } yield y
-    //      }
-    //    } yield { Unit }
-  }
+  def delete(implicit request: PlayRequestHeader): Future[IdResult[Unit]] = for {
+    id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
+    e <- rww.execute(
+      for {
+      //todo: this is an example where it is important that both of the following commands happen in the same action
+      //todo: currently same actor messages are not parsed in the same loop
+      //either that or the deleteResource() needs to pass the etag - but then why not the whole request
+        resrc <- getResource(URI(request.getAbsoluteURI.toString))
+        unit <- if (HttpResourceUtils.ifMatch(resrc)) {
+          deleteResource(URI(request.getAbsoluteURI.toString))
+        } else throw ETagsDoNotMatch("in DELETE")
+      } yield unit )
+  } yield IdResult(id,e)
+
 
   def postQuery(path: String, query: QueryRwwContent[Rdf])(implicit request: PlayRequestHeader): Future[IdResult[Either3[Rdf#Graph, Rdf#Solutions, Boolean]]] = {
     val (collection, file) = split(path)
@@ -387,35 +392,36 @@ object HttpResourceUtils {
   /**
    * @return true if able to proceed with request
    */
-  def ifMatch[Rdf<:RDF](result: NamedResource[Rdf])(implicit request: PlayRequestHeader): Boolean =
-    request.headers.get("If-Match").map { value =>
-      for {
-        x <- parseHeader(RawHeader("If-Match", value)).right
-      } yield {
-        val `If-Match`(etagRange) =x
-        EntityTag.matchesRange(result.etag.get,etagRange,false)
-      }
-    } match {
-      case None => true  //No If-Match header so pass
-      case Some(Left(_)) => false // If-Match header did not parse so false
-      case Some(Right(result)) => result
+  def ifMatch[Rdf<:RDF](result: NamedResource[Rdf])(implicit request: PlayRequestHeader): Boolean = request.headers.get("If-Match").map { value =>
+    for {
+      x <- parseHeader(RawHeader("If-Match", value)).right
+    } yield {
+      val `If-Match`(etagRange) = x
+      EntityTag.matchesRange(result.etag.get, etagRange, false)
     }
+  } match {
+    case None => true //No If-Match header so pass
+    case Some(Left(_)) => false // If-Match header did not parse so false
+    case Some(Right(result)) => result
+  }
 
 
-  def ifNoneMatch[Rdf<:RDF](result: NamedResource[Rdf])(implicit request: PlayRequestHeader): Boolean =
+  def ifNoneMatch[Rdf<:RDF](result: NamedResource[Rdf])(implicit request: PlayRequestHeader): Boolean = {
+
     request.headers.get("If-None-Match").map { value =>
       for {
         x <- parseHeader(RawHeader("If-None-Match", value)).right
       } yield {
         val `If-None-Match`(etagRange) = x
-        EntityTag.matchesRange(result.etag.get,etagRange,true)
+        EntityTag.matchesRange(result.etag.get, etagRange, true)
       }
     } match {
-      case None => true  //No If-Match header so pass
+      case None => true //No If-Match header so pass
       case Some(Left(_)) => false // If-Match header did not parse so false
       case Some(Right(result)) => result
     }
 
+  }
 }
 
 trait ReadWriteWebException extends Exception

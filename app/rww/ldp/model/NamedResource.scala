@@ -83,8 +83,7 @@ trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
   //todo: create strong etags for RDF Sources
   def etag = for {
     date <- updated
-    sz <- size
   } yield {
-    EntityTag(date+"|"+size,false)
+    EntityTag(date.getTime+"|"+size,false)
   }
 }
