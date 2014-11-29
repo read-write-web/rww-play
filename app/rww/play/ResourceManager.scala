@@ -118,7 +118,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
     import HttpResourceUtils.ifMatch
     val path = request.path
     val (collection, file) = split(path)
-    if ("" == file) Future.failed(new Exception("Cannot do a PUT on a collection"))
+    if ("" == file) Future.failed(new PropertiesConflict("Cannot do a PUT on a collection"))
     else for {
       id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       f <- content match {
