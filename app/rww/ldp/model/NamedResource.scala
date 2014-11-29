@@ -3,6 +3,7 @@ package rww.ldp.model
 import java.nio.file.{Files, Path}
 import java.util.Date
 
+import akka.http.model.headers.EntityTag
 import org.w3.banana.{LDPPrefix => _, _}
 import rww.rdf.util.LDPPrefix
 
@@ -82,8 +83,8 @@ trait LocalNamedResource[Rdf<:RDF] extends NamedResource[Rdf] {
   //todo: create strong etags for RDF Sources
   def etag = for {
     date <- updated
-    //sz <- size
+    sz <- size
   } yield {
-    s""""${date.getTime}|""""
+    EntityTag(date+"|"+size,false)
   }
 }

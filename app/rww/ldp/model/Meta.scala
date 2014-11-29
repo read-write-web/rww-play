@@ -1,5 +1,6 @@
 package rww.ldp.model
 
+import akka.http.model.headers.EntityTag
 import org.w3.banana.{RDFOps, PointedGraph, RDF}
 import java.util.Date
 import scala.util.Try
@@ -31,7 +32,7 @@ trait Meta[Rdf <: RDF] {
  **/
   def version: Option[Rdf#URI] = None
 
-  def etag: Try[String]
+  def etag: Try[EntityTag]
   /**
    * location of initial ACL for this resource
    **/

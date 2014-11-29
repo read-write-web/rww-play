@@ -22,7 +22,7 @@ object ApplicationBuild extends Build {
   /**
    * @see http://repo1.maven.org/maven2/com/typesafe/akka/akka-http-core-experimental_2.10/
    */
-  val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core-experimental" % "0.9"
+  val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core-experimental" % "0.11"
 
   val testsuiteDeps =
     Seq(

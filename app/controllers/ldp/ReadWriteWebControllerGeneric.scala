@@ -3,7 +3,7 @@ package controllers.ldp
 import java.net.{URLDecoder, URI => jURI}
 
 import _root_.play.{api => PlayApi}
-import akka.http.model.headers.`Last-Modified`
+import akka.http.model.headers._
 import akka.http.util.DateTime
 import com.google.common.base.Throwables
 import org.w3.banana._
@@ -65,7 +65,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
   }
 
   private def etagHeader(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
-     authResult.result.etag.toOption.map(("ETag",_)).toList
+     authResult.result.etag.toOption.map(et=>("ETag",et.value)).toList
   }
 
   private def updatedHeader(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
@@ -267,7 +267,11 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
-      case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
+      case PropertiesConflict(msg) => Conflict(msg)
+      case e: ETagsDoNotMatch => Results.PreconditionFailed("Etag preconditions failed")
+      case e => {
+        InternalServerError(e.getMessage + "\n" + stackTrace(e))
+      }
     }
   }
 

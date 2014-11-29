@@ -21,6 +21,8 @@ import java.net.{URI => jURI, URL => jURL}
 import _root_.play.api.Logger
 import _root_.play.api.libs.Files.TemporaryFile
 import _root_.play.api.libs.iteratee.Enumerator
+import akka.http.model.headers._
+import akka.http.model.parser.HeaderParser._
 import org.w3.banana._
 import org.w3.banana.io.MimeType
 import rww.ldp.LDPCommand._
@@ -28,7 +30,7 @@ import rww.ldp.LDPExceptions._
 import rww.ldp._
 import rww.ldp.actor.RWWActorSystem
 import rww.ldp.auth.{WACAuthZ, WebIDPrincipal}
-import rww.ldp.model.{BinaryResource, LDPR, NamedResource}
+import rww.ldp.model.{BinaryResource, LDPC, LDPR, NamedResource}
 import rww.play.auth.AuthN
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -105,7 +107,10 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
   }
 
 
+
+
   def put(content: RwwContent)(implicit request: PlayRequestHeader): Future[IdResult[Rdf#URI]] = {
+    import HttpResourceUtils.ifMatch
     val path = request.path
     val (collection, file) = split(path)
     if ("" == file) Future.failed(new Exception("Cannot do a PUT on a collection"))
@@ -117,7 +122,14 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
           rww.execute(for {
             resrc <- getResource(URI(request.getAbsoluteURI.toString))
             x <- resrc match {
-              case ldpr: LDPR[Rdf] => putLDPR(ldpr.location, grc.graph)
+              case ldpc: LDPC[Rdf] => {
+                throw PropertiesConflict("cannot do a PUT on an LDPContainer, it clashes with ldp:contains which are server managed")
+              }
+              case ldpr: LDPR[Rdf] => {
+                if (ifMatch(resrc)(request)) {
+                  putLDPR(ldpr.location, grc.graph)
+                } else throw ETagsDoNotMatch("in PUT")
+              }
               case other => throw OperationNotSupported(s"Not expected resource type for path $request.getAbsoluteURI.toString, type: $other")
             }
           } yield IdResult[Rdf#URI](id, resrc.location))
@@ -131,8 +143,10 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
               val binaryResource = resrc.asInstanceOf[BinaryResource[Rdf]]
               //todo: very BAD. This will block the agent, and so on long files break the collection.
               //this needs to be sent to another agent, or it needs to be rethought
-              Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
-              IdResult(id, resrc.location)
+              if (ifMatch(resrc)(request)) {
+                Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
+                IdResult(id, resrc.location)
+              } else throw ETagsDoNotMatch("in PUT")
             })
         }
         case _ => Future.failed(new Exception("cannot apply method - improve bug report"))
@@ -365,6 +379,42 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
 
   }
 
+
+}
+
+object HttpResourceUtils {
+
+  /**
+   * @return true if able to proceed with request
+   */
+  def ifMatch[Rdf<:RDF](result: NamedResource[Rdf])(implicit request: PlayRequestHeader): Boolean =
+    request.headers.get("If-Match").map { value =>
+      for {
+        x <- parseHeader(RawHeader("If-Match", value)).right
+      } yield {
+        val `If-Match`(etagRange) =x
+        EntityTag.matchesRange(result.etag.get,etagRange,false)
+      }
+    } match {
+      case None => true  //No If-Match header so pass
+      case Some(Left(_)) => false // If-Match header did not parse so false
+      case Some(Right(result)) => result
+    }
+
+
+  def ifNoneMatch[Rdf<:RDF](result: NamedResource[Rdf])(implicit request: PlayRequestHeader): Boolean =
+    request.headers.get("If-None-Match").map { value =>
+      for {
+        x <- parseHeader(RawHeader("If-None-Match", value)).right
+      } yield {
+        val `If-None-Match`(etagRange) = x
+        EntityTag.matchesRange(result.etag.get,etagRange,true)
+      }
+    } match {
+      case None => true  //No If-Match header so pass
+      case Some(Left(_)) => false // If-Match header did not parse so false
+      case Some(Right(result)) => result
+    }
 
 }
 

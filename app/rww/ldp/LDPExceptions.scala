@@ -1,7 +1,7 @@
 package rww.ldp
 
-import org.w3.banana.{RDF, BananaException}
-import rww.play.{AuthorizedModes, AuthResult}
+import org.w3.banana.BananaException
+import rww.play.AuthorizedModes
 
 /**
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)
@@ -19,4 +19,6 @@ object LDPExceptions {
   case class InformationNotFound(message: String) extends Exception(message) with BananaException
   case class ServerException(message: String) extends Exception(message) with BananaException
   case class AccessDeniedAuthModes(authinfo: AuthorizedModes) extends Exception("No access to resource") with BananaException
+  case class ETagsDoNotMatch(message: String) extends Exception(message) with BananaException
+  case class PropertiesConflict(message: String) extends Exception(message) with BananaException
 }
