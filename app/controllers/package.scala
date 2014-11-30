@@ -144,7 +144,8 @@ trait SesameSetup extends RdfSetup with Setup {
   type Rdf = Sesame
   implicit val ops: RDFOps[Rdf] = Sesame.ops
   implicit val sparqlOps: SparqlOps[Rdf] = Sesame.sparqlOps
-  implicit val sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] = Sesame.sparqlGraph
+  implicit val sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph]
+    with SparqlUpdate[Rdf,Try, Rdf#Graph] = Sesame.sparqlGraph
 
 
   val blockingIteratee = new SesameBlockingRDFIteratee

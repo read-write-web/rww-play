@@ -29,10 +29,9 @@ import scalaz.{-\/, \/-}
 class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
                        (implicit ops: RDFOps[Rdf],
                          sparqlOps: SparqlOps[Rdf],
-                         sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph],
+                         sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] with SparqlUpdate[Rdf, Try, Rdf#Graph],
                          reader: RDFReader[Rdf, Try, Turtle],
                          writer: RDFWriter[Rdf, Try, Turtle]
-//                        patch: LDPatch[Rdf,Try]
 //                        adviceSelector: AdviceSelector[Rdf]= new EmptyAdviceSelector
                          ) extends RWWBaseActor {
   var ext = ".ttl"
@@ -246,22 +245,22 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
         setResource(nme, graph)
         rwwRouterActor.tell(ScriptMessage(a), context.sender)
       }
-      //      case PatchLDPR(uri, update, bindings, k) => {
-      //        val nme = localName(uri)
-      //        getResource(nme) match {
-      //          case Success(LocalLDPR(_,graph,_,updated,_)) => {
-      //            patch.executePatch(graph,update,bindings) match {
-      //              case Success(gr) => {
-      //                setResource(nme, gr)
-      //                rwwRouterActor.tell(ScriptMessage(k(true)),context.sender)
-      //              }
-      //              case Failure(e) => throw e
-      //            }
-      //          }
-      //          case Success(_) =>  context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - PATCH is not possible")
-      //          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
-      //        }
-      //      }
+      case PatchLDPR(uri, update, bindings, k) => {
+        val nme = localName(uri)
+        getResource(nme) match {
+          case Success(ldpr: LocalLDPR[Rdf]) => {
+            sparqlGraph.executeUpdate(ldpr.graph, update, bindings) match {
+              case Success(gr) => {
+                setResource(nme, gr)
+                rwwRouterActor.tell(ScriptMessage(k(true)), context.sender)
+              }
+              case Failure(e) => throw e
+            }
+          }
+          case Success(_) => context.sender ! RequestNotAcceptable(s"$uri does not contain a GRAPH - PATCH is not possible")
+          case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
+        }
+      }
       case SelectLDPR(uri, query, bindings, k) => {
         getResource(localName(uri)) match {
           case Success(ldpr: LocalLDPR[Rdf]) => {
@@ -275,26 +274,31 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
           case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
         }
       }
-      //      case ConstructLDPR(uri, query, bindings, k) => {
-      //        getResource(localName(uri)).get match {
-      //          case LocalLDPR(_,graph,_,_,_) => {
-      //            val result = sparqlGraph(graph).executeConstruct(query, bindings)
-      //            rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
-      //          }
-      //          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
-      //        }
-      //
-      //      }
-      //      case AskLDPR(uri, query, bindings, k) => {
-      //        getResource(localName(uri)).get match {
-      //          case LocalLDPR(_,graph,_,_,_) => {
-      //            val result = sparqlGraph(graph).executeAsk(query, bindings)
-      //            rwwRouterActor.tell(ScriptMessage(k(result)),context.sender)
-      //          }
-      //          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
-      //        }
-      //      }
-      //      case cmd => throw RequestNotAcceptable(s"Cannot run ${cmd.getClass} on an LDPR that is not an LDPC ")
+      case ConstructLDPR(uri, query, bindings, k) => {
+        getResource(localName(uri)).get match {
+          case ldpr: LocalLDPR[Rdf] =>
+            sparqlGraph.executeConstruct(ldpr.graph, query, bindings).map { result =>
+              rwwRouterActor.tell(ScriptMessage(k(result)), context.sender)
+            }.failed.map { e =>
+              context.sender ! akka.actor.Status.Failure(e)
+            }
+          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
+        }
+
+      }
+      case AskLDPR(uri, query, bindings, k) => {
+        getResource(localName(uri)).get match {
+          case ldpr: LocalLDPR[Rdf] => {
+            sparqlGraph.executeAsk(ldpr.graph,query, bindings).map { result =>
+              rwwRouterActor.tell(ScriptMessage(k(result)), context.sender)
+            }.failed.map { e =>
+              context.sender ! akka.actor.Status.Failure(e)
+            }
+          }
+          case _ => throw RequestNotAcceptable(s"$uri does not contain a GRAPH - SELECT is not possible")
+        }
+      }
+      case cmd => throw RequestNotAcceptable(s"Cannot run ${cmd.getClass} on an LDPR that is not an LDPC ")
     }
   }
 
