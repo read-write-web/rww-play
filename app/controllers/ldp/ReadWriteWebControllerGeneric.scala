@@ -64,9 +64,6 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     }
   }
 
-  private def allowHeaders(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
-    allowHeaders(authResult.authInfo.modesAllowed, authResult.result.isInstanceOf[LocalLDPC[_]])
-  }
 
   private def etagHeader(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
      authResult.result.etag.toOption.map(et=>("ETag",et.value)).toList
@@ -79,18 +76,26 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     }.toList
   }
 
-
-  private def allowHeaders(modesAllowed: Set[Method.Value], isLDPC: Boolean): List[(String, String)] = {
+  private def allowHeaders(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
+    val modesAllowed = authResult.authInfo.modesAllowed
+    val isLDPC =  authResult.result.isInstanceOf[LocalLDPC[_]]
     val allow = "Allow" -> {
       val headerStr = modesAllowed.collect {
-        case Method.Append => {
-          if (isLDPC) "POST" else ""
+        case Method.Append =>
+          authResult.result match {
+            case l: LocalLDPC[Rdf] => "POST"
+            case _ => ""
+          }
+          case Method.Read => "GET, HEAD, SEARCH"
+          case Method.Write => "PUT, DELETE" + {
+            authResult.result match {
+              case ldpc: LocalLDPC[Rdf] => "POST, PATCH"
+              case ldpr: LocalLDPR[Rdf] => "PUT, PATCH"
+              case bin: LocalBinaryResource[Rdf] => "PUT"
+              case _ => ""
+            }
+          }
         }
-        case Method.Read => "GET, HEAD, SEARCH"
-        case Method.Write => "PUT, PATCH, DELETE" + {
-          if (isLDPC) ", POST" else ""
-        }
-      }
       ("OPTIONS"::headerStr.toList).filter(_ != "").mkString(", ")
     }
     val acceptPost= if (isLDPC) {
@@ -138,7 +143,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
             Unauthorized(
               views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(err) )
               //todo a better implementation would have this on the actor itself, which WOULD know the type
-            ).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC
+            )
 //          }
 //          case _ => {
 //            Unauthorized(err.getMessage).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC

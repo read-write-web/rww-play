@@ -141,15 +141,16 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
           rww.execute(
             for {
               resrc <- getResource(URI(request.getAbsoluteURI.toString))
-            //                if (resrc.isInstanceOf[BinaryResource[Rdf]])
-            } yield {
-              val binaryResource = resrc.asInstanceOf[BinaryResource[Rdf]]
-              //todo: very BAD. This will block the agent, and so on long files break the collection.
-              //this needs to be sent to another agent, or it needs to be rethought
-              ifMatch(resrc) { () =>
-                Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
-                IdResult(id, resrc.location)
+            } yield resrc match {
+              case binaryResource: BinaryResource[Rdf] => {
+                //todo: very BAD. This will block the agent, and so on long files break the collection.
+                //this needs to be sent to another agent, or it needs to be rethought
+                ifMatch(resrc) { () =>
+                  Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
+                  IdResult(id, resrc.location)
+                }
               }
+              case _ => throw OperationNotSupported("currently we don't permit overwriting an RDF resource with a non-rdf one ")
             })
         }
         case _ => Future.failed(new Exception("cannot apply method - improve bug report"))
