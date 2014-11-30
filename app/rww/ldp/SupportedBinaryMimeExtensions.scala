@@ -12,8 +12,8 @@ object SupportedBinaryMimeExtensions {
 
   object ApplicationPdf extends MimeType("application","pdf")
   object ApplicationJs extends MimeType("application","javascript")
+  object ImagePng extends MimeType("image","png")
   // TODO add other supported mime types for binary files like Excel and Word files etc...
-
 
 
   val mimeExt = collection.immutable.Map(
@@ -21,6 +21,7 @@ object SupportedBinaryMimeExtensions {
     ImageGif -> ".gif",
     ImagePng -> ".png",
     TextHtml -> ".html",
+    ImagePng -> ".png",
     ApplicationJs -> ".js",
     ApplicationPdf -> ".pdf"
   )
