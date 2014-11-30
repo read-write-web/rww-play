@@ -32,6 +32,10 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
   type Rdf <: RDF
   def resourceManager: ResourceMgr[Rdf]
 
+  //missing in Play
+  val PRECONDITON_REQUIRED = 428
+  val PreconditionRequired = new Status(PRECONDITON_REQUIRED)
+
   implicit def rwwBodyParser: RwwBodyParser[Rdf]
   implicit def ec: ExecutionContext
   implicit val ops: RDFOps[Rdf]
@@ -268,7 +272,8 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case PropertiesConflict(msg) => Conflict(msg)
-      case e: ETagsDoNotMatch => Results.PreconditionFailed("Etag preconditions failed")
+      case MissingEtag(me) => PreconditionRequired(me)
+      case ETagsDoNotMatch(msg) => Results.PreconditionFailed("Etag preconditions failed:"+msg)
       case e => {
         InternalServerError(e.getMessage + "\n" + stackTrace(e))
       }
@@ -283,6 +288,8 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
+      case MissingEtag(me) => PreconditionRequired(me)
+      case ETagsDoNotMatch(msg) => Results.PreconditionFailed("Etag preconditions failed:"+msg)
       case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
     }
   }
@@ -381,6 +388,8 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
+      case MissingEtag(me) => PreconditionRequired(me)
+      case ETagsDoNotMatch(msg) => Results.PreconditionFailed("Etag preconditions failed:"+msg)
       case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
     }
   }

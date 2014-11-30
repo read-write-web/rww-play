@@ -103,10 +103,10 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
         x <- rww.execute(
           for {
             resrc <- getResource(URI(request.getAbsoluteURI.toString))
-            x <- if (HttpResourceUtils.ifMatch(resrc))
+            y <- HttpResourceUtils.ifMatch(resrc){ () =>
               patchLDPR(URI(path), updatedQuery.query, Map())
-            else throw ETagsDoNotMatch("in PATCH")
-          } yield x
+            }
+          } yield y
         )
       } yield IdResult(id, x)
       case _ => Future.failed(new Exception("PATCH requires application/sparql-update message content"))
@@ -130,11 +130,9 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
               case ldpc: LDPC[Rdf] => {
                 throw PropertiesConflict("cannot do a PUT on an LDPContainer, it clashes with ldp:contains which are server managed")
               }
-              case ldpr: LDPR[Rdf] => {
-                if (ifMatch(resrc)(request)) {
+              case ldpr: LDPR[Rdf] => ifMatch(resrc) { () =>
                   putLDPR(ldpr.location, grc.graph)
-                } else throw ETagsDoNotMatch("in PUT")
-              }
+                }
               case other => throw OperationNotSupported(s"Not expected resource type for path $request.getAbsoluteURI.toString, type: $other")
             }
           } yield IdResult[Rdf#URI](id, resrc.location))
@@ -148,10 +146,10 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
               val binaryResource = resrc.asInstanceOf[BinaryResource[Rdf]]
               //todo: very BAD. This will block the agent, and so on long files break the collection.
               //this needs to be sent to another agent, or it needs to be rethought
-              if (ifMatch(resrc)(request)) {
+              ifMatch(resrc) { () =>
                 Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
                 IdResult(id, resrc.location)
-              } else throw ETagsDoNotMatch("in PUT")
+              }
             })
         }
         case _ => Future.failed(new Exception("cannot apply method - improve bug report"))
@@ -352,9 +350,9 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
       //todo: currently same actor messages are not parsed in the same loop
       //either that or the deleteResource() needs to pass the etag - but then why not the whole request
         resrc <- getResource(URI(request.getAbsoluteURI.toString))
-        unit <- if (HttpResourceUtils.ifMatch(resrc)) {
+        unit <- HttpResourceUtils.ifMatch(resrc) { () =>
           deleteResource(URI(request.getAbsoluteURI.toString))
-        } else throw ETagsDoNotMatch("in DELETE")
+        }
       } yield unit )
   } yield IdResult(id,e)
 
@@ -392,21 +390,30 @@ object HttpResourceUtils {
   /**
    * @return true if able to proceed with request
    */
-  def ifMatch[Rdf<:RDF](result: NamedResource[Rdf])(implicit request: PlayRequestHeader): Boolean = request.headers.get("If-Match").map { value =>
-    for {
-      x <- parseHeader(RawHeader("If-Match", value)).right
-    } yield {
-      val `If-Match`(etagRange) = x
-      EntityTag.matchesRange(result.etag.get, etagRange, false)
+  def ifMatch[Rdf <: RDF, Result](resource: NamedResource[Rdf])(function: () => Result)
+                                 (implicit request: PlayRequestHeader): Result = {
+    val ifmatch = request.headers.get("If-Match")
+    val result =ifmatch.map(value =>
+      for {
+        x <- parseHeader(RawHeader("If-Match", value)).right
+      } yield {
+        val `If-Match`(etagRange) = x
+        EntityTag.matchesRange(resource.etag.get, etagRange, false)
+      }
+    ) map {
+      case Left(_) => false // If-Match header did not parse so false
+      case Right(result) => result
     }
-  } match {
-    case None => true //No If-Match header so pass
-    case Some(Left(_)) => false // If-Match header did not parse so false
-    case Some(Right(result)) => result
+    result match {
+      case Some(true) => function()
+      case Some(false) =>
+        throw ETagsDoNotMatch(s"received If-Match ${ifmatch} but resource has etag ${resource.etag}  ")
+      case None => throw MissingEtag("altering the resource requires an ETag")
+    }
   }
 
 
-  def ifNoneMatch[Rdf<:RDF](result: NamedResource[Rdf])(implicit request: PlayRequestHeader): Boolean = {
+  def ifNoneMatch[Rdf <: RDF](result: NamedResource[Rdf])(implicit request: PlayRequestHeader): Boolean = {
 
     request.headers.get("If-None-Match").map { value =>
       for {
