@@ -16,17 +16,19 @@
 
 package rww.play
 
+import java.io.File
 import java.net.URL
+import java.nio.file.{Files, Path}
 
 import org.w3.banana._
 import org.w3.banana.io.MimeType
 import play.api.libs.Files.TemporaryFile
 import play.api.libs.iteratee.Input.Empty
 import play.api.libs.iteratee.{Done, Iteratee}
-import play.api.mvc.{BodyParser, RequestHeader, Result}
+import play.api.mvc.{BodyParsers, BodyParser, RequestHeader, Result}
 import rww.play.rdf.IterateeSelector
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Future, ExecutionContext}
 import scala.util.{Failure, Success}
 
 /**
@@ -40,7 +42,7 @@ import scala.util.{Failure, Success}
  * @tparam Rdf
  */
 //todo: pass the base URL
-class RwwBodyParser[Rdf <: RDF](base: URL)(implicit ops: RDFOps[Rdf],
+class RwwBodyParser[Rdf <: RDF](base: URL, tmpDir: Path)(implicit ops: RDFOps[Rdf],
                                 sparqlOps: SparqlOps[Rdf],
                                 graphSelector: IterateeSelector[Rdf#Graph],
                                 sparqlSelector: IterateeSelector[Rdf#Query],
@@ -93,8 +95,9 @@ class RwwBodyParser[Rdf <: RDF](base: URL)(implicit ops: RDFOps[Rdf],
             //todo: it would nice not to have to go through temporary files, but be able to pass on the iteratee
             //todo: on systems where the result may be on a remote file system this would be very important.
             case mime: MimeType => {
-              val parser = parse.temporaryFile.map {
-                file => BinaryRwwContent(file, mime)
+              val tempFile = Files.createTempFile(tmpDir,"",".tmp")
+              val parser = BodyParsers.parse.file(tempFile.toFile).map { tmpf =>
+                 BinaryRwwContent(tmpf, mime)
               }
               parser(rh)
             }
@@ -123,7 +126,7 @@ case class QueryRwwContent[Rdf<:RDF](query: Rdf#Query) extends RwwContent
 
 case class PatchRwwContent[Rdf<:RDF](query: Rdf#UpdateQuery) extends RwwContent
 
-case class BinaryRwwContent(file: TemporaryFile, mime: MimeType) extends RwwContent
+case class BinaryRwwContent(file: File, mime: MimeType) extends RwwContent
 
 
 

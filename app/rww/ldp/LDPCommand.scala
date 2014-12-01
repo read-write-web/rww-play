@@ -1,12 +1,13 @@
 package rww.ldp
 
+import _root_.play.api.libs.Files.TemporaryFile
 import org.w3.banana._
 import org.w3.banana.io.MimeType
 import scalaz.{MonadPlus, Free, Functor}
 import scalaz.Free.Suspend
 import scalaz.Free.Return
 import java.security.Principal
-import rww.ldp.model.{LDPR, BinaryResource, Meta, NamedResource}
+import rww.ldp.model._
 import scala.util.Try
 
 sealed trait LDPCommand[Rdf <: RDF, +A]{
@@ -63,6 +64,11 @@ case class PutLDPR[Rdf <: RDF, A](uri: Rdf#URI,
                                   graph: Rdf#Graph,
 //                                  headers: Option[Rdf#Graph],
                                   a: A) extends LDPCommand[Rdf, A]
+
+case class PutBinary[Rdf <: RDF, A](uri: Rdf#URI,
+                                    mime: MimeType,
+                                    tempFile: TemporaryFile ,    //horrible hack
+                                    a: A) extends LDPCommand[Rdf, A]
 
 case class UpdateLDPR[Rdf <: RDF, A](uri: Rdf#URI,
                                      remove: Iterable[TripleMatch[Rdf]],
@@ -167,6 +173,11 @@ object LDPCommand {
                           graph: Rdf#Graph ): Script[Rdf, Unit] =
     suspend(PutLDPR(uri, graph, nop))
 
+  def putBinary[Rdf <: RDF,A](uri: Rdf#URI,
+                              file: TemporaryFile,
+                              mime: MimeType): Script[Rdf, Unit] =
+    suspend(PutBinary(uri,mime,file,nop))
+
 
   def selectLDPR[Rdf <: RDF](uri: Rdf#URI, query: Rdf#SelectQuery, bindings: Map[String, Rdf#Node]): Script[Rdf, Rdf#Solutions] =
     suspend(SelectLDPR(uri, query, bindings, solutions => `return`(solutions)))
@@ -205,6 +216,7 @@ object LDPCommand {
           case DeleteResource(uri, a) =>  DeleteResource(uri, f(a))
           case UpdateLDPR(uri, remove, add, a) => UpdateLDPR(uri, remove, add, f(a))
           case PutLDPR(uri,graph,a) => PutLDPR(uri,graph,f(a))
+          case PutBinary(uri,mime,file, a) => PutBinary(uri,mime,file,f(a))
           case SelectLDPR(uri, query, bindings, k) => SelectLDPR(uri, query, bindings, x => f(k(x)))
           case ConstructLDPR(uri, query, bindings, k) => ConstructLDPR(uri, query, bindings, x => f(k(x)))
           case AskLDPR(uri, query, bindings, k) => AskLDPR(uri, query, bindings, x => f(k(x)))

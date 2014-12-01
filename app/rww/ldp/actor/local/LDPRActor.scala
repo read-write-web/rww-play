@@ -245,6 +245,10 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
         setResource(nme, graph)
         rwwRouterActor.tell(ScriptMessage(a), context.sender)
       }
+// this would allow one to change a resource to a binary in one atomic operation
+//      case PutBinary(uri, mimetype, tempFile, a) = {
+//         1. delete the previous resource, and all the attached files
+//      }
       case PatchLDPR(uri, update, bindings, k) => {
         val nme = localName(uri)
         getResource(nme) match {

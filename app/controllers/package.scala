@@ -2,7 +2,7 @@ package controllers
 
 import java.io.File
 import java.net.URL
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import java.util.concurrent.TimeUnit
 
 import _root_.play.api.{Logger, Play}
@@ -97,6 +97,9 @@ trait Setup {
     require(file.isDirectory,s"The root container ($file) is not a directory")
     file.toPath.toAbsolutePath
   }
+
+  lazy val tmpDirInRootConainer: Path =
+    Files.createDirectories(rootContainerPath.resolve("tmp"))
 
   logger.info(s""""
     secure port=$securePort

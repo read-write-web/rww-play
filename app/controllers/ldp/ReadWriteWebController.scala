@@ -34,7 +34,7 @@ object ReadWriteWebController extends ReadWriteWebController (
 class ReadWriteWebController(base: URL, path: Path) extends  SesameSetup with ReadWriteWebControllerGeneric  {
 
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
-  implicit lazy val rwwBodyParser =  new RwwBodyParser[Rdf](base)(ops,sparqlOps,graphIterateeSelector,
+  implicit lazy val rwwBodyParser =  new RwwBodyParser[Rdf](base,tmpDirInRootConainer)(ops,sparqlOps,graphIterateeSelector,
     sparqlSelector,sparqlUpdateSelector,ec)
 
   lazy val resourceManager =  new ResourceMgr[Rdf](base,rww, new WebIDAuthN(new WebIDVerifier(rww)),

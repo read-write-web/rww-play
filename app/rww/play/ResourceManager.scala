@@ -16,6 +16,7 @@
 
 package rww.play
 
+import java.io.File
 import java.net.{URI => jURI, URL => jURL}
 
 import _root_.play.api.Logger
@@ -146,7 +147,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
                 //todo: very BAD. This will block the agent, and so on long files break the collection.
                 //this needs to be sent to another agent, or it needs to be rethought
                 ifMatch(resrc) { () =>
-                  Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
+                  binaryResource.setContentTo(tmpFile)
                   IdResult(id, resrc.location)
                 }
               }
@@ -314,7 +315,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
     } yield IdResult(id, x)
   }
 
-  def postBinary(path: String, slug: Option[String], tmpFile: TemporaryFile, mime: MimeType)
+  def postBinary(path: String, slug: Option[String], tmpFile: File, mime: MimeType)
                 (implicit request: PlayRequestHeader): Future[IdResult[Rdf#URI]] = {
     val (collection, file) = split(path)
     if ("" != file) Future.failed(WrongTypeException("Can only POST binary on a Collection"))
@@ -334,7 +335,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
             aclg = (meta.acl.get -- wac.include ->- URI(".acl")).graph
             _ <- updateLDPR(meta.acl.get, add = aclg.triples)
           } yield {
-            Enumerator.fromFile(tmpFile.file) |>>> binaryResource.writeIteratee
+            binaryResource.setContentTo(tmpFile)
             binaryResource.location
           }
         }

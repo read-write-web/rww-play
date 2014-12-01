@@ -1,11 +1,13 @@
 package rww.ldp.model
 
-import java.nio.file.{Files, Path, StandardCopyOption, StandardOpenOption}
+import java.io.File
+import java.nio.file._
 import java.util.Date
 
 import com.typesafe.scalalogging.slf4j.Logging
 import org.w3.banana.io.MimeType
 import org.w3.banana.{ RDF, RDFOps}
+import play.api.libs.Files.TemporaryFile
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 import rww.ldp.SupportedBinaryMimeExtensions
 import utils.{FileUtils, Iteratees}
@@ -25,6 +27,7 @@ trait BinaryResource[Rdf<:RDF] extends NamedResource[Rdf]  {
 
   // creates a new BinaryResource, with new time stamp, etc...
   def writeIteratee(implicit ec: ExecutionContext):  Iteratee[Array[Byte], BinaryResource[Rdf]]
+  def setContentTo(temp: File): Unit
   def readerEnumerator(chunkSize: Int)(implicit ec: ExecutionContext): Enumerator[Array[Byte]]
 }
 
@@ -52,6 +55,11 @@ case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI,metaData:
     } yield mimeType) getOrElse {
       throw new IllegalStateException(s"Unexpected: can't get binary file extension for $path")
     }
+  }
+
+  def setContentTo(temp: File): Unit = {
+    import java.nio.file._
+    Files.move(temp.toPath,path,StandardCopyOption.ATOMIC_MOVE)
   }
 
   // creates a new BinaryResource, with new time stamp, etc...
