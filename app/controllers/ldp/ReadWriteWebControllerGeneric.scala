@@ -89,9 +89,9 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
           case Method.Read => "GET, HEAD, SEARCH"
           case Method.Write => "PUT, DELETE" + {
             authResult.result match {
-              case ldpc: LocalLDPC[Rdf] => "POST, PATCH"
-              case ldpr: LocalLDPR[Rdf] => "PUT, PATCH"
-              case bin: LocalBinaryResource[Rdf] => "PUT"
+              case ldpc: LocalLDPC[Rdf] => ", POST, PATCH"
+              case ldpr: LocalLDPR[Rdf] => ", PUT, PATCH"
+              case bin: LocalBinaryResource[Rdf] => ", PUT"
               case _ => ""
             }
           }
