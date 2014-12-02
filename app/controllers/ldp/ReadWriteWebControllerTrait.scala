@@ -2,7 +2,6 @@ package controllers.ldp
 
 import _root_.play.api.mvc._
 import rww.play._
-import play.api.mvc.Results._
 
 /**
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)
@@ -23,5 +22,7 @@ trait ReadWriteWebControllerTrait {
   def post(path: String): Action[RwwContent]
 
   def delete(path: String): Action[AnyContent]
+
+  def search(path: String): Action[RwwContent]
 
 }

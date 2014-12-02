@@ -80,8 +80,9 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
   import authz._
   import ops._
   import org.w3.banana.diesel._
+  import syntax._
 
-  val ldp = LDPPrefix[Rdf]
+  val ldp = _root_.rww.ldp.model.LDPPrefix[Rdf]
   val rdfs = RDFSPrefix[Rdf]
   val wac = WebACLPrefix[Rdf]
 
@@ -270,7 +271,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
     } yield IdResult(id, x)
   }
 
-
+  val parser = new LinkHeaderParser[Rdf]
   /**
    * HTTP POST of a graph
    * @param request
@@ -278,17 +279,23 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
    * @param content
    * @return
    */
-  def postGraph(slug: Option[String], content: Option[Rdf#Graph])(implicit request: PlayRequestHeader): Future[IdResult[Rdf#URI]] = {
+  def postGraph(slug: Option[String], content: Option[Rdf#Graph])
+               (implicit request: PlayRequestHeader): Future[IdResult[Rdf#URI]] = {
 
     // just on RWWPlay we can adopt the convention that if the object ends in a "/"
     // then it is a collection, anything else is not a collection
     val (collection, file) = split(request.path)
-    val g = content.getOrElse(emptyGraph)
     if ("" == file) {
-      //todo: do we still need both createLDPR and createContainer if the type of action is determined by the content?
-      if (find(g, URI(""), rdf.typ, ldp.Container).hasNext)
-        makeCollection(collection, slug, content)
-      else makeLDPR(collection, g, slug)
+      val linkHeaders = request.headers.getAll("Link")
+      val tryMkCol = for {
+        graph <- parser.parse(linkHeaders: _*)
+        if (graph.contains(Triple(URI(""),rdf.typ,ldp.BasicContainer)))
+      } yield makeCollection(collection, slug, content)
+
+      tryMkCol getOrElse {
+        val g = content.getOrElse(emptyGraph)
+        makeLDPR(collection, g, slug)
+      }
     } else {
       Future.failed(WrongTypeException("POSTing on a LDPR that is not an LDPC is not defined")) //
     }

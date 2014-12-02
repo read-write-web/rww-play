@@ -1,7 +1,7 @@
 package rww.ldp
 
 
-import org.w3.banana.{DCTPrefix, DCPrefix, RDFOps, RDF}
+import org.w3.banana._
 import scala.util.parsing.combinator.JavaTokenParsers
 import scala.util.Try
 
@@ -16,6 +16,7 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
 
   val dc =  DCPrefix[Rdf]
   val dct =  DCTPrefix[Rdf]
+  val rdf = RDFPrefix[Rdf]
 
   case class TripleBuilder(rel: Rdf#URI, obj: Rdf#Node, inv: Boolean = false, subject:Option[Rdf#Node]=None) {
     def toTriple(anchor: Rdf#URI) = {
@@ -30,7 +31,10 @@ class LinkHeaderParser[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends JavaTokenPar
 
     def toUri(s: String) = {
       if (s.contains(':')) URI(s)
-      else URI("http://www.iana.org/assignments/link-relations/#"+s) // the URIs have to be made up here, as IANA has not RDFized this
+      else s match { //fill in obvious mappings here
+        case "type" => rdf.typ
+        case name => URI("http://www.iana.org/assignments/link-relations/#"+name)
+      } // the URIs have to be made up here, as IANA has not RDFized this
     }
 
     def apply(u: String, rev: Boolean): Rel = Rel(toUri(u),rev)
