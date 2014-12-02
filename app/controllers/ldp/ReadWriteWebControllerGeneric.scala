@@ -310,6 +310,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case umt: UnsupportedMediaType => Results.UnsupportedMediaType(umt.getMessage + stackTrace(umt))
+      case OperationNotSupportedException(msg) => NotImplemented(msg)
       case e: WrongTypeException =>
         //todo: the Allow methods should not be hardcoded.
         Result(

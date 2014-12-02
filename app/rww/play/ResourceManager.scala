@@ -286,11 +286,26 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
     // then it is a collection, anything else is not a collection
     val (collection, file) = split(request.path)
     if ("" == file) {
+      import scala.util.{Try,Failure,Success}
       val linkHeaders = request.headers.getAll("Link")
-      val tryMkCol = for {
-        graph <- parser.parse(linkHeaders: _*)
-        if (graph.contains(Triple(URI(""),rdf.typ,ldp.BasicContainer)))
-      } yield makeCollection(collection, slug, content)
+      val tryMkCol = parser.parse(linkHeaders: _*).toOption.flatMap{ graph =>
+        //todo: what do we do if a collection type is requested that we don't support !?
+        val types: List[Rdf#Node] = (PointedGraph(URI(""),graph)/rdf.typ).map(_.pointer).toList
+        if (types.size == 0) None
+        else if (types.contains(ldp.DirectContainer) || types.contains(ldp.IndirectContainer))
+          Some(Future.failed(
+            OperationNotSupportedException("We don't support ldp:DirectContainers or ldp:IndirectContainers yet"))
+          )
+        else if ( types.size == 1 && types.contains(ldp.BasicContainer)) {
+          Some(makeCollection(collection, slug, content))
+        } else {
+          Some(Future.failed(
+            OperationNotSupportedException("We don't know recognise all the types given in the Link header "+
+            types.filter(node => List(ldp.DirectContainer,ldp.IndirectContainer).contains(node))
+            ))
+          )
+        }
+      }
 
       tryMkCol getOrElse {
         val g = content.getOrElse(emptyGraph)
@@ -353,16 +368,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
 
   def delete(implicit request: PlayRequestHeader): Future[IdResult[Unit]] = for {
     id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
-    e <- rww.execute(
-      for {
-      //todo: this is an example where it is important that both of the following commands happen in the same action
-      //todo: currently same actor messages are not parsed in the same loop
-      //either that or the deleteResource() needs to pass the etag - but then why not the whole request
-        resrc <- getResource(URI(request.getAbsoluteURI.toString))
-        unit <- HttpResourceUtils.ifMatch(resrc) { () =>
-          deleteResource(URI(request.getAbsoluteURI.toString))
-        }
-      } yield unit )
+    e <- rww.execute( deleteResource(URI(request.getAbsoluteURI.toString) ))
   } yield IdResult(id,e)
 
 

@@ -22,4 +22,5 @@ object LDPExceptions {
   case class ETagsDoNotMatch(message: String) extends Exception(message) with BananaException
   case class MissingEtag(message: String) extends Exception(message) with BananaException
   case class PropertiesConflict(message: String) extends Exception(message) with BananaException
+  case class OperationNotSupportedException(message: String) extends Exception(message) with BananaException
 }

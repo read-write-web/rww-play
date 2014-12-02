@@ -114,7 +114,8 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
       case ok @ Success(ldpr: LocalLDPR[Rdf]) => {
         if (name == fileName) {
           //if this is the index file, add all the content info
-          var contentGrph = ldpr.graph union Graph(Triple(ldpcUri, rdf.typ, ldp.BasicContainer))
+          val metadata = Graph(Triple(ldpcUri, rdf.typ, ldp.BasicContainer))
+          var contentGrph = ldpr.graph union metadata
           Files.walkFileTree(root, util.Collections.emptySet(), 1,
             new SimpleFileVisitor[Path] {
 
@@ -132,7 +133,8 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
             LocalLDPC[Rdf](
               ldpcUri,
               contentGrph,
-              root
+              root,
+              Some(metadata union Graph(Triple(ldpcUri, rdf.typ, ldp.Resource))) //silly spec wants us to tell the obvious
             )
           )
         } else ok
