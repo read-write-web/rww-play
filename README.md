@@ -28,7 +28,7 @@ Getting going
 To start Play in secure mode with lightweight client certificate verification (for WebID); that is, a self-signed certificate:
 
 ```bash
- $ Play20/play
+ $ ./activator
  [RWWeb] $ idea with-sources=yes	// if you want to run intelliJ
  [RWWeb] $ eclipse with-source=true	// if you want to run eclipse Scala IDE
  [RWWeb] $ compile
