@@ -20,8 +20,6 @@ import java.io.File
 import java.net.{URI => jURI, URL => jURL}
 
 import _root_.play.api.Logger
-import _root_.play.api.libs.Files.TemporaryFile
-import _root_.play.api.libs.iteratee.Enumerator
 import akka.http.model.headers._
 import akka.http.model.parser.HeaderParser._
 import org.w3.banana._
@@ -80,7 +78,6 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
   import authz._
   import ops._
   import org.w3.banana.diesel._
-  import syntax._
 
   val ldp = _root_.rww.ldp.model.LDPPrefix[Rdf]
   val rdfs = RDFSPrefix[Rdf]
@@ -286,7 +283,6 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
     // then it is a collection, anything else is not a collection
     val (collection, file) = split(request.path)
     if ("" == file) {
-      import scala.util.{Try,Failure,Success}
       val linkHeaders = request.headers.getAll("Link")
       val tryMkCol = parser.parse(linkHeaders: _*).toOption.flatMap{ graph =>
         //todo: what do we do if a collection type is requested that we don't support !?
@@ -378,7 +374,7 @@ class ResourceMgr[Rdf <: RDF](base: jURL, rww: RWWActorSystem[Rdf], authn: AuthN
     import sparqlOps._
     //clearly the queries could be simplified here.
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
+      id <- auth(request, request.getAbsoluteURI.toString, Method.Read)
       e <- rww.execute {
         if ("" != file)
           fold(query.query)(
