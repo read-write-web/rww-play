@@ -24,16 +24,15 @@ object ApplicationBuild extends Build {
     testOptions in Test += Tests.Argument("-oDS"),
     scalacOptions ++= Seq("-deprecation", "-unchecked", "-optimize", "-feature", "-language:implicitConversions,higherKinds", "-Xmax-classfile-name", "140", "-Yinline-warnings"),
     scalacOptions in(Compile, doc) := Seq("-groups", "-implicits"),
+
+    startYear := Some(2012),
     //    resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
     //    resolvers += "Typesafe Snapshots" at "http://repo.typesafe.com/typesafe/snapshots/",
     //    resolvers += "Sonatype OSS Releases" at "http://oss.sonatype.org/content/repositories/releases/",
     //    resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
-    //    //  resolvers += "Apache snapshots" at "https://repository.apache.org/content/repositories/snapshots",
-    startYear := Some(2012),
-    //      resolvers += "Sonatype snapshots 2" at "http://oss.sonatype.org/content/repositories/snapshots", //for latest scalaz
-    //      resolvers += "Typesafe snapshots" at "http://repo.typesafe.com/typesafe/snapshots",
+    //    resolvers += "Apache snapshots" at "https://repository.apache.org/content/repositories/snapshots",
+    resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
     resolvers += "sesame-repo-releases" at "http://maven.ontotext.com/content/repositories/aduna/",
-    //      resolvers += "spray repo" at "http://repo.spray.io",
     libraryDependencies ++= appDependencies,
     ideaExcludeFolders := Seq(".idea", ".idea_modules"),
     //    excludeFilter in (Compile, unmanagedSources) ~= { _ || new FileFilter {
@@ -41,7 +40,6 @@ object ApplicationBuild extends Build {
     //      }
     //    },
     //  unmanagedSources in Compile <<= unmanagedSources in Compile map {files => files.foreach(f=>print("~~"+f));files},
-    //    resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
     sourceDirectories in(Compile, TwirlKeys.compileTemplates) := (unmanagedSourceDirectories in Compile).value,
     initialize := {
       //thanks to http://stackoverflow.com/questions/19208942/enforcing-java-version-for-scala-project-in-sbt/19271814?noredirect=1#19271814
