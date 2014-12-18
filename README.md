@@ -12,21 +12,19 @@ This currently works in the [2.3.x-TLS branch of the fork of Play 2.x](https://g
 We use [Travis CI](http://travis-ci.org/) to verify the build: [![Build Status](https://travis-ci.org/read-write-web/rww-play.png)](http://travis-ci.org/read-write-web/rww-play)
 
 
-
 Getting going
 =============
 
-
-* You need Java 7 at least - the official Oracle JVM or another one based on [the GPLed code](http://openjdk.java.net/): removing the dependency on Oracle's JVM will require [publishing of the GPLed java security libs](http://stackoverflow.com/questions/12982595/openjdk-sun-security-libs-on-maven)
+* You need Java 7 at least 
 * clone [this project](https://github.com/stample/rww-play) 
-
+* run
 ```bash
  $ git clone git://github.com/read-write-web/rww-play.git 
 ``` 
 
 
-Running
--------
+### Running in single user mode
+
 To start Play in secure mode with lightweight client certificate verification (for WebID); that is, a self-signed certificate:
 
 ```bash
@@ -39,18 +37,13 @@ To start Play in secure mode with lightweight client certificate verification (f
 Then you can direct your browser to:
 [https://localhost:8443/2013/](https://localhost:8443/2013/)
 
-If you want to have multiple users on your server, it is best to give each user a subdomain for JS security. This can
-be had by starting the server with the following attributes.
 
-Working with subdomains
-=======================
+### Running with multiple users securely
 
-You can run the server so that every new user gets a new subdomain, thereby
-protecting his space and his javascript from potentially dangerous javascript
-uploaded by others.
+If you want to have multiple users on your server, it is best to give each user a subdomain for JS security.
+This will protect his space and his javascript from potentially dangerous javascript code uploaded by others.
 
-Some network config.
---------------------
+#### network config
 
 To start Play in secure mode with lightweight client certificate verification (for WebID)
 In file:
@@ -58,17 +51,17 @@ conf/application.conf
 set the smtp parameters: host= and user=
 of your mail provider server.
 
-In file:
-/etc/hosts
-add host names for the subdomains you will create, e.g. :
+On Unix in `/etc/hosts` add host names for the subdomains you will create, e.g. :
+```
 127.0.0.1 jmv.localhost
 127.0.0.1 jmv1.localhost
 127.0.0.1 jmv2.localhost
+```
 
 Installing RWW apps
 ===================
 
-(still flakey in dev branch now)
+(untested in dev branch as of this commit)
 
 The RWW apps are stored in other git repositories.
 One can run the script `./install-app.sh` to install or update the RWW apps that we ship with the platform.
