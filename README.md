@@ -7,58 +7,23 @@ It is very early stages at present and it implements sketches of the following
 * A [CORS](http://www.w3.org/TR/cors/) proxy
 * An initial implementation of [Linked Data Basic Profile](http://www.w3.org/2012/ldp/wiki/Main_Page)
 
-This currently works in the [TLS branch of the bblfish fork of Play 2.x](https://github.com/bblfish/Play20), which comes with TLS support and a few more patches.
+This currently works in the [2.3.x-TLS branch of the fork of Play 2.x](https://github.com/read-write-web/Play20), which comes with TLS support and a few more patches.
 
 We use [Travis CI](http://travis-ci.org/) to verify the build: [![Build Status](https://travis-ci.org/read-write-web/rww-play.png)](http://travis-ci.org/read-write-web/rww-play)
 
 
 
 Getting going
--------------
+=============
 
 
 * You need Java 7 at least - the official Oracle JVM or another one based on [the GPLed code](http://openjdk.java.net/): removing the dependency on Oracle's JVM will require [publishing of the GPLed java security libs](http://stackoverflow.com/questions/12982595/openjdk-sun-security-libs-on-maven)
 * clone [this project](https://github.com/stample/rww-play) 
 
 ```bash
- $ git clone git://github.com/stample/rww-play.git 
+ $ git clone git://github.com/read-write-web/rww-play.git 
 ``` 
 
-In the `rww-play` home directory, run the `build` bash script. It will download a precompiled tuned 
-version of play, build the application, and run it. (If there is no remotely downloadable version
-it will build it from source in the `Play20` directory.)
-
-```bash
-$ ./build
-```
-Some network config.
---------------------
-
-Download the JavaScript apps by running
-
-```bash
-$ ./install-app.sh
-```
-
-To start Play in secure mode with lightweight client certificate verification (for WebID)
-In file:
-conf/application.conf
-set the smtp parameters: host= and user=
-of your mail provider server.
-
-In file:
-/etc/hosts
-add host names for the subdomains you will create, e.g. :
-127.0.0.1 jmv.localhost
-127.0.0.1 jmv1.localhost
-127.0.0.1 jmv2.localhost
-
-Installing RWW apps
-----------
-The RWW apps are stored in other git repositories.
-One can run the script `./install-app.sh` to install or update the RWW apps that we ship with the platform.
-Check the script content, it is simply a git clone. ( If installing on a public server make sure the proxy
-url is set. )
 
 Running
 -------
@@ -77,6 +42,38 @@ Then you can direct your browser to:
 If you want to have multiple users on your server, it is best to give each user a subdomain for JS security. This can
 be had by starting the server with the following attributes.
 
+Working with subdomains
+=======================
+
+You can run the server so that every new user gets a new subdomain, thereby
+protecting his space and his javascript from potentially dangerous javascript
+uploaded by others.
+
+Some network config.
+--------------------
+
+To start Play in secure mode with lightweight client certificate verification (for WebID)
+In file:
+conf/application.conf
+set the smtp parameters: host= and user=
+of your mail provider server.
+
+In file:
+/etc/hosts
+add host names for the subdomains you will create, e.g. :
+127.0.0.1 jmv.localhost
+127.0.0.1 jmv1.localhost
+127.0.0.1 jmv2.localhost
+
+Installing RWW apps
+===================
+
+(still flakey in dev branch now)
+
+The RWW apps are stored in other git repositories.
+One can run the script `./install-app.sh` to install or update the RWW apps that we ship with the platform.
+Check the script content, it is simply a git clone. ( If installing on a public server make sure the proxy
+url is set. )
  
 For subdomains on your local machine you will need to edit `/etc/hosts` for each server. For
 machines on the web you can just assign all domains to the same ip address.
@@ -93,12 +90,12 @@ if the e-mail server is not set up).
 
 
 Documentation
--------------
+=============
 
 Further documentation can be found on the [rww-play wiki](https://github.com/stample/rww-play/wiki).
 
 Licence
--------
+=======
 
    Copyright 2013-2014 Henry Story
 
