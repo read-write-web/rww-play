@@ -15,7 +15,7 @@ We use [Travis CI](http://travis-ci.org/) to verify the build: [![Build Status](
 Getting going
 =============
 
-* You need Java 7 at least 
+* You need at least Java 8 which is [being widely adopted by the Scala community](http://www.infoq.com/news/2014/12/Typesafe-surveys-Java-Adoption)
 * clone [this project](https://github.com/stample/rww-play) 
 * run
 ```bash

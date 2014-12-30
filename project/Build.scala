@@ -3,10 +3,8 @@ import org.sbtidea.SbtIdeaPlugin._
 import play.Play.autoImport._
 import play.twirl.sbt.Import.TwirlKeys
 import play.twirl.sbt.SbtTwirl
-import sbt.ExclusionRule
 import sbt.Keys._
-import sbt._
-import scala.Some
+import sbt.{ExclusionRule, _}
 
 object ApplicationBuild extends Build {
 
@@ -46,7 +44,7 @@ object ApplicationBuild extends Build {
       //thanks to http://stackoverflow.com/questions/19208942/enforcing-java-version-for-scala-project-in-sbt/19271814?noredirect=1#19271814
       val _ = initialize.value // run the previous initialization
       val specVersion = sys.props("java.specification.version")
-      assert(java.lang.Float.parseFloat(specVersion) >= 1.7, "Java 1.7 or above required. Your version is " + specVersion)
+      assert(java.lang.Float.parseFloat(specVersion) >= 1.8f, "Java 1.8 or above required. Your version is " + specVersion)
     }
   )
 
