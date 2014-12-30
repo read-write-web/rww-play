@@ -32,6 +32,7 @@ object ApplicationBuild extends Build {
     //    resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
     //    resolvers += "Apache snapshots" at "https://repository.apache.org/content/repositories/snapshots",
     resolvers += "bblfish-snapshots" at "http://bblfish.net/work/repo/snapshots",
+    resolvers += "bblfish.net repository" at "http://bblfish.net/work/repo/releases/",
     resolvers += "sesame-repo-releases" at "http://maven.ontotext.com/content/repositories/aduna/",
     libraryDependencies ++= appDependencies,
     ideaExcludeFolders := Seq(".idea", ".idea_modules"),
