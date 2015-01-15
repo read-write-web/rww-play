@@ -20,7 +20,7 @@ are no stupid questions!
 
 * Chat with us on [![Gitter chat channel](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/read-write-web/rww-play?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 * Join the [co-operating-systems mailing list on google groups](https://groups.google.com/forum/?fromgroups#!forum/co-operating-systems)
-* 
+* Submit issues and requests on the  [issue tracker](rww-play/issues) 
 
 Getting going
 =============
