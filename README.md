@@ -11,6 +11,16 @@ This currently works in the [2.3.x-TLS branch of the fork of Play 2.x](https://g
 
 We use [Travis CI](http://travis-ci.org/) to verify the build: [![Build Status](https://travis-ci.org/read-write-web/rww-play.png)](http://travis-ci.org/read-write-web/rww-play)
 
+Community
+=========
+
+This project is moving fast. If you have any problems don't hesitate to 
+participate, ask questions, whoever small your problem seems to be. There
+are no stupid questions!
+
+* Chat with us on [![Gitter chat channel](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/read-write-web/rww-play?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+* Join the [co-operating-systems mailing list on google groups](https://groups.google.com/forum/?fromgroups#!forum/co-operating-systems)
+* 
 
 Getting going
 =============
