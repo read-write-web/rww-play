@@ -1,7 +1,9 @@
 FROM ubuntu:14.10
 
-# Usage: docker run -it --net=host rww-play
-# Then: curl -k https://localhost:8443/2013/card
+# Usage:
+# docker build -t rww-play .
+# docker run -it --net=host rww-play
+# curl -k https://localhost:8443/2013/card
 
 RUN apt-get update \
 	&& apt-get install -yq \
