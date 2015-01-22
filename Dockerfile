@@ -8,7 +8,7 @@ RUN apt-get update \
 		git \
 		openjdk-8-jdk \
 		openjdk-8-jre \
-	&& rm -rf /var/apt/lists/*
+	&& rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/read-write-web/rww-play
 
