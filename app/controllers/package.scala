@@ -1,6 +1,6 @@
 package controllers
 
-import java.io.File
+import java.io.{OutputStream, File}
 import java.net.URL
 import java.nio.file.{Files, Path}
 import java.util.concurrent.TimeUnit
@@ -159,12 +159,32 @@ trait SesameSetup extends RdfSetup with Setup {
     import Sesame._
     implicit val jsonLd: SesameSyntax[JsonLd] = SesameSyntax.jsonldSyntax(JSONLDMode.COMPACT)
     implicit val jsonldWriter: SesameRDFWriter[JsonLd] = new SesameRDFWriter[JsonLd]
+
+    //note this writer selector also contains a writer for html that knows how to return an html full of JS
+    //todo: this is done in too hidden a manner.
+    implicit val htmlWriter: RDFWriter[Sesame, Try, RDFaXHTML] = new RDFWriter[Sesame, Try, RDFaXHTML] {
+      override val transformsTo: Syntax[RDFaXHTML] = Syntax.RDFaXHTML
+
+      override def write(obj: Sesame#Graph, out: OutputStream, base: String) =
+        Try {
+          out.write(views.html.ldp.rdfToHtml().body.getBytes("UTF-8"))
+        }
+
+      override def asString(obj: Sesame#Graph, base: String) =
+        Try {
+          views.html.ldp.rdfToHtml().body
+        }
+
+
+    }
+
     WriterSelector[Sesame#Graph, Try, Turtle] combineWith
       WriterSelector[Sesame#Graph, Try, JsonLd] combineWith
       WriterSelector[Sesame#Graph, Try, JsonLdCompacted] combineWith
       WriterSelector[Sesame#Graph, Try, JsonLdExpanded] combineWith
       WriterSelector[Sesame#Graph, Try, JsonLdFlattened] combineWith
-      WriterSelector[Sesame#Graph, Try, RDFXML]
+      WriterSelector[Sesame#Graph, Try, RDFXML] combineWith
+      WriterSelector[Sesame#Graph, Try, RDFaXHTML]
   }
 
 
