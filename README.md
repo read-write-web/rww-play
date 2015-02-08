@@ -19,6 +19,7 @@ participate, ask questions, whoever small your problem seems to be. There
 are no stupid questions!
 
 * Chat with us on [![Gitter chat channel](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/read-write-web?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+* Check our development status at *waffle.io*: [![Stories in Ready](https://badge.waffle.io/read-write-web/rww-play.png?label=ready&title=Ready)](http://waffle.io/read-write-web/rww-play) 
 * Join the [co-operating-systems mailing list on google groups](https://groups.google.com/forum/?fromgroups#!forum/co-operating-systems)
 * Submit issues and requests on the  [issue tracker](rww-play/issues) 
 
