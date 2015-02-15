@@ -50,7 +50,7 @@ object ApplicationBuild extends Build {
 
 
 
-  val banana = (name: String) => "org.w3" %% name % "0.7.1-SNAPSHOT" excludeAll (ExclusionRule(organization = "org.scala-stm"))
+  val banana = (name: String) => "org.w3" %% name % "0.7.2-SNAPSHOT" excludeAll (ExclusionRule(organization = "org.scala-stm"))
   val semargl = (name: String) => "org.semarglproject" % {"semargl-"+name} % "0.6.1"
 
   val iterateeDeps = "com.typesafe.play" %% "play-iteratees" % "2.3.6-TLS"
