@@ -143,7 +143,8 @@ trait RdfSetup  {
 
 trait SesameSetup extends RdfSetup with Setup {
   import org.w3.banana.sesame.Sesame
-
+  import Sesame._
+  
   type Rdf = Sesame
   implicit val ops: RDFOps[Rdf] = Sesame.ops
   implicit val sparqlOps: SparqlOps[Rdf] = Sesame.sparqlOps
@@ -156,9 +157,9 @@ trait SesameSetup extends RdfSetup with Setup {
   implicit val sparqlUpdateSelector: IterateeSelector[Rdf#UpdateQuery] = SesameSparqlUpdateIteratee.sparqlSelector
   implicit val sparqlSelector: IterateeSelector[Rdf#Query] = SesameSparqlQueryIteratee.sparqlSelector
   implicit val graphWriterSelector: WriterSelector[Rdf#Graph,Try]  = {
-    import Sesame._
     implicit val jsonLd: SesameSyntax[JsonLd] = SesameSyntax.jsonldSyntax(JSONLDMode.COMPACT)
     implicit val jsonldWriter: SesameRDFWriter[JsonLd] = new SesameRDFWriter[JsonLd]
+    implicit val ntriplesWriter = new NTriplesWriter[Rdf]
 
     //note this writer selector also contains a writer for html that knows how to return an html full of JS
     //todo: this is done in too hidden a manner.
@@ -184,7 +185,8 @@ trait SesameSetup extends RdfSetup with Setup {
       WriterSelector[Sesame#Graph, Try, JsonLdExpanded] combineWith
       WriterSelector[Sesame#Graph, Try, JsonLdFlattened] combineWith
       WriterSelector[Sesame#Graph, Try, RDFXML] combineWith
-      WriterSelector[Sesame#Graph, Try, RDFaXHTML]
+      WriterSelector[Sesame#Graph, Try, RDFaXHTML] combineWith
+      WriterSelector[Sesame#Graph, Try, NTriples]
   }
 
 
