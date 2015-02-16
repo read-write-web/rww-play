@@ -190,7 +190,13 @@ trait SesameSetup extends RdfSetup with Setup {
 
   implicit val solutionsWriterSelector: SparqlSolutionsWriterSelector[Rdf] = Sesame.sparqlSolutionsWriterSelector
 
-  val webClient: WebClient[Rdf] =  new WSClient(Sesame.readerSelector,Sesame.turtleWriter)
+  val readerSelector: ReaderSelector[Sesame, Try] =
+    ReaderSelector[Sesame, Try, Turtle] combineWith
+      ReaderSelector[Sesame, Try, RDFXML] combineWith
+      ReaderSelector[Sesame, Try, JsonLd] combineWith
+      ReaderSelector[Sesame, Try, NTriples]
+  
+  val webClient: WebClient[Rdf] =  new WSClient(readerSelector,Sesame.turtleWriter)
 
   val rww: RWWActorSystem[Rdf] = {
     val rootURI = ops.URI(rwwRoot.toString)
