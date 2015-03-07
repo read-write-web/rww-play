@@ -207,7 +207,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
               "Accept-Patch" -> Syntax.SparqlUpdate.mimeTypes.head.mime :: //todo: something that is more flexible
               linkHeaders(ldpr) ::
               commonHeaders
-          result(200, wr, Map(headers: _*))(ldpr.relativeGraph)
+          result(200, wr, Map(headers: _*))(ldpr.graph)
         } getOrElse {
           play.api.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
             request.headers.get(play.api.http.HeaderNames.ACCEPT))
