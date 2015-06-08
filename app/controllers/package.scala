@@ -159,6 +159,8 @@ trait SesameSetup extends RdfSetup with Setup {
     import Sesame._
     implicit val jsonLd: SesameSyntax[JsonLd] = SesameSyntax.jsonldSyntax(JSONLDMode.COMPACT)
     implicit val jsonldWriter: SesameRDFWriter[JsonLd] = new SesameRDFWriter[JsonLd]
+    implicit val ntriplesWriter: RDFWriter[Sesame,Try,NTriples] =
+      new NTriplesWriter[Sesame]
 
     //note this writer selector also contains a writer for html that knows how to return an html full of JS
     //todo: this is done in too hidden a manner.
@@ -178,7 +180,8 @@ trait SesameSetup extends RdfSetup with Setup {
 
     }
 
-    WriterSelector[Sesame#Graph, Try, Turtle] combineWith
+    WriterSelector[Sesame#Graph, Try, NTriples] combineWith
+      WriterSelector[Sesame#Graph, Try, Turtle] combineWith
       WriterSelector[Sesame#Graph, Try, JsonLd] combineWith
       WriterSelector[Sesame#Graph, Try, JsonLdCompacted] combineWith
       WriterSelector[Sesame#Graph, Try, JsonLdExpanded] combineWith
