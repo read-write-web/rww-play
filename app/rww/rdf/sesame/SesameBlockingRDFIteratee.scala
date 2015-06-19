@@ -30,7 +30,7 @@ import scala.util.Try
 
 class SesameBlockingRDFIteratee(implicit ec: ExecutionContext)  {
   implicit val ops = Sesame.ops
-  import org.w3.banana.sesame.Sesame.{rdfXMLReader, turtleReader,jsonldReader}
+  import org.w3.banana.sesame.Sesame.{rdfXMLReader, turtleReader,jsonldReader, ntriplesReader}
 
   def apply[SyntaxType](reader: RDFReader[Sesame, Try, SyntaxType]) =
     new BlockingRDFIteratee[Sesame,SyntaxType](reader)
@@ -38,13 +38,15 @@ class SesameBlockingRDFIteratee(implicit ec: ExecutionContext)  {
   implicit val RDFXMLIteratee: RDFIteratee[Sesame#Graph,RDFXML] = apply[RDFXML](rdfXMLReader)
   implicit val TurtleIteratee: RDFIteratee[Sesame#Graph,Turtle] = apply[Turtle](turtleReader)
   implicit val JSonLDIteratee: RDFIteratee[Sesame#Graph,JsonLd] = apply[JsonLd](jsonldReader)
+  implicit val NTriplesIteratee: RDFIteratee[Sesame#Graph,NTriples] = apply[NTriples](ntriplesReader)
 
   val rdfxmlSelector = IterateeSelector[Sesame#Graph, RDFXML](Syntax.RDFXML,RDFXMLIteratee)
   val turtleSelector = IterateeSelector[Sesame#Graph, Turtle](Syntax.Turtle,TurtleIteratee)
   val jsonLDSelector = IterateeSelector[Sesame#Graph, JsonLd](Syntax.JsonLd,JSonLDIteratee)
+  val ntriplesSelector = IterateeSelector[Sesame#Graph, NTriples](Syntax.NTriples,NTriplesIteratee)
 
   implicit val BlockingIterateeSelector: IterateeSelector[Sesame#Graph] =
-    rdfxmlSelector combineWith turtleSelector combineWith jsonLDSelector
+    rdfxmlSelector combineWith turtleSelector combineWith jsonLDSelector combineWith ntriplesSelector
 
 
 }

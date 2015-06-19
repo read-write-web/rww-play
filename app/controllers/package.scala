@@ -159,8 +159,7 @@ trait SesameSetup extends RdfSetup with Setup {
     import Sesame._
     implicit val jsonLd: SesameSyntax[JsonLd] = SesameSyntax.jsonldSyntax(JSONLDMode.COMPACT)
     implicit val jsonldWriter: SesameRDFWriter[JsonLd] = new SesameRDFWriter[JsonLd]
-    implicit val ntriplesWriter: RDFWriter[Sesame,Try,NTriples] =
-      new NTriplesWriter[Sesame]
+    implicit val ntriplesWriter = new NTriplesWriter[Rdf]
 
     //note this writer selector also contains a writer for html that knows how to return an html full of JS
     //todo: this is done in too hidden a manner.
@@ -193,7 +192,13 @@ trait SesameSetup extends RdfSetup with Setup {
 
   implicit val solutionsWriterSelector: SparqlSolutionsWriterSelector[Rdf] = Sesame.sparqlSolutionsWriterSelector
 
-  val webClient: WebClient[Rdf] =  new WSClient(Sesame.readerSelector,Sesame.turtleWriter)
+  val readerSelector: ReaderSelector[Sesame, Try] =
+    ReaderSelector[Sesame, Try, Turtle] combineWith
+      ReaderSelector[Sesame, Try, RDFXML] combineWith
+      ReaderSelector[Sesame, Try, JsonLd] combineWith
+      ReaderSelector[Sesame, Try, NTriples]
+  
+  val webClient: WebClient[Rdf] =  new WSClient(readerSelector,Sesame.turtleWriter)
 
   val rww: RWWActorSystem[Rdf] = {
     val rootURI = ops.URI(rwwRoot.toString)
