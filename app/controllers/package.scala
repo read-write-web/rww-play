@@ -143,6 +143,7 @@ trait RdfSetup  {
 
 trait SesameSetup extends RdfSetup with Setup {
   import org.w3.banana.sesame.Sesame
+  import Sesame.turtleWriter
 
   type Rdf = Sesame
   implicit val ops: RDFOps[Rdf] = Sesame.ops
@@ -156,22 +157,22 @@ trait SesameSetup extends RdfSetup with Setup {
   implicit val sparqlUpdateSelector: IterateeSelector[Rdf#UpdateQuery] = SesameSparqlUpdateIteratee.sparqlSelector
   implicit val sparqlSelector: IterateeSelector[Rdf#Query] = SesameSparqlQueryIteratee.sparqlSelector
   implicit val graphWriterSelector: WriterSelector[Rdf#Graph,Try]  = {
-    import Sesame._
+    import Sesame.{jsonldCompactedWriter,jsonldExpandedWriter,jsonldFlattenedWriter,rdfXMLWriter}
     implicit val jsonLd: SesameSyntax[JsonLd] = SesameSyntax.jsonldSyntax(JSONLDMode.COMPACT)
     implicit val jsonldWriter: SesameRDFWriter[JsonLd] = new SesameRDFWriter[JsonLd]
-    implicit val ntriplesWriter = new NTriplesWriter[Rdf]
+    implicit val ntriplesWriter: RDFWriter[Rdf,Try,NTriples] = new NTriplesWriter[Rdf]
 
     //note this writer selector also contains a writer for html that knows how to return an html full of JS
     //todo: this is done in too hidden a manner.
-    implicit val htmlWriter: RDFWriter[Sesame, Try, RDFaXHTML] = new RDFWriter[Sesame, Try, RDFaXHTML] {
+    implicit val htmlWriter: RDFWriter[Rdf, Try, RDFaXHTML] = new RDFWriter[Rdf, Try, RDFaXHTML] {
       override val transformsTo: Syntax[RDFaXHTML] = Syntax.RDFaXHTML
 
-      override def write(obj: Sesame#Graph, out: OutputStream, base: String) =
+      override def write(obj: Rdf#Graph, out: OutputStream, base: String) =
         Try {
           out.write(views.html.ldp.rdfToHtml().body.getBytes("UTF-8"))
         }
 
-      override def asString(obj: Sesame#Graph, base: String) =
+      override def asString(obj: Rdf#Graph, base: String) =
         Try {
           views.html.ldp.rdfToHtml().body
         }
@@ -179,14 +180,14 @@ trait SesameSetup extends RdfSetup with Setup {
 
     }
 
-    WriterSelector[Sesame#Graph, Try, NTriples] combineWith
-      WriterSelector[Sesame#Graph, Try, Turtle] combineWith
-      WriterSelector[Sesame#Graph, Try, JsonLd] combineWith
-      WriterSelector[Sesame#Graph, Try, JsonLdCompacted] combineWith
-      WriterSelector[Sesame#Graph, Try, JsonLdExpanded] combineWith
-      WriterSelector[Sesame#Graph, Try, JsonLdFlattened] combineWith
-      WriterSelector[Sesame#Graph, Try, RDFXML] combineWith
-      WriterSelector[Sesame#Graph, Try, RDFaXHTML]
+    WriterSelector[Rdf#Graph, Try, NTriples] combineWith
+      WriterSelector[Rdf#Graph, Try, Turtle] combineWith
+      WriterSelector[Rdf#Graph, Try, JsonLd] combineWith
+      WriterSelector[Rdf#Graph, Try, JsonLdCompacted] combineWith
+      WriterSelector[Rdf#Graph, Try, JsonLdExpanded] combineWith
+      WriterSelector[Rdf#Graph, Try, JsonLdFlattened] combineWith
+      WriterSelector[Rdf#Graph, Try, RDFXML] combineWith
+      WriterSelector[Rdf#Graph, Try, RDFaXHTML]
   }
 
 
