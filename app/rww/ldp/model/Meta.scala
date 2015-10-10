@@ -1,6 +1,6 @@
 package rww.ldp.model
 
-import akka.http.model.headers.EntityTag
+import akka.http.scaladsl.model.headers.EntityTag
 import org.w3.banana.{RDFOps, PointedGraph, RDF}
 import java.util.Date
 import scala.util.Try

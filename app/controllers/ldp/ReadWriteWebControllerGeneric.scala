@@ -3,8 +3,8 @@ package controllers.ldp
 import java.net.{URLDecoder, URI => jURI}
 
 import _root_.play.{api => PlayApi}
-import akka.http.model.headers._
-import akka.http.util.DateTime
+import akka.http.scaladsl.model.headers._
+import akka.http.scaladsl.model.DateTime
 import com.google.common.base.Throwables
 import org.w3.banana._
 import org.w3.banana.io.{BooleanWriter, Syntax, WriterSelector}
@@ -137,6 +137,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case rse: ResourceDoesNotExist => NotFound(rse.getMessage + stackTrace(rse))
       case umt: UnsupportedMediaType => Results.UnsupportedMediaType(umt.getMessage + stackTrace(umt))
+      case ETagsMatch(_) => NotModified
       case err @ AccessDeniedAuthModes(authinfo) => {
         Logger.warn("Access denied exception"+authinfo)
            //todo: automatically create html versions if needed of error messages

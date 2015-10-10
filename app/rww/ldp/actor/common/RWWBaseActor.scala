@@ -22,7 +22,6 @@ trait RWWBaseActor extends Actor with akka.actor.ActorLogging {
     // and whatever we choose it could have bad sideffects. What happens if the isDefinedAt throws an exception?
     def isDefinedAt(x: Any): Boolean = pf.isDefinedAt(x)
     def apply(a: Any): Unit = try {
-      log.debug(s"received $a")
       pf.apply(a)
     } catch {
       case e: Exception => sender ! akka.actor.Status.Failure(e)

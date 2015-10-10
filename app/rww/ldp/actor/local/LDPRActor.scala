@@ -17,7 +17,7 @@ import rww.ldp.actor.common.RWWBaseActor
 import rww.ldp.model._
 import rww.ldp.{DeleteResource, GetMeta, GetResource, UpdateLDPR, _}
 import rww.rdf.util.StatPrefix
-import akka.http.model.Uri
+import akka.http.scaladsl.model.Uri
 import utils.FileUtils._
 
 import scala.collection.convert.decorateAsScala._

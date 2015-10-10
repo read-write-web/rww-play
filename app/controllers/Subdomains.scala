@@ -5,7 +5,7 @@ import java.nio.file.Path
 import java.security.PublicKey
 import java.security.interfaces.RSAPublicKey
 
-import akka.http.model.Uri
+import akka.http.scaladsl.model.Uri
 import org.bouncycastle.cert.X509CertificateHolder
 import org.w3.banana._
 import play.api.Logger

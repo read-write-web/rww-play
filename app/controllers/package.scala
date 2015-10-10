@@ -54,7 +54,7 @@ trait Setup {
     Play.current.configuration.getString(httpHostnameKey).getOrElse("localhost")
 
   // This permits to remove the default http 80 / https 443 port from the String
-  def normalizeUri(uri: String): String = akka.http.model.Uri(uri).toString()
+  def normalizeUri(uri: String): String = akka.http.scaladsl.model.Uri(uri).toString()
 
   def normalizeURL(url: URL): URL = new URL(normalizeUri(url.toString))
 

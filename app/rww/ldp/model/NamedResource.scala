@@ -3,7 +3,7 @@ package rww.ldp.model
 import java.nio.file.{Files, Path}
 import java.util.Date
 
-import akka.http.model.headers.EntityTag
+import akka.http.scaladsl.model.headers.EntityTag
 import org.w3.banana.{LDPPrefix => _, _}
 import rww.rdf.util.LDPPrefix
 
