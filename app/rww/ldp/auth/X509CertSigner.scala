@@ -21,7 +21,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package rww.ldp.auth;
+package rww.ldp.auth
 
 import java.math.BigInteger
 import java.net.URL

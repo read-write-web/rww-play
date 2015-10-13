@@ -1,19 +1,18 @@
 package rww.ldp.auth
 
-import scala.concurrent.ExecutionContext
-import ExecutionContext.Implicits.global
 import java.util.regex.Pattern
-import org.w3.banana._
-import rww.ldp.{PiNGs, PiNG, LDPCommand, WebResource}
-import play.api.libs.iteratee._
-import scala.concurrent.Future
-import utils.Iteratees
+
 import com.typesafe.scalalogging.slf4j.Logging
-import scala.util.Try
-import scala.Some
-import scala.util.Success
-import rww.play.Method
+import org.w3.banana._
 import play.Logger
+import play.api.libs.iteratee._
+import rww.ldp.{LDPCommand, PiNG, PiNGs, WebResource}
+import rww.play.Method
+import utils.Iteratees
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Success, Try}
 
 /**
  * WACAuthZ groups methods to find the authorized WebIDs for a particular resource
@@ -31,7 +30,6 @@ class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) ext
   implicit val rww = web.rwwActorSys
 
   import org.w3.banana.diesel._
-  import org.w3.banana.syntax._
 
 
   val foaf = FOAFPrefix[Rdf]

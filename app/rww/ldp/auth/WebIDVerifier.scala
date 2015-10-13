@@ -1,22 +1,22 @@
 package rww.ldp.auth
 
 
-import java.security.cert.X509Certificate
-import scalaz.{ Success => _, Failure => _, Validation =>_ , _ }
-import scalaz.Scalaz._
-import java.security.{Principal, PublicKey}
-import java.net.{MalformedURLException, URL, URISyntaxException}
-import rww.ldp.actor.RWWActorSystem
-import rww.ldp.LDPCommand
 import java.math.BigInteger
+import java.net.{MalformedURLException, URISyntaxException, URL}
+import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPublicKey
-import scalaz.Semigroup._
-import scala.concurrent.{ExecutionContext, Future}
-import util.{Failure, Success, Try}
-import org.w3.banana._
+import java.security.{Principal, PublicKey}
+
 import org.slf4j.LoggerFactory
-import java.lang.Exception
-import scala.Exception
+import org.w3.banana._
+import rww.ldp.LDPCommand
+import rww.ldp.actor.RWWActorSystem
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
+import scalaz.Scalaz._
+import scalaz.Semigroup._
+import scalaz.{Failure => _, Success => _, Validation => _, _}
 
 object WebIDVerifier {
 
@@ -30,6 +30,42 @@ object WebIDVerifier {
 }
 
 
+class CryptoUtil[Rdf <: RDF](implicit ops: RDFOps[Rdf]) {
+
+  import ops._
+  import WebIDVerifier._
+
+  val base10Types = List(xsd("integer"),xsd("int"),xsd("positiveInteger"),xsd("decimal"))
+
+  /**
+   * transform an RDF#Node Literal to a positive Integer if possible
+   * A bit heavy this implementation! Can't use asInstanceOf[T] as that info is sadly erased
+   * @param node the node - as a literal - that should be the positive integer
+   * @return a Validation containing and exception or the number
+   */
+   def toPositiveInteger(node: Rdf#Node): Try[BigInteger] =
+    foldNode(node)(
+      _=> Failure(FailedConversion("node must be a typed literal; it was: "+node)),
+      _=> Failure(FailedConversion("node must be a typed literal; it was: "+node)),
+      lit => try {
+        fromLiteral(lit) match {
+          case (hexStr, xsd("hexBinary"), None) => Success(new BigInteger(stripSpace(hexStr), 16))
+          case (base10Str, base10Tp, None) if base10Types.contains(base10Tp) =>
+            Success(new BigInteger(base10Str))
+          case (_, tp, None) => Failure(
+            FailedConversion("do not recognise datatype " + tp + " as one of the legal numeric ones in node: " + node)
+          )
+          case _ => Failure(FailedConversion("require a TypedLiteral not a LangLiteral. Received " + node))
+        }
+      } catch {
+        case num: NumberFormatException =>
+          Failure(FailedConversion("failed to convert to integer "+node+" - "+num.getMessage))
+      }
+    )
+
+}
+
+
 /**
  *
  */
@@ -37,11 +73,13 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
                                (implicit ops: RDFOps[Rdf],
                                 sparqlOps: SparqlOps[Rdf],
                                 val ec: ExecutionContext)   {
-  import sparqlOps._
-  import ops._
   import WebIDVerifier._
+  import ops._
+  import sparqlOps._
 
   val logger = LoggerFactory.getLogger(this.getClass)
+  val crypto = new CryptoUtil[Rdf]()
+  import crypto._
 
   //todo: find a good sounding name for (String,PublicKey)
   //todo document what is going on eg: sanPair.get(1)
@@ -61,17 +99,12 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
       Option(x509.getSubjectAlternativeNames).toList.flatMap { collOfNames =>
         import scala.collection.JavaConverters.iterableAsScalaIterableConverter
         for {
-          sanPair <- collOfNames.asScala;
+          sanPair <- collOfNames.asScala
           if (sanPair.get(0) == 6)
         } yield (sanPair.get(1).asInstanceOf[String].trim,x509.getPublicKey)
       }
     }
 
-
-
-
-
-  val base10Types = List(xsd("integer"),xsd("int"),xsd("positiveInteger"),xsd("decimal"))
 
   //  val webidVerifier = {
   //    val wiv = context.actorFor("webidVerifier")
@@ -88,31 +121,6 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
                         :exponent ?e ].
       }""").get
 
-  /**
-   * transform an RDF#Node to a positive Integer if possible
-   * A bit heavy this implementation! Can't use asInstanceOf[T] as that info is sadly erased
-   * @param node the node - as a literal - that should be the positive integer
-   * @return a Validation containing and exception or the number
-   */
-  private def toPositiveInteger(node: Rdf#Node): Try[BigInteger] =
-    foldNode(node)(
-      _=> Failure(FailedConversion("node must be a typed literal; it was: "+node)),
-      _=> Failure(FailedConversion("node must be a typed literal; it was: "+node)),
-      lit => try {
-        fromLiteral(lit) match {
-          case (hexStr, xsd("hexBinary"), None) => Success(new BigInteger(stripSpace(hexStr), 16))
-          case (base10Str, base10Tp, None) if base10Types.contains(base10Tp) =>
-            Success(new BigInteger(base10Str))
-          case (_, tp, None) => Failure(
-            FailedConversion("do not recognise datatype " + tp + " as one of the legal numeric ones in node: " + node)
-          )
-          case _ => Failure(FailedConversion("require a TypedLiteral not a LangLiteral. Received " + node))
-        }
-      } catch {
-        case num: NumberFormatException =>
-          Failure(FailedConversion("failed to convert to integer "+node+" - "+num.getMessage))
-      }
-    )
 
 
   /**
@@ -218,6 +226,10 @@ object Claim {
 
 case class WebIDPrincipal(webid: java.net.URI) extends Principal {
   val getName = webid.toString
+}
+
+case class WebKeyPrincipal(key: java.net.URI) extends Principal {
+  override def getName = key.toString
 }
 
 case class RSAPubKey(modulus: BigInteger, exponent: BigInteger)

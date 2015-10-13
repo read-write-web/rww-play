@@ -20,10 +20,10 @@ import java.net.URL
 import java.nio.file.Path
 
 import controllers.{RdfSetup, SesameSetup}
+import rww.auth.WebIDAuthN
 import rww.ldp._
 import rww.ldp.auth.{WACAuthZ, WebIDVerifier}
 import rww.play._
-import rww.play.auth.WebIDAuthN
 
 object ReadWriteWebController extends ReadWriteWebController (
   RdfSetup.rwwRoot,
