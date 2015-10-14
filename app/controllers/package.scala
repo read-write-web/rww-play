@@ -1,6 +1,6 @@
 package controllers
 
-import java.io.{OutputStream, File}
+import java.io.{File, OutputStream}
 import java.net.URL
 import java.nio.file.{Files, Path}
 import java.util.concurrent.TimeUnit
@@ -9,13 +9,15 @@ import _root_.play.api.{Logger, Play}
 import akka.actor.ActorSystem
 import akka.util.Timeout
 import org.openrdf.rio.helpers.JSONLDMode
-import org.w3.banana.io._
 import org.w3.banana._
+import org.w3.banana.binder.RecordBinder
+import org.w3.banana.io._
 import org.w3.banana.sesame.io.{SesameRDFWriter, SesameSyntax}
 import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
 import rww.ldp.{WSClient, WebClient}
 import rww.play.rdf.IterateeSelector
 import rww.play.rdf.sesame.{SesameBlockingRDFIteratee, SesameSparqlQueryIteratee, SesameSparqlUpdateIteratee}
+
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try
@@ -118,6 +120,7 @@ trait Setup {
 
 trait RdfSetup  {
   type Rdf <: RDF
+
   implicit val system = ActorSystem("MySystem")
   implicit val ec: ExecutionContext = system.dispatcher
   implicit val timeout = Timeout(30,TimeUnit.SECONDS)
@@ -141,7 +144,7 @@ trait RdfSetup  {
   //constants
 }
 
-trait SesameSetup extends RdfSetup with Setup {
+trait SesameSetup extends RdfSetup with Setup  {
   import org.w3.banana.sesame.Sesame
   import Sesame.turtleWriter
 
@@ -150,14 +153,14 @@ trait SesameSetup extends RdfSetup with Setup {
   implicit val sparqlOps: SparqlOps[Rdf] = Sesame.sparqlOps
   implicit val sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph]
     with SparqlUpdate[Rdf,Try, Rdf#Graph] = Sesame.sparqlGraph
-
+  implicit val recordBinder: RecordBinder[Rdf] = Sesame.recordBinder
 
   val blockingIteratee = new SesameBlockingRDFIteratee
   implicit val graphIterateeSelector: IterateeSelector[Rdf#Graph] = blockingIteratee.BlockingIterateeSelector
   implicit val sparqlUpdateSelector: IterateeSelector[Rdf#UpdateQuery] = SesameSparqlUpdateIteratee.sparqlSelector
   implicit val sparqlSelector: IterateeSelector[Rdf#Query] = SesameSparqlQueryIteratee.sparqlSelector
   implicit val graphWriterSelector: WriterSelector[Rdf#Graph,Try]  = {
-    import Sesame.{jsonldCompactedWriter,jsonldExpandedWriter,jsonldFlattenedWriter,rdfXMLWriter}
+    import Sesame.{jsonldCompactedWriter, jsonldExpandedWriter, jsonldFlattenedWriter, rdfXMLWriter}
     implicit val jsonLd: SesameSyntax[JsonLd] = SesameSyntax.jsonldSyntax(JSONLDMode.COMPACT)
     implicit val jsonldWriter: SesameRDFWriter[JsonLd] = new SesameRDFWriter[JsonLd]
     implicit val ntriplesWriter: RDFWriter[Rdf,Try,NTriples] = new NTriplesWriter[Rdf]
@@ -165,19 +168,18 @@ trait SesameSetup extends RdfSetup with Setup {
     //note this writer selector also contains a writer for html that knows how to return an html full of JS
     //todo: this is done in too hidden a manner.
     implicit val htmlWriter: RDFWriter[Rdf, Try, RDFaXHTML] = new RDFWriter[Rdf, Try, RDFaXHTML] {
-      override val transformsTo: Syntax[RDFaXHTML] = Syntax.RDFaXHTML
+      override
+      val transformsTo: Syntax[RDFaXHTML] = Syntax.RDFaXHTML
 
-      override def write(obj: Rdf#Graph, out: OutputStream, base: String) =
-        Try {
+      override
+      def write(obj: Rdf#Graph, out: OutputStream, base: String) = Try {
           out.write(views.html.ldp.rdfToHtml().body.getBytes("UTF-8"))
-        }
+      }
 
-      override def asString(obj: Rdf#Graph, base: String) =
-        Try {
+      override
+      def asString(obj: Rdf#Graph, base: String) = Try {
           views.html.ldp.rdfToHtml().body
-        }
-
-
+      }
     }
 
     WriterSelector[Rdf#Graph, Try, NTriples] combineWith

@@ -11,7 +11,7 @@ object ApplicationBuild extends Build {
   val buildSettings = Seq(
     description := "LDP implementation in Play",
     organization := "bblfish.net",
-    version := "0.7.2-SNAPSHOT",
+    version := "0.7.3-SNAPSHOT",
     scalaVersion := "2.10.4",
 //    crossScalaVersions := Seq("2.11.2", "2.10.4"),
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),

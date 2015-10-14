@@ -1,35 +1,42 @@
 package test
 
-import org.scalatest.{Matchers, WordSpec}
-import java.net.{URI=>jURI}
-import rww.ldp.actor.router.RWWRoutingActorSubdomains
+import java.net.{URI => jURI}
 import java.nio.file.Path
-import org.w3.banana._
-import org.w3.banana.plantain.{Plantain, LDPatch}
-import scala.util.Try
-import test.ldp._
-import rww.ldp.LDPCommand._
-import scala.Some
-import rww.ldp.actor.RWWActorSystem
-import rww.ldp.actor
-import akka.util.Timeout
 import java.util.concurrent.TimeUnit
 
+import _root_.rww.ldp.LDPCommand._
+import akka.util.Timeout
+import org.scalatest.{Matchers, WordSpec}
+import org.w3.banana._
+import org.w3.banana.io.{RDFReader, RDFWriter, Turtle}
+import rww.ldp.actor.router.RWWRoutingActorSubdomains
+import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
+import test.ldp._
+import controllers.RdfSetup._
 
-class PlantainRWWActorSubdomainsTest extends RWWActorSubdomainsTest[Plantain](baseUri, dir)
+import scala.util.Try
+
+
+class PlantainRWWActorSubdomainsTest
+  extends RWWActorSubdomainsTest[Rdf](baseUri, dir)(
+    ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
+  )
 
 
 /**
  * Created by hjs on 23/11/2013.
  */
-abstract class RWWActorSubdomainsTest[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)(
-  implicit val ops: RDFOps[Rdf],
-  sparqlOps: SparqlOps[Rdf],
-  sparqlGraph: SparqlGraph[Rdf],
+abstract class RWWActorSubdomainsTest[Rdf<:RDF](
+  baseUri: Rdf#URI,
+  dir: Path
+)(implicit
+  val ops: RDFOps[Rdf],
   val recordBinder: binder.RecordBinder[Rdf],
-  turtleWriter: RDFWriter[Rdf,Turtle],
-  reader: RDFReader[Rdf, Turtle],
-  patch: LDPatch[Rdf,Try]) extends WordSpec with Matchers with TestGraphs[Rdf] {
+  sparqlOps: SparqlOps[Rdf],
+  sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] with SparqlUpdate[Rdf, Try, Rdf#Graph],
+  turtleWriter: RDFWriter[Rdf,Try,Turtle],
+  reader: RDFReader[Rdf,Try, Turtle]
+) extends WordSpec with Matchers with TestGraphs[Rdf] {
   import RWWRoutingActorSubdomains._
 
 
@@ -38,7 +45,7 @@ abstract class RWWActorSubdomainsTest[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)(
 
   val localBase = new jURI("https://localhost:8443/2013/")
   val rootLDPCStr = localBase.toString
-  val rww: RWWActorSystem[Rdf] = actor.RWWActorSystemImpl.withSubdomains[Rdf](baseUri,dir,testFetcher)
+  val rww: RWWActorSystem[Rdf] = RWWActorSystemImpl.withSubdomains[Rdf](baseUri,dir,testFetcher)
 
 
   def subdomain(sub: String,lb: jURI) =

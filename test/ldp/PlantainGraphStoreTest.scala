@@ -1,40 +1,45 @@
 package test.ldp
 
-import org.w3.banana._
-import io._
-import org.w3.banana.plantain._
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
+
+import _root_.rww.ldp.LDPCommand._
+import _root_.rww.ldp.LDPExceptions._
+import _root_.rww.ldp.auth.WACAuthZ
 import org.scalatest._
 import org.scalatest.matchers._
-import rww.ldp.LDPCommand._
-import java.nio.file.Path
+import org.w3.banana._
+import org.w3.banana.binder.RecordBinder
+import org.w3.banana.io._
 import play.api.libs.iteratee.Enumerator
+import _root_.rww.ldp._
+import _root_.rww.ldp.actor.RWWActorSystem
+import _root_.rww.ldp.model.{BinaryResource, LDPR}
+
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import java.util.concurrent.TimeUnit
-import scala.Some
-import rww.ldp.auth.WACAuthZ
 import scala.util.Try
-import rww.ldp._
-import rww.ldp.actor.RWWActorSystem
-import rww.ldp.LDPExceptions._
-import rww.ldp.model.{BinaryResource, LDPR}
+import controllers.RdfSetup._
 
 
-class PlantainLDPSTest extends LDPSTest[Plantain](baseUri, dir)
+class PlantainLDPSTest
+  extends LDPSTest[Rdf](baseUri, dir)(
+    ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
+  )
 
-abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path)
-                                   (implicit val ops: RDFOps[Rdf],
-                                    sparqlOps: SparqlOps[Rdf],
-                                    sparqlGraph: SparqlGraph[Rdf],
-                                    val recordBinder: binder.RecordBinder[Rdf],
-                                    turtleWriter: RDFWriter[Rdf,Turtle],
-                                    reader: RDFReader[Rdf, Turtle],
-                                    patch: LDPatch[Rdf,Try])
-  extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
+abstract class LDPSTest[Rdf <: RDF](
+  baseUri: Rdf#URI, dir: Path
+)(implicit
+  val ops: RDFOps[Rdf],
+  val recordBinder: RecordBinder[Rdf],
+  sparqlOps: SparqlOps[Rdf],
+  sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] with SparqlUpdate[Rdf, Try, Rdf#Graph],
+  turtleWriter: RDFWriter[Rdf, Try, Turtle],
+  reader: RDFReader[Rdf, Try, Turtle]
+) extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
 
   import diesel._
   import ops._
-  import syntax.{graphW, uriW, stringW}
 
   val rww: RWWActorSystem[Rdf] = actor.RWWActorSystemImpl.plain[Rdf](baseUri, dir, testFetcher)
 
@@ -70,7 +75,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path)
     -- wac.agent ->- betehess
     -- wac.mode ->-(wac.Read, wac.Write)
     -- wac.accessToClass ->- (
-    bnode() -- wac.regex ->- TypedLiteral("http://example.com/foo/bertails/.*")
+    bnode() -- wac.regex ->- Literal("http://example.com/foo/bertails/.*")
     )
     ).graph
 
@@ -291,7 +296,7 @@ abstract class LDPSTest[Rdf <: RDF](baseUri: Rdf#URI, dir: Path)
         bin <- rww.execute {
           for {
             ldpc <- createContainer(baseLdpc, Some("cb"), Graph.empty)
-            bin <- createBinary(ldpc, Some(binUri.lastPathSegment), MimeType("text/html"))
+            bin <- createBinary(ldpc, Some(binUri.lastPathSegment), MimeType("text","html"))
           } yield bin
         }
         it = bin.writeIteratee

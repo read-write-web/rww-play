@@ -56,7 +56,7 @@ object RWWActorSystemImpl {
   def plain[Rdf<:RDF](baseUri: Rdf#URI, baseDir: Path, fetcher: WebClient[Rdf])(implicit
                                         ops: RDFOps[Rdf],
                                         sparqlOps: SparqlOps[Rdf],
-                                        sparqlGraph:SparqlEngine[Rdf, Try, Rdf#Graph] with SparqlUpdate[Rdf, Try, Rdf#Graph],
+                                        sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] with SparqlUpdate[Rdf, Try, Rdf#Graph],
                                         reader: RDFReader[Rdf, Try, Turtle],
                                         writer: RDFWriter[Rdf, Try, Turtle],
                                         ec: ExecutionContext,

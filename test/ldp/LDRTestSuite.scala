@@ -1,44 +1,51 @@
 package test.ldp
 
-import akka.util.Timeout
-import java.net.{URL => jURL, URI => jURI}
+import java.net.{URI => jURI, URL => jURL}
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+
+import _root_.rww.ldp.LDPCommand._
+import _root_.rww.ldp.WebResource
+import _root_.rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
+import _root_.rww.ldp.auth.{WACAuthZ, WebIDVerifier}
+import akka.util.Timeout
+import controllers.RdfSetup._
 import org.scalatest.matchers.MustMatchers
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.w3.banana._
-import rww.ldp.LDPCommand._
-import org.w3.banana.plantain.{LDPatch, Plantain}
+import org.w3.banana.binder.RecordBinder
 import org.w3.banana.io._
 import play.api.libs.iteratee._
+
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import rww.ldp._
-import rww.ldp.auth._
-import rww.ldp.actor.RWWActorSystem
-import scala.Some
 import scala.util.Try
 
 
-class PlantainLDRTest extends LDRTestSuite[Plantain](baseUri, dir)
+class PlantainLDRTest
+  extends LDRTestSuite[Rdf](baseUri, dir)(
+    ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
+  )
+
 /**
  * test the LinkedResource ~ and ~> implementations
  */
-abstract class LDRTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)(
-  implicit val ops: RDFOps[Rdf],
+abstract class LDRTestSuite[Rdf<:RDF](
+  baseUri: Rdf#URI,
+  dir: Path
+)(implicit
+  val ops: RDFOps[Rdf],
+  val recordBinder: RecordBinder[Rdf],
   sparqlOps: SparqlOps[Rdf],
-  sparqlGraph: SparqlGraph[Rdf],
-  val recordBinder: binder.RecordBinder[Rdf],
-  turtleWriter: RDFWriter[Rdf,Turtle],
-  reader: RDFReader[Rdf, Turtle],
-  patch: LDPatch[Rdf,Try])
-  extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
+  sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] with SparqlUpdate[Rdf, Try, Rdf#Graph],
+  turtleWriter: RDFWriter[Rdf,Try, Turtle],
+  reader: RDFReader[Rdf, Try, Turtle]
+) extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
 
   import ops._
-  import syntax._
 
   implicit val timeout = Timeout(1,TimeUnit.MINUTES)
-  val rww: RWWActorSystem[Rdf] = actor.RWWActorSystemImpl.plain[Rdf](baseUri,dir,testFetcher)
+  val rww: RWWActorSystem[Rdf] = RWWActorSystemImpl.plain[Rdf](baseUri,dir,testFetcher)
   implicit val authz =  new WACAuthZ[Rdf](new WebResource(rww))
 
   val webidVerifier = new WebIDVerifier(rww)
@@ -53,8 +60,8 @@ abstract class LDRTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)(
         ldpcMeta <- getMeta(ldpc)
         card     <- createLDPR(ldpc,Some(bertailsCard.lastPathSegment),bertailsCardGraph)
         cardMeta <- getMeta(card)
-        _        <- updateLDPR(ldpcMeta.acl.get, add=bertailsContainerAclGraph.toIterable)
-        _        <- updateLDPR(cardMeta.acl.get, add=bertailsCardAclGraph.toIterable)
+        _        <- updateLDPR(ldpcMeta.acl.get, add=bertailsContainerAclGraph.triples)
+        _        <- updateLDPR(cardMeta.acl.get, add=bertailsCardAclGraph.triples)
         rGraph   <- getLDPR(card)
         aclGraph <- getLDPR(cardMeta.acl.get)
         containerAclGraph <- getLDPR(ldpcMeta.acl.get)
@@ -119,9 +126,9 @@ abstract class LDRTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)(
 
     val answers = namesLDR.map{ldr => ldr.resource.pointer}
     answers must have length (3)
-    assert(answers.contains(TypedLiteral("Henry")))
+    assert(answers.contains(Literal("Henry")))
     assert(answers.contains("Alexandre".lang("fr")))
-    assert(answers.contains(TypedLiteral("Tim Berners-Lee")))
+    assert(answers.contains(Literal("Tim Berners-Lee")))
   }
 
   "Test ACLs with ~ and ~> and <~ (tests bnode support too)" in {
@@ -139,9 +146,9 @@ abstract class LDRTestSuite[Rdf<:RDF](baseUri: Rdf#URI, dir: Path)(
 
     val answers = namesLDR.map{ldr => ldr.resource.pointer}
     answers must have length (3)
-    assert(answers.contains(TypedLiteral("Henry")))
+    assert(answers.contains(Literal("Henry")))
     assert(answers.contains("Alexandre".lang("fr")))
-    assert(answers.contains(TypedLiteral("Tim Berners-Lee")))
+    assert(answers.contains(Literal("Tim Berners-Lee")))
   }
 
   "Test WebResource ~> with missing remote resource" in {

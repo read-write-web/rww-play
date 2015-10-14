@@ -1,44 +1,49 @@
 package test.ldp
 
-import akka.util.Timeout
-import rww.ldp.auth.{Claim, WebIDVerifier, WACAuthZ, X509CertSigner}
 import java.net.URL
-import java.nio.file.{Path, Files}
+import java.nio.file.Path
+import java.security.Principal
 import java.util.concurrent.TimeUnit
+
+import _root_.rww.ldp.LDPCommand._
+import _root_.rww.ldp._
+import _root_.rww.ldp.actor.RWWActorSystem
+import _root_.rww.ldp.auth.{Claim, WACAuthZ, WebIDVerifier, X509CertSigner}
+import akka.util.Timeout
+import controllers.RdfSetup._
 import org.scalatest.matchers.MustMatchers
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import org.w3.banana._
-import scala.concurrent.Future
-import rww.ldp.LDPCommand._
+import org.w3.banana.io.{RDFReader, RDFWriter, Turtle}
 import sun.security.x509.X500Name
-import java.security.Principal
-import rww.ldp._
 
-import org.w3.banana.plantain.{LDPatch, Plantain}
-import rww.ldp.actor.RWWActorSystem
-import scala.Some
+import scala.concurrent.Future
 import scala.util.Try
 
 
-class PlantainWebIDVerifierTest extends WebIDVerifierTest[Plantain](baseUri, dir)
+class PlantainWebIDVerifierTest
+  extends WebIDVerifierTest[Rdf](baseUri, dir)(
+    ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
+  )
 
 
 /**
  * Test WebIDVerifier
  *
  */
-abstract class WebIDVerifierTest[Rdf<:RDF](baseUri: Rdf#URI, dir: Path )
-                                          (implicit val ops: RDFOps[Rdf],
-                                           sparqlOps: SparqlOps[Rdf],
-                                           sparqlGraph: SparqlGraph[Rdf],
-                                           val recordBinder: binder.RecordBinder[Rdf],
-                                           turtleWriter: RDFWriter[Rdf,Turtle],
-                                           reader: RDFReader[Rdf, Turtle],
-                                           patch: LDPatch[Rdf,Try])
-  extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
+abstract class WebIDVerifierTest[Rdf<:RDF](
+  baseUri: Rdf#URI,
+  dir: Path
+)(implicit
+  val ops: RDFOps[Rdf],
+  val recordBinder: binder.RecordBinder[Rdf],
+  sparqlOps: SparqlOps[Rdf],
+  sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] with SparqlUpdate[Rdf, Try, Rdf#Graph],
+  turtleWriter: RDFWriter[Rdf, Try, Turtle],
+  reader: RDFReader[Rdf, Try, Turtle]
+) extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
 
   import ops._
-  import syntax._
 
   implicit val timeout = Timeout(1, TimeUnit.MINUTES)
   val rww: RWWActorSystem[Rdf] = actor.RWWActorSystemImpl.plain[Rdf](baseUri, dir, testFetcher)
@@ -63,8 +68,8 @@ abstract class WebIDVerifierTest[Rdf<:RDF](baseUri: Rdf#URI, dir: Path )
       ldpcMeta <- getMeta(ldpc)
       card     <- createLDPR(ldpc,Some(bertailsCard.lastPathSegment),bertailsCardGraph)
       cardMeta <- getMeta(card)
-      _        <- updateLDPR(ldpcMeta.acl.get, add=bertailsContainerAclGraph.toIterable)
-      _        <- updateLDPR(cardMeta.acl.get, add=bertailsCardAclGraph.toIterable)
+      _        <- updateLDPR(ldpcMeta.acl.get, add=bertailsContainerAclGraph.triples)
+      _        <- updateLDPR(cardMeta.acl.get, add=bertailsCardAclGraph.triples)
       rGraph   <- getLDPR(card)
       aclGraph <- getLDPR(cardMeta.acl.get)
       containerAclGraph <- getLDPR(ldpcMeta.acl.get)

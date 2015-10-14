@@ -1,18 +1,21 @@
 package test.ldp
 
+import java.net.{URL => jURL}
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import java.security.{KeyPair, KeyPairGenerator}
-import org.w3.banana.{LDPPrefix=>_,_}
-import java.net.{URL => jURL}
 import java.util.Date
-import scala.concurrent.Future
+
+import _root_.rww.ldp._
+import _root_.rww.ldp.model.{LDPR, NamedResource}
+import _root_.rww.rdf.util.LDPPrefix
+import org.scalatest.{BeforeAndAfter, Suite}
+import org.w3.banana.binder.RecordBinder
+import org.w3.banana.io.{Syntax, Writer}
+import org.w3.banana.{LDPPrefix => _, _}
 import org.w3.play.api.libs.ws.ResponseHeaders
-import org.w3.banana
-import org.scalatest.{Suite, BeforeAndAfter}
-import rww.ldp._
-import rww.ldp.model.{LDPR, NamedResource}
-import scala.util.{Try, Success}
-import rww.rdf.util.LDPPrefix
+
+import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 /**
  * Build up a set of Graphs with representing some realistic scenarios that can then be used
@@ -21,12 +24,11 @@ import rww.rdf.util.LDPPrefix
  */
 trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
   implicit val ops: RDFOps[Rdf]
-  implicit val recordBinder: binder.RecordBinder[Rdf]
 
-  import ops._
-  import syntax._
   import diesel._
+  import ops._
 
+  implicit val recordBinder: RecordBinder[Rdf]
   val certbinder = new CertBinder()
   import certbinder._
 
@@ -214,7 +216,10 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
       synMap  ++= defaultSynMap
     }
 
-    case class TestLDPR(location: Rdf#URI, graph: Rdf#Graph, metaGraph: Rdf#Graph=Graph.empty)(implicit val ops: RDFOps[Rdf]) extends LDPR[Rdf] {
+    case class TestLDPR(
+      location: Rdf#URI,
+      graph: Rdf#Graph, metaGraph: Rdf#Graph=Graph.empty
+    )(implicit val ops: RDFOps[Rdf]) extends LDPR[Rdf] {
       def updated = Success(new Date())
 
       /**
@@ -228,10 +233,10 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
       //move all the metadata to this, and have the other functions
       def meta = Success(PointedGraph(location,metaGraph))
 
-      def size = None
-    }
+      def size = Failure(???)
 
-    import collection.mutable.{Map,SynchronizedMap}
+      override def etag = Failure(???)
+    }
     val counter = new java.util.concurrent.atomic.AtomicInteger(0)
     class SynMap extends collection.mutable.HashMap[Rdf#URI,Rdf#Graph] with collection.mutable.SynchronizedMap[Rdf#URI,Rdf#Graph]
     lazy val synMap = new SynMap()
@@ -249,8 +254,8 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
       Future.successful(TestLDPR(r, graph.resolveAgainst(r)))   //todo: should this really not be a relative graph?
     }
 
-    def post[S](url: Rdf#URI, slug: Option[String], graph: Rdf#Graph, syntax: banana.Syntax[S])
-               (implicit writer: Writer[Rdf#Graph, S]): Future[Rdf#URI] = {
+    def post[S](url: Rdf#URI, slug: Option[String], graph: Rdf#Graph, syntax: Syntax[S])
+               (implicit writer: Writer[Rdf#Graph, Try, S]): Future[Rdf#URI] = {
       val collectionURL = url.fragmentLess
       if (!collectionURL.toString.endsWith("/")) {
         Future.failed(RemoteException("cannot create resource",ResponseHeaders(405,collection.immutable.Map())))
@@ -275,7 +280,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
       }
     }
 
-    override def put[S](url: Rdf#URI, graph: Rdf#Graph, syntax: banana.Syntax[S])(implicit writer: Writer[Rdf#Graph, S]) = {
+    override def put[S](url: Rdf#URI, graph: Rdf#Graph, syntax: Syntax[S])(implicit writer: Writer[Rdf#Graph,Try, S]) = {
       synMap.put(url,graph)
       Future.successful(())
     }

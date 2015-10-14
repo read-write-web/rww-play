@@ -1,10 +1,10 @@
 package test.ldp
 
-import org.scalatest._
-import scala.concurrent._
 import java.util.concurrent._
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.Suite
+
+import org.scalatest.{BeforeAndAfterAll, Suite}
+
+import scala.concurrent._
 
 object TestHelper {
 
@@ -21,7 +21,7 @@ trait TestHelper extends BeforeAndAfterAll { self: Suite =>
 
   val executorService: ExecutorService = Executors.newFixedThreadPool(2)
 
-  implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutorService(executorService)
+  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(executorService)
 
   override def afterAll(): Unit = {
     super.afterAll()

@@ -1,12 +1,11 @@
 package rww.rdf.util
 
-import test.ldp.TestGraphs
-import org.w3.banana._
+import akka.http.scaladsl.model.Uri
 import org.scalatest._
-import org.scalatest.matchers._
+import org.w3.banana._
 import org.w3.banana.binder._
 import org.w3.banana.plantain.Plantain
-import akka.http.model.Uri
+import test.ldp.TestGraphs
 
 
 class PlantainGraphUtilTest extends GraphUtilTest[Plantain]
@@ -14,13 +13,14 @@ class PlantainGraphUtilTest extends GraphUtilTest[Plantain]
 /**
  * Created by hjs on 19/02/2014.
  */
-class GraphUtilTest[Rdf<: RDF]( implicit val recordBinder: RecordBinder[Rdf], val ops: RDFOps[Rdf])
-  extends  WordSpec with Matchers with TestGraphs[Rdf] {
+class GraphUtilTest[Rdf<: RDF](implicit
+  val recordBinder: RecordBinder[Rdf],
+  val ops: RDFOps[Rdf]
+) extends  WordSpec with Matchers with TestGraphs[Rdf] {
 
-  import ops._
-  import org.w3.banana.syntax._
-  import org.w3.banana.diesel._
   import certbinder._
+  import ops._
+  import org.w3.banana.diesel._
 
 
   val henryCardX = URI("http://bblfish.net:80/people/henry/card")

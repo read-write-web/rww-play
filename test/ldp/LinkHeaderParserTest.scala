@@ -1,15 +1,17 @@
 package test.ldp
 
-import org.w3.banana._
-import org.scalatest.{BeforeAndAfterAll, WordSpec}
+import _root_.rww.ldp._
 import org.scalatest.matchers.MustMatchers
+import org.scalatest.{BeforeAndAfterAll, WordSpec}
+import org.w3.banana._
 import org.w3.banana.plantain.Plantain
-import rww.ldp._
 
 class PlantainLinkHeaderParserTest extends LinkHeaderParserTest[Plantain]()(plantain.PlantainOps)
 
 
-abstract class LinkHeaderParserTest[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends WordSpec with MustMatchers with BeforeAndAfterAll {
+abstract class LinkHeaderParserTest[Rdf<:RDF](
+  implicit ops: RDFOps[Rdf]
+) extends WordSpec with MustMatchers with BeforeAndAfterAll {
 
   val lhp = new LinkHeaderParser
   val foaf = FOAFPrefix[Rdf]
@@ -17,9 +19,10 @@ abstract class LinkHeaderParserTest[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends
   val dc = DCPrefix[Rdf]
   val dct = DCTPrefix[Rdf]
 
-  import ops._
   import diesel._
-  import syntax._
+  import ops._
+  import Literal.tagged
+
 
   "test rel=" in {
     val p1 = lhp.parse("""<.>; rel="collection"""").get
@@ -45,7 +48,7 @@ abstract class LinkHeaderParserTest[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends
   "test rel no quote with title" in {
     val p2 = lhp.parse("""</TheBook/chapter2>; rel=previous; title*=UTF-8'de'letztes%20Kapitel""").get
     val expected = (
-      URI("/TheBook/chapter2") -- dct.title ->- LangLiteral("letztes Kapitel",Lang("de"))
+      URI("/TheBook/chapter2") -- dct.title ->- tagged("letztes Kapitel",Lang("de"))
       ).graph union (
       URI("") -- link.previous ->- URI("/TheBook/chapter2")
       ).graph
@@ -56,11 +59,11 @@ abstract class LinkHeaderParserTest[Rdf<:RDF](implicit ops: RDFOps[Rdf]) extends
     val p3 = lhp.parse("""</TheBook/chapter2>; rel="previous"; title*=UTF-8'de'letztes%20Kapitel,
                         | </TheBook/chapter4>; rel="next"; title*=UTF-8'de'n%c3%a4chstes%20Kapitel""".stripMargin).get
     val expected = (
-       URI("/TheBook/chapter2") -- dct.title ->- LangLiteral("letztes Kapitel",Lang("de"))
+       URI("/TheBook/chapter2") -- dct.title ->- tagged("letztes Kapitel",Lang("de"))
       ).graph union (
        URI("") -- link.previous ->- URI("/TheBook/chapter2")
       ).graph union (
-       URI("/TheBook/chapter4") -- dct.title ->- LangLiteral("nächstes Kapitel",Lang("de"))
+       URI("/TheBook/chapter4") -- dct.title ->- tagged("nächstes Kapitel",Lang("de"))
       ).graph union (
        URI("") -- link.next ->- URI("/TheBook/chapter4")
       ).graph

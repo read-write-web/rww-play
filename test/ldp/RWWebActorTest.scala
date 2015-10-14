@@ -1,9 +1,9 @@
 package test.ldp
 
-import org.scalatest.WordSpec
-import org.scalatest.Matchers
-import java.net.{URI, URL}
-import rww.ldp.actor.router._
+import java.net.URI
+
+import _root_.rww.ldp.actor.router._
+import org.scalatest.{Matchers, WordSpec}
 
 /**
  * Created by hjs on 12/11/2013.
