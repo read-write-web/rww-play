@@ -5,9 +5,9 @@ import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import java.security.{KeyPair, KeyPairGenerator}
 import java.util.Date
 
-import _root_.rww.ldp._
-import _root_.rww.ldp.model.{LDPR, NamedResource}
-import _root_.rww.rdf.util.LDPPrefix
+import rww.ldp._
+import rww.ldp.model.{LDPR, NamedResource}
+import rww.rdf.util.LDPPrefix
 import org.scalatest.{BeforeAndAfter, Suite}
 import org.w3.banana.binder.RecordBinder
 import org.w3.banana.io.{Syntax, Writer}
@@ -74,7 +74,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
 
 
   val henryCard = URI("http://bblfish.net/people/henry/card")
-  val henry =  URI(henryCard.toString+"#me")
+  val henry =  URI(henryCard.getString+"#me")
   val henryGraph : Rdf#Graph = (
     URI("#me") -- cert.key ->- henryKeys.pub
       -- foaf.name ->- "Henry"
@@ -182,7 +182,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
 
   val bertailsContainerAclGraph: Rdf#Graph = (
     bnode("t2")
-      -- wac.accessToClass ->- ( bnode -- wac.regex ->- (bertailsContainer.toString+".*") )
+      -- wac.accessToClass ->- ( bnode -- wac.regex ->- (bertailsContainer.getString+".*") )
       -- wac.agent ->- bertails
       -- wac.mode ->- wac.Write
       -- wac.mode ->- wac.Read
@@ -226,8 +226,8 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
        * location of initial ACL for this resource
        **/
       def acl = Try {
-        if (location.toString.endsWith(";wac")) location
-        else ops.URI(location.toString+";wac")
+        if (location.getString.endsWith(";wac")) location
+        else ops.URI(location.getString+";wac")
       }
 
       //move all the metadata to this, and have the other functions
@@ -257,18 +257,18 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
     def post[S](url: Rdf#URI, slug: Option[String], graph: Rdf#Graph, syntax: Syntax[S])
                (implicit writer: Writer[Rdf#Graph, Try, S]): Future[Rdf#URI] = {
       val collectionURL = url.fragmentLess
-      if (!collectionURL.toString.endsWith("/")) {
+      if (!collectionURL.getString.endsWith("/")) {
         Future.failed(RemoteException("cannot create resource",ResponseHeaders(405,collection.immutable.Map())))
       } else {
         synMap.get(collectionURL).map { gr =>
           if ((PointedGraph(URI(""), gr) / rdf.typ).exists(_.pointer == ldp.Container)) {
             if ((PointedGraph(URI(""),graph)/rdf.typ).exists(_.pointer == ldp.Container)) {
               //we have to create a new container in the container
-              val newCollectionURI = URI(collectionURL.toString+slug.getOrElse(counter.addAndGet(1))+"/")
+              val newCollectionURI = URI(collectionURL.getString+slug.getOrElse(counter.addAndGet(1))+"/")
               synMap.put(newCollectionURI,graph)
               Future.successful(newCollectionURI)
             } else {
-              val newURI = URI(collectionURL.toString+slug.getOrElse(counter.addAndGet(1)))
+              val newURI = URI(collectionURL.getString+slug.getOrElse(counter.addAndGet(1)))
               synMap.put(collectionURL,gr union (collectionURL -- rdfs.member ->- newURI).graph)
               synMap.put(newURI,graph)
               Future.successful(newURI)

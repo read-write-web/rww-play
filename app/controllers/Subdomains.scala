@@ -374,4 +374,4 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
 }
 
-object Subdomains extends Subdomains(RdfSetup.rwwRoot,RdfSetup.rootContainerPath,RdfSetup.rww)
+object Subdomains extends Subdomains(RdfSetup.rwwRoot,RdfSetup.rootContainerPath,RdfSetup.rwwAgent)

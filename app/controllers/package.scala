@@ -13,7 +13,7 @@ import org.w3.banana._
 import org.w3.banana.binder.RecordBinder
 import org.w3.banana.io._
 import org.w3.banana.sesame.io.{SesameRDFWriter, SesameSyntax}
-import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
+import rww.ldp.actor.RWWActorSystemImpl
 import rww.ldp.{WSClient, WebClient}
 import rww.play.rdf.IterateeSelector
 import rww.play.rdf.sesame.{SesameBlockingRDFIteratee, SesameSparqlQueryIteratee, SesameSparqlUpdateIteratee}
@@ -121,9 +121,6 @@ trait Setup {
 trait RdfSetup  {
   type Rdf <: RDF
 
-  implicit val system = ActorSystem("MySystem")
-  implicit val ec: ExecutionContext = system.dispatcher
-  implicit val timeout = Timeout(30,TimeUnit.SECONDS)
 
   implicit val ops: RDFOps[Rdf]
   implicit val sparqlOps: SparqlOps[Rdf]
@@ -144,11 +141,15 @@ trait RdfSetup  {
   //constants
 }
 
-trait SesameSetup extends RdfSetup with Setup  {
+trait SesameSetup extends RdfSetup  {
   import org.w3.banana.sesame.Sesame
   import Sesame.turtleWriter
-
   type Rdf = Sesame
+
+  implicit val system: ActorSystem = ActorSystem("MySystem")
+  implicit val ec: ExecutionContext = system.dispatcher
+  implicit val timeout: Timeout = Timeout(30,TimeUnit.SECONDS)
+
   implicit val ops: RDFOps[Rdf] = Sesame.ops
   implicit val sparqlOps: SparqlOps[Rdf] = Sesame.sparqlOps
   implicit val sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph]
@@ -203,12 +204,18 @@ trait SesameSetup extends RdfSetup with Setup  {
   
   val webClient: WebClient[Rdf] =  new WSClient(readerSelector,Sesame.turtleWriter)
 
-  val rww: RWWActorSystem[Rdf] = {
-    val rootURI = ops.URI(rwwRoot.toString)
-    if (RdfSetup.rwwSubdomainsEnabled) RWWActorSystemImpl.withSubdomains[Rdf](rootURI, rootContainerPath, webClient)
-    else RWWActorSystemImpl.plain[Rdf](rootURI, rootContainerPath, webClient)
-  }
 
+
+}
+
+trait RWWSetup extends SesameSetup with Setup {
+  val rwwAgent = {
+    lazy val rootURI = ops.URI(rwwRoot.toString)
+    if (RdfSetup.rwwSubdomainsEnabled)
+      RWWActorSystemImpl.withSubdomains[Rdf](rootURI, rootContainerPath, webClient)
+    else
+      RWWActorSystemImpl.plain[Rdf](rootURI, rootContainerPath, webClient)
+  }
 }
 
 
@@ -236,4 +243,4 @@ trait SesameSetup extends RdfSetup with Setup  {
 //}
 
 
-object RdfSetup extends SesameSetup with Setup
+object RdfSetup extends RWWSetup

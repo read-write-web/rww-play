@@ -4,11 +4,12 @@ import akka.http.scaladsl.model.Uri
 import org.scalatest._
 import org.w3.banana._
 import org.w3.banana.binder._
-import org.w3.banana.plantain.Plantain
 import test.ldp.TestGraphs
+import test.ldp.TestSetup._
 
 
-class PlantainGraphUtilTest extends GraphUtilTest[Plantain]
+
+class RdfGraphUtilTest extends GraphUtilTest[Rdf]
 
 /**
  * Created by hjs on 19/02/2014.

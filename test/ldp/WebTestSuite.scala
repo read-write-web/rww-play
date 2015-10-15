@@ -3,19 +3,18 @@ package test.ldp
 import java.net.{URI => jURI}
 import java.nio.file.Path
 
-import _root_.rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
-import _root_.rww.ldp.auth.{WACAuthZ, WebIDPrincipal, WebIDVerifier}
-import _root_.rww.ldp.{LDPCommand, WebResource}
-import _root_.rww.play.Method
-import org.scalatest.WordSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, WordSpec}
 import org.w3.banana._
 import org.w3.banana.binder.RecordBinder
 import org.w3.banana.io._
 import play.api.libs.iteratee.Iteratee
+import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
+import rww.ldp.auth.{WACAuthZ, WebIDPrincipal, WebIDVerifier}
+import rww.ldp.{LDPCommand, WebResource}
+import rww.play.Method
+import test.ldp.TestSetup._
 
 import scala.util.Try
-import controllers.RdfSetup._
 
 
 object RdfWebTest extends WebTestSuite[Rdf](baseUri, dir)(
@@ -37,16 +36,16 @@ class WebTestSuite[Rdf <: RDF](
   sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] with SparqlUpdate[Rdf, Try, Rdf#Graph],
   turtleWriter: RDFWriter[Rdf, Try, Turtle],
   reader: RDFReader[Rdf, Try, Turtle]
-) extends WordSpec with ShouldMatchers with TestHelper with TestGraphs[Rdf] {
+) extends WordSpec with Matchers with TestHelper with TestGraphs[Rdf] {
 
   import LDPCommand._
   import diesel._
   import ops._
 
-  val rww: RWWActorSystem[Rdf] = RWWActorSystemImpl.plain[Rdf] (baseUri, dir, testFetcher)
+  val rwwAgent: RWWActorSystem[Rdf] = RWWActorSystemImpl.plain[Rdf] (baseUri, dir, testFetcher)
 
-  val webidVerifier = new WebIDVerifier(rww)
-  implicit val authz: WACAuthZ[Rdf] = new WACAuthZ[Rdf](new WebResource(rww))(ops)
+  val webidVerifier = new WebIDVerifier(rwwAgent)
+  implicit val authz: WACAuthZ[Rdf] = new WACAuthZ[Rdf](new WebResource(rwwAgent))(ops)
   import Method._
 
   implicit def underlying(uri: Rdf#URI): jURI = new jURI(uri.getString)
@@ -110,7 +109,7 @@ class WebTestSuite[Rdf <: RDF](
 
     "henry creates his foaf list ( no ACL here )" in {
       testFetcher.synMap -= henryFoaf
-      val ex = rww.execute {
+      val ex = rwwAgent.execute {
         for {
           foaf <- createLDPR(henryColl, Some("foaf"), henryFoafGraph)
           collGr <- getLDPR(henryColl)
@@ -173,7 +172,7 @@ class WebTestSuite[Rdf <: RDF](
   "Alex's profile" when {
 
     "add bertails card and acls" in {
-      val script = rww.execute(for {
+      val script = rwwAgent.execute(for {
         ldpc <- createContainer(baseUri, Some("bertails"), Graph.empty)
         ldpcMeta <- getMeta(ldpc)
         card <- createLDPR(ldpc, Some(bertailsCard.lastPathSegment), bertailsCardGraph)
@@ -268,7 +267,7 @@ class WebTestSuite[Rdf <: RDF](
     testFetcher.synMap -= tpacGroupDoc
 
     "tpac group creation" in {
-      val ex = rww.execute {
+      val ex = rwwAgent.execute {
         for {
           tpac <- createContainer(webidColl, Some("tpac"), Graph.empty)
           tpacGroup <- createLDPR(tpac, Some("group"), tpacGroupGraph)

@@ -1,23 +1,21 @@
-package test
+package test.ldp
 
 import java.net.{URI => jURI}
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
-import _root_.rww.ldp.LDPCommand._
 import akka.util.Timeout
 import org.scalatest.{Matchers, WordSpec}
 import org.w3.banana._
 import org.w3.banana.io.{RDFReader, RDFWriter, Turtle}
 import rww.ldp.actor.router.RWWRoutingActorSubdomains
 import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
-import test.ldp._
-import controllers.RdfSetup._
+import test.ldp.TestSetup._
 
 import scala.util.Try
 
 
-class PlantainRWWActorSubdomainsTest
+class RwwActorSubdomainsTest
   extends RWWActorSubdomainsTest[Rdf](baseUri, dir)(
     ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
   )
@@ -38,14 +36,15 @@ abstract class RWWActorSubdomainsTest[Rdf<:RDF](
   reader: RDFReader[Rdf,Try, Turtle]
 ) extends WordSpec with Matchers with TestGraphs[Rdf] {
   import RWWRoutingActorSubdomains._
+  import rww.ldp.LDPCommand._
 
 
-  implicit val timeout = Timeout(1,TimeUnit.MINUTES)
+  implicit val timeout: Timeout = Timeout(1,TimeUnit.MINUTES)
   import ops._
 
-  val localBase = new jURI("https://localhost:8443/2013/")
-  val rootLDPCStr = localBase.toString
-  val rww: RWWActorSystem[Rdf] = RWWActorSystemImpl.withSubdomains[Rdf](baseUri,dir,testFetcher)
+  val localBase                     = new jURI("https://localhost:8443/2013/")
+  val rootLDPCStr                   = localBase.toString
+  val rwwAgent: RWWActorSystem[Rdf] = RWWActorSystemImpl.withSubdomains[Rdf](baseUri,dir,testFetcher)
 
 
   def subdomain(sub: String,lb: jURI) =
@@ -111,7 +110,7 @@ abstract class RWWActorSubdomainsTest[Rdf<:RDF](
   "creating subdomains" when {
 
     "for slim, joe and a normal file" in {
-      val script = rww.execute(for {
+      val script = rwwAgent.execute(for {
         slim <- createContainer(baseUri, Some("slim"), Graph.empty)
         joe <- createContainer(baseUri, Some("jim"), Graph.empty)
         file <- createLDPR(baseUri,Some("slim_meta"),groupACLForRegexResource)

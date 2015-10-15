@@ -34,7 +34,7 @@ import javax.security.auth.x500.X500Principal
 
 
 object X509CertSigner  {
-  val WebID_DN = new X500Principal("""CN=WebID, O=∅""")
+  val WebID_DN = new X500Principal("""CN=WebID,O={}""")
 
 
   //  def apply( keyStoreLoc: Option[URL],
@@ -115,8 +115,8 @@ class X509CertSigner(
 
     info.set(X509CertInfo.VALIDITY, interval)
     info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(serialNumber))
-    info.set(X509CertInfo.SUBJECT, new CertificateSubjectName(subjectDN))
-    info.set(X509CertInfo.ISSUER, new CertificateIssuerName(issuerXN))
+    info.set(X509CertInfo.SUBJECT, subjectDN)
+    info.set(X509CertInfo.ISSUER, issuerXN)
     info.set(X509CertInfo.KEY, new CertificateX509Key(subjectKey))
     info.set(X509CertInfo.VERSION, new CertificateVersion(CertificateVersion.V3))
 

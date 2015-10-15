@@ -4,9 +4,9 @@ package rww.ldp.actor.local
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.nio.file.DirectoryStream.Filter
 import java.nio.file.{Files, Path}
-import java.util.Date
 
 import akka.actor.ActorRef
+import akka.http.scaladsl.model.Uri
 import com.google.common.base.Throwables
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import org.w3.banana.io.{RDFReader, RDFWriter, Turtle}
@@ -17,7 +17,6 @@ import rww.ldp.actor.common.RWWBaseActor
 import rww.ldp.model._
 import rww.ldp.{DeleteResource, GetMeta, GetResource, UpdateLDPR, _}
 import rww.rdf.util.StatPrefix
-import akka.http.scaladsl.model.Uri
 import utils.FileUtils._
 
 import scala.collection.convert.decorateAsScala._
@@ -217,6 +216,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
             //              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
             //            }
             val graphName = URI(nme).resolve(baseUri)
+            println(s"======> UpdateLDPR($uri,_,_,_)...graphName=$graphName")
             val resultGraph = add.foldLeft(ldpr.graph) {
               (graph, triple) => graph union Graph(triple.resolveAgainst(graphName))
             }

@@ -4,33 +4,31 @@ import java.net.{URI => jURI, URL => jURL}
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
-import _root_.rww.ldp.LDPCommand._
-import _root_.rww.ldp.WebResource
-import _root_.rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
-import _root_.rww.ldp.auth.{WACAuthZ, WebIDVerifier}
 import akka.util.Timeout
-import controllers.RdfSetup._
-import org.scalatest.matchers.MustMatchers
-import org.scalatest.{BeforeAndAfterAll, WordSpec}
+import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 import org.w3.banana._
 import org.w3.banana.binder.RecordBinder
 import org.w3.banana.io._
 import play.api.libs.iteratee._
+import rww.ldp.LDPCommand._
+import rww.ldp.WebResource
+import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
+import rww.ldp.auth.{WACAuthZ, WebIDVerifier}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-
-class PlantainLDRTest
-  extends LDRTestSuite[Rdf](baseUri, dir)(
-    ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
-  )
+//class PlantainLDRTest
+//  extends LDRTestSuite[Rdf](baseUri, dir)(
+//    ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
+//  )
 
 /**
  * test the LinkedResource ~ and ~> implementations
  */
-abstract class LDRTestSuite[Rdf<:RDF](
+abstract
+class LDRTestSuite[Rdf<:RDF](
   baseUri: Rdf#URI,
   dir: Path
 )(implicit
@@ -40,7 +38,7 @@ abstract class LDRTestSuite[Rdf<:RDF](
   sparqlGraph: SparqlEngine[Rdf, Try, Rdf#Graph] with SparqlUpdate[Rdf, Try, Rdf#Graph],
   turtleWriter: RDFWriter[Rdf,Try, Turtle],
   reader: RDFReader[Rdf, Try, Turtle]
-) extends WordSpec with MustMatchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
+) extends WordSpec with Matchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
 
   import ops._
 
@@ -66,8 +64,8 @@ abstract class LDRTestSuite[Rdf<:RDF](
         aclGraph <- getLDPR(cardMeta.acl.get)
         containerAclGraph <- getLDPR(ldpcMeta.acl.get)
       } yield {
-        ldpc must be(bertailsContainer)
-        cardMeta.acl.get must be(bertailsCardAcl)
+        ldpc should be(bertailsContainer)
+        cardMeta.acl.get should be(bertailsCardAcl)
         assert(rGraph isIsomorphicWith (bertailsCardGraph union containsRel).resolveAgainst(bertailsCard))
         assert(aclGraph isIsomorphicWith bertailsCardAclGraph.resolveAgainst(bertailsCardAcl))
         assert(containerAclGraph isIsomorphicWith bertailsContainerAclGraph.resolveAgainst(bertailsContainerAcl))
@@ -81,10 +79,10 @@ abstract class LDRTestSuite[Rdf<:RDF](
     val ldrEnum = web~(tpacGroup)
     val futureResList = ldrEnum(Iteratee.getChunks[LinkedDataResource[Rdf]]).flatMap(_.run)
     val resList = futureResList.getOrFail()
-    resList must have length(1)
+    resList should have length(1)
     val ldr = resList.head
-    ldr.location must be(tpacGroupDoc)
-    ldr.resource.pointer must be(tpacGroup)
+    ldr.location should be(tpacGroupDoc)
+    ldr.resource.pointer should be(tpacGroup)
     assert(ldr.resource.graph isIsomorphicWith tpacGroupGraph.resolveAgainst(tpacGroupDoc))
   }
 
@@ -101,7 +99,7 @@ abstract class LDRTestSuite[Rdf<:RDF](
     val answersMap = Map(memberList.map{ldr => (ldr.resource.pointer,ldr.resource)} : _*)
 
     val pointers = answersMap.keys.toList
-    answersMap must have size (3)
+    answersMap should have size (3)
 
     assert(pointers.contains(henry))
     assert(pointers.contains(bertails))
@@ -125,7 +123,7 @@ abstract class LDRTestSuite[Rdf<:RDF](
     val namesLDR = nameFuture.getOrFail()
 
     val answers = namesLDR.map{ldr => ldr.resource.pointer}
-    answers must have length (3)
+    answers should have length (3)
     assert(answers.contains(Literal("Henry")))
     assert(answers.contains("Alexandre".lang("fr")))
     assert(answers.contains(Literal("Tim Berners-Lee")))
@@ -145,7 +143,7 @@ abstract class LDRTestSuite[Rdf<:RDF](
     val namesLDR = nameFuture.getOrFail()
 
     val answers = namesLDR.map{ldr => ldr.resource.pointer}
-    answers must have length (3)
+    answers should have length (3)
     assert(answers.contains(Literal("Henry")))
     assert(answers.contains("Alexandre".lang("fr")))
     assert(answers.contains(Literal("Tim Berners-Lee")))
@@ -171,7 +169,7 @@ abstract class LDRTestSuite[Rdf<:RDF](
     val answersMap = Map(memberList.map{ldr => (ldr.resource.pointer,ldr.resource)} : _*)
 
     val pointers = answersMap.keys.toList
-    answersMap must have size (2)
+    answersMap should have size (2)
 
     assert(pointers.contains(henry))
     assert(pointers.contains(bertails))

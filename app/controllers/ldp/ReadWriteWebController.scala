@@ -19,7 +19,7 @@ package controllers.ldp
 import java.net.URL
 import java.nio.file.Path
 
-import controllers.{ RdfSetup, SesameSetup}
+import controllers.{RWWSetup, RdfSetup}
 import rww.auth.WebIDAuthN
 import rww.ldp._
 import rww.ldp.auth.{WACAuthZ, WebIDVerifier}
@@ -31,13 +31,13 @@ object ReadWriteWebController extends ReadWriteWebController (
 )
 
 
-class ReadWriteWebController(base: URL, path: Path) extends SesameSetup with ReadWriteWebControllerGeneric  {
+class ReadWriteWebController(base: URL, path: Path) extends RWWSetup with ReadWriteWebControllerGeneric  {
 
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Rdf](base,tmpDirInRootConainer)(ops,sparqlOps,graphIterateeSelector,
     sparqlSelector,sparqlUpdateSelector,ec)
 
-  lazy val resourceManager =  new ResourceMgr[Rdf](base,rww, new WebIDAuthN(new WebIDVerifier(rww)),
-    new WACAuthZ[Rdf](new WebResource[Rdf](rww))(ops))
+  lazy val resourceManager =  new ResourceMgr[Rdf](base,rwwAgent, new WebIDAuthN(new WebIDVerifier(rwwAgent)),
+    new WACAuthZ[Rdf](new WebResource[Rdf](rwwAgent))(ops))
 
 }

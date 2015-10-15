@@ -2,7 +2,7 @@ package test.ldp
 
 import java.net.URI
 
-import _root_.rww.ldp.actor.router._
+import rww.ldp.actor.router._
 import org.scalatest.{Matchers, WordSpec}
 
 /**
