@@ -1,7 +1,7 @@
 package test.ldp
 
 import java.net.URL
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import java.security.Principal
 import java.util.concurrent.TimeUnit
 
@@ -14,14 +14,14 @@ import rww.ldp._
 import rww.ldp.actor.RWWActorSystem
 import rww.ldp.auth.{Claim, WACAuthZ, WebIDVerifier, X509CertSigner}
 import sun.security.x509.X500Name
+import test.ldp.TestSetup._
 
 import scala.concurrent.Future
 import scala.util.Try
-import test.ldp.TestSetup._
 
 
 class RdfWebIDVerifierTest
-  extends WebIDVerifierTest[Rdf](baseUri, dir)(
+  extends WebIDVerifierTest[Rdf](baseUri)(
     ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
   )
 
@@ -31,8 +31,7 @@ class RdfWebIDVerifierTest
  *
  */
 abstract class WebIDVerifierTest[Rdf<:RDF](
-  baseUri: Rdf#URI,
-  dir: Path
+  baseUri: Rdf#URI
 )(implicit
   val ops: RDFOps[Rdf],
   val recordBinder: binder.RecordBinder[Rdf],
@@ -43,6 +42,8 @@ abstract class WebIDVerifierTest[Rdf<:RDF](
 ) extends WordSpec with Matchers with BeforeAndAfterAll with TestHelper with TestGraphs[Rdf] {
 
   import ops._
+
+  val dir: Path = Files.createTempDirectory("plantain" )
 
   implicit val timeout: Timeout = Timeout(1, TimeUnit.MINUTES)
   val rww: RWWActorSystem[Rdf] = actor.RWWActorSystemImpl.plain[Rdf](baseUri, dir, testFetcher)
@@ -56,6 +57,7 @@ abstract class WebIDVerifierTest[Rdf<:RDF](
   val bertailsCertSigner = new X509CertSigner(bertailsKeys.priv)
   val bertailsCert = bertailsCertSigner.generate(new X500Name("CN=Alex, O=W3C"),
     bertailsKeys.pub,2,new URL(bertails.getString))
+
   //of course bertails cannot create a cert with henry's public key, because not having the private key he would not
   //be able to connect to a server with it. So he must use a different key - his own will do for the test
   val bertailsFakeHenryCert = bertailsCertSigner.generate(new X500Name("CN=Henry, O=bblfish.net"),
@@ -76,8 +78,6 @@ abstract class WebIDVerifierTest[Rdf<:RDF](
       ldpc should be(bertailsContainer)
       cardMeta.acl.get should be(bertailsCardAcl)
       assert(rGraph isIsomorphicWith (bertailsCardGraph union containsRel).resolveAgainst(bertailsCard))
-        println("~~~~~>aclGraph="+aclGraph)
-        println("~~~~~~bertailsCardAclGraph="+bertailsCardAclGraph.resolveAgainst(bertailsCardAcl))
       assert(aclGraph isIsomorphicWith bertailsCardAclGraph.resolveAgainst(bertailsCardAcl))
       assert(containerAclGraph isIsomorphicWith bertailsContainerAclGraph.resolveAgainst(bertailsContainerAcl))
     })

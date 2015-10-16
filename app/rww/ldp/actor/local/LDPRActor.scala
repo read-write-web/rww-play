@@ -215,8 +215,7 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
             //            val temp = remove.foldLeft(graph) {
             //              (graph, tripleMatch) => graph - tripleMatch.resolveAgainst(uriW[Plantain](uri).resolveAgainst(baseUri))
             //            }
-            val graphName = URI(nme).resolve(baseUri)
-            println(s"======> UpdateLDPR($uri,_,_,_)...graphName=$graphName")
+            val graphName = baseUri.resolve(URI(nme))
             val resultGraph = add.foldLeft(ldpr.graph) {
               (graph, triple) => graph union Graph(triple.resolveAgainst(graphName))
             }
