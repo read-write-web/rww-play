@@ -1,4 +1,4 @@
-package test.ldp
+package ldp.auth
 
 import java.net.URL
 import java.nio.file.{Files, Path}
@@ -15,6 +15,7 @@ import rww.ldp.actor.RWWActorSystem
 import rww.ldp.auth.{Claim, WACAuthZ, WebIDVerifier, X509CertSigner}
 import sun.security.x509.X500Name
 import test.ldp.TestSetup._
+import test.ldp.{TestGraphs, TestHelper}
 
 import scala.concurrent.Future
 import scala.util.Try
@@ -43,28 +44,28 @@ abstract class WebIDVerifierTest[Rdf<:RDF](
 
   import ops._
 
-  val dir: Path = Files.createTempDirectory("plantain" )
+  val dir: Path = Files.createTempDirectory("WebIDVerifierTest" )
 
   implicit val timeout: Timeout = Timeout(1, TimeUnit.MINUTES)
-  val rww: RWWActorSystem[Rdf] = actor.RWWActorSystemImpl.plain[Rdf](baseUri, dir, testFetcher)
+  val rwwAgent: RWWActorSystem[Rdf] = actor.RWWActorSystemImpl.plain[Rdf](baseUri, dir, testFetcher)
 
-  implicit val authz: WACAuthZ[Rdf] =  new WACAuthZ[Rdf](new WebResource(rww))
+  implicit val authz: WACAuthZ[Rdf] =  new WACAuthZ[Rdf](new WebResource(rwwAgent))
 
-  val webidVerifier = new WebIDVerifier(rww)
+  val webidVerifier = new WebIDVerifier(rwwAgent)
 
-  val web = new WebResource[Rdf](rww)
+  val web = new WebResource[Rdf](rwwAgent)
 
-  val bertailsCertSigner = new X509CertSigner(bertailsKeys.priv)
+  val bertailsCertSigner = new X509CertSigner(bertKeyPair.priv)
   val bertailsCert = bertailsCertSigner.generate(new X500Name("CN=Alex, O=W3C"),
-    bertailsKeys.pub,2,new URL(bertails.getString))
+    bertKeyPair.pub,2,new URL(bertails.getString))
 
   //of course bertails cannot create a cert with henry's public key, because not having the private key he would not
   //be able to connect to a server with it. So he must use a different key - his own will do for the test
   val bertailsFakeHenryCert = bertailsCertSigner.generate(new X500Name("CN=Henry, O=bblfish.net"),
-    bertailsKeys.pub,3,new URL(henry.getString))
+    bertKeyPair.pub,3,new URL(henry.getString))
 
   "add bertails card and acls" in {
-    val script = rww.execute(for {
+    val script = rwwAgent.execute(for {
       ldpc     <- createContainer(baseUri,Some("bertails"),Graph.empty)
       ldpcMeta <- getMeta(ldpc)
       card     <- createLDPR(ldpc,Some(bertailsCard.lastPathSegment),bertailsCardGraph)
@@ -99,9 +100,9 @@ abstract class WebIDVerifierTest[Rdf<:RDF](
   }
 
 
-  val henryCertSigner = new X509CertSigner(henryKeys.priv)
-  val henryCert = henryCertSigner.generate(new X500Name("CN=Henry, O=bblfish.net"),henryKeys.pub,2,new URL(henry.toString))
-  val henrysFakeBertailsCert = henryCertSigner.generate(new X500Name("CN=Alex, O=W3C"),henryKeys.pub,3,new URL(bertails.toString))
+  val henryCertSigner = new X509CertSigner(henryKeyPair.priv)
+  val henryCert = henryCertSigner.generate(new X500Name("CN=Henry, O=bblfish.net"),henryKeyPair.pub,2,new URL(henry.toString))
+  val henrysFakeBertailsCert = henryCertSigner.generate(new X500Name("CN=Alex, O=W3C"),henryKeyPair.pub,3,new URL(bertails.toString))
 
 
   "verify Henry's cert" in {

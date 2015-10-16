@@ -9,19 +9,13 @@ import akka.http.scaladsl.model.headers.{Authorization, GenericHttpCredentials}
 import com.typesafe.scalalogging.slf4j.Logging
 import org.w3.banana.RDF
 import play.api.mvc.RequestHeader
-import rww.ldp.LDPExceptions.{HttpAuthException, SignatureRequestException,
-SignatureVerificationException}
+import rww.ldp.LDPExceptions.{HttpAuthException, SignatureRequestException, SignatureVerificationException}
 import rww.ldp.auth.WebKeyVerifier
 import rww.play.auth.{AuthN, Subject}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-
-/**
- *
- */
-object HttpAuthorization
 
 object SigInfo {
   def SigFail(errorMsg: String) = Failure(SignatureRequestException(errorMsg))
@@ -30,9 +24,10 @@ object SigInfo {
     Failure(SignatureVerificationException(errorMsg, sigInfo))
 
   val base64decoder = Base64.getDecoder
+
 }
 
-class SigInfo (
+case class SigInfo (
   val sigText: String,
   val keyId: URL,
   val algorithm: String,
@@ -41,6 +36,11 @@ class SigInfo (
   def sig = scala.collection.immutable.IndexedSeq(sigbytes)
 }
 
+object HttpAuthorization {
+  def futureToFutureTry[T](f: Future[T])(implicit ec: ExecutionContext): Future[Try[T]] =
+    f.map(Success(_)).recover { case x: HttpAuthException => Failure(x) }
+
+}
 
 /**
  * implements a number of Http Authorization methods
@@ -57,7 +57,7 @@ class HttpAuthorization[Rdf <: RDF](
 ) extends AuthN with Logging {
 
   import org.w3.banana.TryW
-  import SigInfo._
+  import HttpAuthorization._
 
   def apply(req: RequestHeader): Future[Subject] = {
     val auths = for (auth <- req.headers.getAll("Authorization"))
@@ -80,8 +80,6 @@ class HttpAuthorization[Rdf <: RDF](
     }
   }
 
-  def futureToFutureTry[T](f: Future[T]): Future[Try[T]] =
-    f.map(Success(_)).recover { case x => Failure(x) }
 
 
   /**
@@ -115,7 +113,7 @@ class HttpAuthorization[Rdf <: RDF](
            }
         }
       sigText <- buildSignatureText(req, params.get("headers").getOrElse("Date"))
-    } yield new SigInfo(sigText, keyUrl, algo, signature)
+    } yield SigInfo(sigText, keyUrl, algo, signature)
   }
 
 
@@ -138,6 +136,7 @@ class HttpAuthorization[Rdf <: RDF](
     //for discussion on this type of control flow see:
     //   http://stackoverflow.com/questions/2742719/how-do-i-break-out-of-a-loop-in-scala
     //   http://stackoverflow.com/questions/12892701/abort-early-in-a-fold
+    //   http://www.tzavellas.com/techblog/2010/09/20/catching-throwable-in-scala/
     case e: SignatureVerificationException => Failure(e)
   }
 

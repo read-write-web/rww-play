@@ -28,7 +28,7 @@ class GraphUtilTest[Rdf<: RDF](implicit
   val henryCardComvoluted = "http://bblfish.net:80/people/joe/../henry/card"
   val henryX =  URI(henryCardX.toString+"#me")
   val henryGraphX : Rdf#Graph = (
-    henryX -- cert.key ->- henryKeys.pub
+    henryX -- cert.key ->- henryKeyPair.pub
       -- foaf.name ->- "Henry"
     ).graph
 

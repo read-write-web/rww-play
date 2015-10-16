@@ -1,11 +1,12 @@
 package rww.ldp
 
 import java.math.BigInteger
-import java.security.interfaces.RSAPublicKey
 import java.security.KeyFactory
+import java.security.interfaces.RSAPublicKey
 import java.security.spec.RSAPublicKeySpec
+
 import org.w3.banana.binder.{PGBinder, RecordBinder}
-import org.w3.banana.{CertPrefix, RDFOps, RDF}
+import org.w3.banana.{CertPrefix, RDF, RDFOps}
 
 /**
  * Binder for mapping certificates elements to rdf and back
@@ -14,7 +15,6 @@ import org.w3.banana.{CertPrefix, RDFOps, RDF}
  * @tparam Rdf
  */
 class CertBinder[Rdf <: RDF]()(implicit ops: RDFOps[Rdf], recordBinder: RecordBinder[Rdf]) {
-    import org.w3.banana.syntax._
     import ops._
     import recordBinder._
     val cert = CertPrefix[Rdf]
@@ -29,5 +29,12 @@ class CertBinder[Rdf <: RDF]()(implicit ops: RDFOps[Rdf], recordBinder: RecordBi
         (m,e)=>factory.generatePublic(new RSAPublicKeySpec(new BigInteger(m),e)).asInstanceOf[RSAPublicKey],
         key => Some((key.getModulus.toByteArray,key.getPublicExponent))
       ) // withClasses rsaClassUri
+
+    val rsaPubKeybinderWithHash: PGBinder[Rdf, RSAPublicKey] =
+    pgbWithId[RSAPublicKey](key=>URI("#key_"+key.getModulus.hashCode()))(modulus, exponent)(
+      (m,e)=>factory.generatePublic(new RSAPublicKeySpec(new BigInteger(m),e)).asInstanceOf[RSAPublicKey],
+      key => Some((key.getModulus.toByteArray,key.getPublicExponent))
+    ) // withClasses rsaClassUri
+
 
 }

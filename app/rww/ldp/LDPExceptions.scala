@@ -1,10 +1,8 @@
 package rww.ldp
 
-import org.w3.banana.{RDF, PointedGraph, BananaException}
+import org.w3.banana.{BananaException, PointedGraph, RDF}
 import rww.auth.SigInfo
 import rww.play.AuthorizedModes
-
-import scala.util.control.ControlThrowable
 
 /**
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)
@@ -28,12 +26,11 @@ object LDPExceptions {
   case class PropertiesConflict(message: String) extends Exception(message) with BananaException
   case class OperationNotSupportedException(message: String) extends Exception(message) with BananaException
 
-  sealed trait HttpAuthException extends ControlThrowable
+  sealed trait HttpAuthException extends Exception
   trait SignatureAuthException extends HttpAuthException
   case class SignatureRequestException(msg: String) extends HttpAuthException
   //todo: the exception here should be one returned by rww.execute
   case class FetchException(sigInfo: SigInfo, e: Throwable) extends SignatureAuthException
   case class SignatureVerificationException(msg: String, sigInfo: SigInfo) extends SignatureAuthException
   case class KeyIdException[Rdf<:RDF](msg: String, sigInfo: SigInfo, pg: PointedGraph[Rdf]) extends SignatureAuthException
-  case class KeyFetchException(msg: String, sigInfo: SigInfo) extends SignatureAuthException
 }

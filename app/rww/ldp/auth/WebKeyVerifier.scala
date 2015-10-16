@@ -9,7 +9,7 @@ import org.w3.banana.binder.RecordBinder
 import rww.auth.SigInfo
 import rww.ldp.CertBinder
 import rww.ldp.LDPCommand._
-import rww.ldp.LDPExceptions.{FetchException, KeyIdException}
+import rww.ldp.LDPExceptions.{ServerException, FetchException, KeyIdException}
 import rww.ldp.actor.RWWActorSystem
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,7 +20,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * as specified by
  * https://tools.ietf.org/html/draft-cavage-http-signatures-05
- * but requring that the key be an http(s) URL and be dereferenceable
+ * but requiring that the key be an http(s) URL and be dereferenceable
  */
 case class WebKeyVerifier[Rdf <: RDF](
   rww: RWWActorSystem[Rdf]
@@ -70,13 +70,12 @@ case class WebKeyVerifier[Rdf <: RDF](
       val sig = Signature.getInstance(algorithm)
       sig.initVerify(pubkey)
       sig.update(siginfo.sigText.getBytes("US-ASCII")) //should be ascii only
-      if (sig.verify(base64decoder.decode(sigbytes))) Success(WebKeyPrincipal(keyId.toURI))
+      if (sig.verify(sigbytes)) Success(WebKeyPrincipal(keyId.toURI))
       else SigVFail("could not cryptographically verify signature", siginfo)
     } catch {
       case nsa: NoSuchAlgorithmException => SigVFail("could not find implementation for " +
         algorithm, siginfo)
-      case ue: UnsupportedEncodingException => SigVFail("could not find US-ASCII Encoding!",
-        siginfo)
+      case ue: UnsupportedEncodingException => Failure(ServerException("could not find US-ASCII Encoding!"))
       case iae: IllegalArgumentException => SigVFail("could not decode base64 signature", siginfo)
     }
 

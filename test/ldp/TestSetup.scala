@@ -18,4 +18,5 @@ object TestSetup extends SesameSetup {
   val baseUri: Rdf#URI = ops.URI("http://example.com/foo/")
   implicit val turtleWriter: RDFWriter[Rdf,Try, Turtle] = new SesameRDFWriterHelper().turtleWriter
   implicit val turtleReader: RDFReader[Rdf, Try, Turtle] = new SesameTurtleReader()
+
 }

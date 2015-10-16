@@ -51,9 +51,9 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
   val ldp = LDPPrefix[Rdf]
   val cert = CertPrefix[Rdf]
 
-  val keyGen = KeyPairGenerator.getInstance("RSA");
-  val henryKeys: RsaKeyPair = { keyGen.initialize(768); RsaKeyPair(keyGen.genKeyPair()) }
-  val bertailsKeys: RsaKeyPair = { keyGen.initialize(512); RsaKeyPair(keyGen.genKeyPair()) }
+  val keyGen                   = KeyPairGenerator.getInstance("RSA")
+  val henryKeyPair: RsaKeyPair = { keyGen.initialize(768); RsaKeyPair(keyGen.genKeyPair()) }
+  val bertKeyPair : RsaKeyPair = { keyGen.initialize(512); RsaKeyPair(keyGen.genKeyPair()) }
 
   val containsRel = (URI(".") -- ldp.contains ->- URI("")).graph // added by LDP to members
 
@@ -76,7 +76,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
   val henryCard = URI("http://bblfish.net/people/henry/card")
   val henry =  URI(henryCard.getString+"#me")
   val henryGraph : Rdf#Graph = (
-    URI("#me") -- cert.key ->- henryKeys.pub
+    URI("#me") -- cert.key ->- henryKeyPair.pub
       -- foaf.name ->- "Henry"
     ).graph
 
@@ -167,7 +167,7 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
     URI("#me")
       -- foaf.name ->- "Alexandre".lang("fr")
       -- foaf.title ->- "Mr"
-      -- cert.key ->- bertailsKeys.pub
+      -- cert.key ->- bertKeyPair.pub
     ).graph
 
   val bertailsCardAclGraph: Rdf#Graph = (

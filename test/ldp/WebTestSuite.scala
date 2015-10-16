@@ -68,7 +68,7 @@ class WebTestSuite[Rdf <: RDF](
 
 
     "Henry can Authenticate" in {
-      val futurePrincipal = webidVerifier.verifyWebID(henry.toString, henryKeys.pub)
+      val futurePrincipal = webidVerifier.verifyWebID(henry.toString, henryKeyPair.pub)
       val res = futurePrincipal.map {
         p =>
           assert(p.isInstanceOf[WebIDPrincipal] && p.getName == henry.toString)
@@ -197,7 +197,7 @@ class WebTestSuite[Rdf <: RDF](
     }
 
     "Alex can Authenticate" in {
-      val futurePrincipal = webidVerifier.verifyWebID(bertails.toString, bertailsKeys.pub)
+      val futurePrincipal = webidVerifier.verifyWebID(bertails.toString, bertKeyPair.pub)
       val res = futurePrincipal.map {
         p =>
           assert(p.isInstanceOf[WebIDPrincipal] && p.getName == bertails.toString)
