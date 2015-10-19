@@ -447,7 +447,7 @@ object HttpResourceUtils {
   /**
    *
    * @return the result of evaluating the function if indeed the resource tags does not match any of the ones sent by the client
-   * @throws ETagsMatch if the tags match
+   * @throws rww.ldp.LDPExceptions#ETagsMatch if the tags match
    */
   def ifNoneMatch[Rdf <: RDF, Result](request: PlayRequestHeader,
                                       resource: NamedResource[Rdf]

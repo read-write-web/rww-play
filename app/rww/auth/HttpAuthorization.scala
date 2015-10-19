@@ -1,6 +1,7 @@
 package rww.auth
 
 import java.net.{MalformedURLException, URL}
+import java.security.{Signature, PrivateKey}
 import java.util.Base64
 
 import akka.http.scaladsl.model.HttpHeader
@@ -25,7 +26,31 @@ object SigInfo {
 
   val base64decoder = Base64.getDecoder
 
+  val base64encoder = Base64.getEncoder
+
+  /**
+    *
+    * @param text to sign
+    * @param privkey the private key to sign the text
+    * @param sigType  eg SHA256withRSA
+    * @return a Try of the Signed Bytes (which often then need to be hex encoded)
+    *         The Try can capture
+    *         - java.security.NoSuchAlgorithmException
+    *         - java.security.InvalidKeyException
+    *         - java.security.SignatureException
+    */
+  def sign(text: String, privkey: PrivateKey, sigType: String): Try[Array[Byte]] = {
+    Try {
+      val sig = Signature.getInstance(sigType)
+      sig.initSign(privkey)
+      sig.update(text.getBytes("US-ASCII"))
+      sig.sign()
+    }
+  }
+
 }
+
+
 
 case class SigInfo (
   val sigText: String,
@@ -74,8 +99,8 @@ class HttpAuthorization[Rdf <: RDF](
         case Failure(e) => "failure"
       }
       Subject(
-        grouped("success").collect { case Success(p) => p }.toList,
-        grouped("failure").collect { case Failure(e: HttpAuthException) => e }.toList
+        grouped.get("success").toSeq.flatten.collect { case Success(p) => p }.toList,
+        grouped.get("failure").toSeq.flatten.collect { case Failure(e: HttpAuthException) => e }.toList
       )
     }
   }
@@ -120,7 +145,7 @@ class HttpAuthorization[Rdf <: RDF](
   def buildSignatureText(req: RequestHeader, headerList: String): Try[String] = try {
     Success(headerList.split(" ").map {
       case rt@"(request-target)" =>
-        rt + ":" + req.method.toLowerCase + " " + req.path + {
+        rt + ": " + req.method.toLowerCase + " " + req.path + {
           if (req.rawQueryString != "")
             "?" + req.rawQueryString
           else ""
@@ -129,7 +154,7 @@ class HttpAuthorization[Rdf <: RDF](
         val values = req.headers.getAll(name)
         if (values.isEmpty)
           throw SignatureRequestException(s"found no header for $name in ${req.headers}")
-        else name.toLowerCase + ":" + values.mkString(",")
+        else name.toLowerCase + ": " + values.mkString(",")
     }.mkString("\n")
     )
   } catch {
