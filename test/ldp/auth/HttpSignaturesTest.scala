@@ -12,7 +12,7 @@ import org.w3.banana.io.{RDFReader, RDFWriter, Turtle}
 import play.api.mvc.AnyContentAsEmpty
 import play.api.test.{FakeHeaders, FakeRequest}
 import rww.auth.SigInfo._
-import rww.auth.{HttpAuthorization, SigInfo}
+import rww.auth.{HttpAuthentication, SigInfo}
 import rww.ldp.LDPCommand._
 import rww.ldp.LDPExceptions.{FetchException, KeyIdException, SignatureRequestException, SignatureVerificationException}
 import rww.ldp.actor
@@ -46,7 +46,7 @@ class HttpSignaturesTest[Rdf<:RDF](
    with TestHelper with TestGraphs[Rdf]  {
 
   import ops._
-  import rww.auth.HttpAuthorization.futureToFutureTry
+  import rww.play.auth.AuthN.futureToFutureTry
 
   val dir: Path = Files.createTempDirectory("HttpSignaturesTest")
 
@@ -133,7 +133,7 @@ class HttpSignaturesTest[Rdf<:RDF](
 
     }
 
-    val httpAuth = new HttpAuthorization(webKeyVerifier, new URL(baseUri.toString))
+    val httpAuth = new HttpAuthentication(webKeyVerifier, new URL(baseUri.toString))
 
     val specHeaderTxt =
       """POST /foo?param=value&pet=dog HTTP/1.1

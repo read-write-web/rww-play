@@ -26,7 +26,6 @@ object Global extends GlobalSettings {
         case "GET" => Some(ReadWriteWebController.get(req.path))
         case "POST" => Some(ldp.ReadWriteWebController.post(req.path))
         case "PATCH" => Some(ldp.ReadWriteWebController.patch(req.path))
-        case "MKCOL" => Some(ldp.ReadWriteWebController.mkcol(req.path))
         case "HEAD" => Some(ldp.ReadWriteWebController.head(req.path))
         case "SEARCH" => Some(ldp.ReadWriteWebController.search(req.path))
         case "OPTIONS" => Some(ReadWriteWebController.options(req.path))

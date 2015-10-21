@@ -1,7 +1,7 @@
 package rww.auth
 
 import java.net.{MalformedURLException, URL}
-import java.security.{Signature, PrivateKey}
+import java.security.{PrivateKey, Signature}
 import java.util.Base64
 
 import akka.http.scaladsl.model.HttpHeader
@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.headers.{Authorization, GenericHttpCredentials}
 import com.typesafe.scalalogging.slf4j.Logging
 import org.w3.banana.RDF
 import play.api.mvc.RequestHeader
-import rww.ldp.LDPExceptions.{HttpAuthException, SignatureRequestException, SignatureVerificationException}
+import rww.ldp.LDPExceptions.{ClientAuthDisabled, SignatureRequestException, SignatureVerificationException}
 import rww.ldp.auth.WebKeyVerifier
 import rww.play.auth.{AuthN, Subject}
 
@@ -61,28 +61,28 @@ case class SigInfo (
   def sig = scala.collection.immutable.IndexedSeq(sigbytes)
 }
 
-object HttpAuthorization {
-  def futureToFutureTry[T](f: Future[T])(implicit ec: ExecutionContext): Future[Try[T]] =
-    f.map(Success(_)).recover { case x: HttpAuthException => Failure(x) }
-
-}
 
 /**
- * implements a number of Http Authorization methods
- * currently only WebKeyVerification as defined by
- *    https://tools.ietf.org/html/draft-cavage-http-signatures-05
- * @param verifier
- * @param base
- * @tparam Rdf
- */
-class HttpAuthorization[Rdf <: RDF](
+  * Even though we verify the Authorization header, this is only about Authenticating
+  * the user.
+  *
+  * Authorization also requires verification that the subject is allowed access.
+  *
+  * Implements a number of Http Authorization methods
+  * currently only WebKeyVerification as defined by
+  * https://tools.ietf.org/html/draft-cavage-http-signatures-05
+  * @param verifier
+  * @param base
+  * @tparam Rdf
+  */
+class HttpAuthentication[Rdf <: RDF](
   verifier: WebKeyVerifier[Rdf], base: URL
 )(implicit
   ec: ExecutionContext
 ) extends AuthN with Logging {
 
+  import AuthN._
   import org.w3.banana.TryW
-  import HttpAuthorization._
 
   def apply(req: RequestHeader): Future[Subject] = {
     val auths = for (auth <- req.headers.getAll("Authorization"))
@@ -92,17 +92,10 @@ class HttpAuthorization[Rdf <: RDF](
       case Ok(Authorization(GenericHttpCredentials("Signature", _, params)), _) =>
         parseSignatureInfo(req, params).asFuture.flatMap(verifier.verify(_))
     }
-    val seqOfFutureTrys = seqOfFuturePrincipals.map(futureToFutureTry)
-    Future.sequence(seqOfFutureTrys).map { seqTryPrincipals =>
-      val grouped = seqTryPrincipals.groupBy {
-        case Success(x) => "success"
-        case Failure(e) => "failure"
-      }
-      Subject(
-        grouped.get("success").toSeq.flatten.collect { case Success(p) => p }.toList,
-        grouped.get("failure").toSeq.flatten.collect { case Failure(e: HttpAuthException) => e }.toList
-      )
+    if (seqOfFuturePrincipals.isEmpty) {
+      Future.failed(ClientAuthDisabled("No 'Authorization: Signature ...' http header"))
     }
+    else toSubject(seqOfFuturePrincipals)
   }
 
 

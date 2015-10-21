@@ -188,11 +188,17 @@ class ResourceMgr[Rdf <: RDF](
 
   /**
     *
+    * The reason for this function is that we want to return the AuthorizedModes for the user
+    * *as* identified.
+    *
+    * Because WebID-TLS can check the identity of the user during the connection,
+    * this may also requests the user's identity at that point.
+    *
     * @param request
     * @param path
     * @param mode the mode of the request
-    * @return Future[AuthorizeModes] for the resource and user
-    *         ( may authenticate user with TLS if needed )
+    * @return Future[AuthorizeModes] for the resource and user, the Authorized modes may be empty
+    *
     *
     */
   def fullAuthInfo(
@@ -200,12 +206,20 @@ class ResourceMgr[Rdf <: RDF](
     path: String,
     mode: Method.Value
   ): Future[AuthorizedModes] = {
+
     Logger.info(s"fullAuthInfo(_,$path,$mode)")
     //1. find out what the user is authenticated as
     //todo: we should be able to deal with a session containing multiple ids. WebIDs & e-mail
     // addresses, etc...
     val webIdsList = request.session.get("webid").toList.map(u => WebIDPrincipal(new jURI(u)))
+
+    //todo: it would actually make sense to check for "Authorize:" headers here, because they would
+    //todo: presumably only be sent if the user wanted to be authenticated that way.
+    //todo: otherwise one risks calling getAllowedMethodsForAgent one more time than needed
+    //todo: this means one should split the WWW-Authenticate and the WebIDTLSAuthenticate
+
     val relativePathUri = URI(path)
+
     //2. find out all rights for this user
 
     //todo: what we are missing here is a way for the user to say that he prefers to be
@@ -224,6 +238,7 @@ class ResourceMgr[Rdf <: RDF](
         // want to be
         //if the person has not been authenticated yet, authenticate if possible, then verify
         authn(request).flatMap { subject =>
+          //todo: should these webids be added to the session here?
           val newWebIds = subject.webIds
           Logger.info(s" user agent is identified by $newWebIds")
           getAllowedMethodsForAgent(relativePathUri, newWebIds).map { authzModes =>
@@ -232,7 +247,10 @@ class ResourceMgr[Rdf <: RDF](
             )
             AuthorizedModes(newWebIds, path, authzModes)
           }
-        }
+        }.recoverWith({//we're back to previous non-authenticated state
+          case e: AccessDeniedAuthModes =>
+            Future.successful(AuthorizedModes(webIdsList, path, allowedMethods))
+        })
       } else {
         // the user cannot access the resource in the desired mode, and has not authenticated
         // successfully
@@ -266,7 +284,14 @@ class ResourceMgr[Rdf <: RDF](
           ))
       }
       else {
-        authn(request).flatMap { subject =>
+        //todo: we need to also now look at the session!
+        //todo: should this rather be part of authn?
+        //todo: if yes, then this also affects fullAuthInfo method!
+        authn(request).recoverWith ({
+          case e: ClientAuthDisabled => Future.failed(
+              AccessDenied("User cannot authenticate with current ids "+agents)
+            )
+        }).flatMap { subject =>
           subject.webIds.find { wid =>
             agents.contains(URI(wid.webid.toString))
           } match {

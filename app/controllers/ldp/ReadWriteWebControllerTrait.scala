@@ -13,8 +13,6 @@ trait ReadWriteWebControllerTrait {
 
   def head(path: String): Action[AnyContent]
 
-  def mkcol(path: String): Action[RwwContent]
-
   def put(path: String): Action[RwwContent]
 
   def patch(path: String): Action[RwwContent]

@@ -7,10 +7,12 @@ import com.typesafe.scalalogging.slf4j.Logging
 import org.w3.banana.RDF
 import play.api.mvc.RequestHeader
 import rww.auth.BrowserCertBehavior._
+import rww.ldp.LDPExceptions.ClientAuthDisabled
 import rww.ldp.auth.{Claim, WebIDVerifier}
-import rww.play.auth.{AuthN, AuthenticationError, Subject}
+import rww.play.auth.{AuthN, Subject}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 /**
  * WebID Authentication
@@ -23,31 +25,41 @@ class WebIDAuthN[Rdf <: RDF](
   ec: ExecutionContext
 ) extends AuthN with Logging {
 
-
+  import AuthN._
   def apply(headers: RequestHeader): Future[Subject] = {
-    val certificateRequired: Boolean = browserDoesNotSupportsTLSWantMode(headers)
-    logger.debug(s"Certificate required (TLS Need mode)? $certificateRequired")
-    headers.certs(certificateRequired) flatMap { certs: Seq[Certificate] =>
-      logger.debug(s"Certificates found=${certs.size}")
-      val principals: List[Future[Principal]] =
-        certs.headOption.map { cert =>
-          cert match {
-            case x509: X509Certificate => {
-              val x509claim = Claim.ClaimMonad.point(x509)
-              verifier.verify(x509claim)
-            }
-            case other => List()
-          }
-        }.getOrElse(List())
-
-      //todo: is there a way to avoid loosing the granularity of the previous futures?
-      //this I think forces all of the WebIDs to be verified before the future is ready, where I
-      // may prefer
-      //to get going as soon as I find the first...
-      val futurePrincipals: Future[List[Principal]] = Future.sequence(principals)
-      futurePrincipals.map(principals => Subject(principals))
-        .transform(identity, AuthenticationError(_))
+    if (browserMayNotSupportsClientCerts(headers)) {
+      Future.failed(ClientAuthDisabled("browser does not support client certificate authentication"))
     }
+    else {
+      val certificateRequired: Boolean = browserDoesNotSupportsTLSWantMode(headers)
+      logger.debug(s"Certificate required (TLS Need mode)? $certificateRequired")
+      val certs = headers.certs(certificateRequired) recoverWith {
+        //todo: find out exactly what the exceptions that may be cought are
+        case NonFatal(e) => Future.failed(
+          ClientAuthDisabled("client sent no certificate over TLS", Some(e))
+        )
+      }
+      certs.flatMap { certs: Seq[Certificate] =>
+        logger.debug(s"Certificates found=${certs.size}")
+        val principals: List[Future[Principal]] =
+          certs.headOption.map { cert =>
+            cert match {
+              case x509: X509Certificate => {
+                val x509claim = Claim.ClaimMonad.point(x509)
+                verifier.verify(x509claim)
+              }
+              case other => List()
+            }
+          }.getOrElse(List())
+
+        //todo: is there a way to avoid loosing the granularity of the previous futures?
+        //this I think forces all of the WebIDs to be verified before the future is ready, where I
+        // may prefer
+        //to get going as soon as I find the first...
+        toSubject(principals)
+      }
+    }
+
   }
 
 

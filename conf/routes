@@ -30,7 +30,6 @@ GET           /2013/$file<.*>                          controllers.ldp.ReadWrite
 PUT           /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.put(file)
 POST          /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.post(file)
 DELETE        /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.delete(file)
-#MKCOL        /2013/$file<.*>                          controllers.ReadWriteWebApp.mkcol(file)
 PATCH         /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.patch(file)
 HEAD          /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.head(file)
 OPTIONS       /2013/$file<.*>                          controllers.ldp.ReadWriteWebController.options(file)

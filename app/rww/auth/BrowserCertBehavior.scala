@@ -1,8 +1,8 @@
 package rww.auth
 
+import net.sf.uadetector.UserAgentFamily
 import net.sf.uadetector.service.UADetectorServiceFactory
 import play.api.mvc.RequestHeader
-import net.sf.uadetector.UserAgentFamily
 
 /**
  *  Object that collects methods on how different browsers differ with regard to Certificate
@@ -32,10 +32,21 @@ object BrowserCertBehavior {
   def browserDoesNotSupportsTLSWantMode(req: RequestHeader): Boolean =  {
     req.headers.get("User-Agent").map { userAgentString =>
       val userAgent = agentParser.parse(userAgentString)
+
       FamiliesNotSupportingTLSWantMode.contains(userAgent.getFamily) || ajaxRequest(req) || userAgent.getName == "Android browser"
     }.getOrElse(false)
   }
 
+  def browserMayNotSupportsClientCerts(req: RequestHeader): Boolean =  {
+    req.headers.get("User-Agent").map { userAgentString =>
+      val autz =req.headers.getAll("Authorization")
+      val userAgent = agentParser.parse(userAgentString)
+      FamiliesMayNotSupportTLSAuth.contains(userAgent.getFamily)  &&
+        !req.headers.getAll("Authorization").exists(_.startsWith("ClientCertificate"))
+      //this last one is not standard, but allows me to work with curl to test the server
+
+    }.getOrElse(false)
+  }
 
   private val FamiliesNotSupportingTLSWantMode = {
     import UserAgentFamily._
@@ -48,8 +59,13 @@ object BrowserCertBehavior {
       // see https://github.com/stample/rww-play/issues/74, it seems to work half the time on Chrome with Want mode :(
       CHROME
     )
-
   }
+
+  private val FamiliesMayNotSupportTLSAuth = {
+    import UserAgentFamily._
+    Set( CURL  )
+  }
+
 
   private def ajaxRequest(req: RequestHeader): Boolean =
     req.headers.get("X-Requested-With").map(_.trim.equalsIgnoreCase("XMLHttpRequest")).getOrElse(false)

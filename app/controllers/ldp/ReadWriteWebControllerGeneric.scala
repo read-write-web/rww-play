@@ -1,10 +1,10 @@
 package controllers.ldp
 
-import java.net.{URLDecoder, URI => jURI}
+import java.net.{URI => jURI, URLDecoder}
 
 import _root_.play.{api => PlayApi}
-import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.DateTime
+import akka.http.scaladsl.model.headers._
 import com.google.common.base.Throwables
 import org.w3.banana._
 import org.w3.banana.io.{BooleanWriter, Syntax, WriterSelector}
@@ -17,12 +17,12 @@ import rww.ldp.LDPExceptions._
 import rww.ldp.auth.WebIDPrincipal
 import rww.ldp.model.{LocalLDPC, _}
 import rww.ldp.{SupportedBinaryMimeExtensions, WrongTypeException}
-import rww.play.auth.AuthenticationError
 import rww.play.rdf.IterateeSelector
 import rww.play.{AuthResult, BinaryRwwContent, GraphRwwContent, QueryRwwContent, _}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
+import scala.util.control.NonFatal
 
 
 /**
@@ -144,16 +144,14 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
             Unauthorized(
               views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(err) )
               //todo a better implementation would have this on the actor itself, which WOULD know the type
-            )
+            ).withHeaders("WWW-Authenticate"->"""Signature realm="/"""")
 //          }
 //          case _ => {
 //            Unauthorized(err.getMessage).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC
 //          }
 //        }
       }
-      //todo: 401 Unauthorizes requires some WWW-Authenticate header. Can we really use it this way?
-      case AuthenticationError(e) => Unauthorized("Could not authenticate user with TLS cert:"+stackTrace(e))
-      case e => {
+      case NonFatal(e) => {
         Logger.error("Unknown InternalServerError",e)
         InternalServerError(e.getMessage + "\n" + stackTrace(e))
       }
@@ -237,38 +235,6 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     )
   }
 
-  /**
-   * http://tools.ietf.org/html/rfc4918#section-9.3
-   * @param path
-   * @return
-   */
-  def mkcol(path: String) = Action.async(rwwBodyParser) { implicit request =>
-    val correctedPath = if (!request.path.endsWith("/")) request.path else request.path.substring(0, request.path.length - 1)
-    val pathUri = new java.net.URI(correctedPath)
-    val coll = pathUri.resolve(".")
-
-    def mk(graph: Option[Rdf#Graph]): Future[Result] = {
-      val path = correctedPath.toString.substring(coll.toString.length)
-      for (answer <- resourceManager.makeCollection(coll.toString, Some(path), graph))
-      yield {
-        val res = Created("Created Collection at " + answer).withHeaders(userHeader(answer.id).toList:_*)
-        if (request.path == correctedPath) res
-        else res.withHeaders(("Location" -> answer.toString)::userHeader(answer.id).toList:_*)
-      }
-    }
-    val resultFuture = request.body match {
-      case rww: GraphRwwContent[Rdf] => mk(Some(rww.graph))
-      case rww.play.emptyContent => mk(None)
-      case _ => Future.successful(PlayApi.mvc.Results.UnsupportedMediaType("We only support RDF media types, for appending to collection."))
-    }
-    resultFuture recover {
-      //case ResourceExists(e) => MethodNotAllowed(e) //no longer happens
-      case ParentDoesNotExist(e) => Conflict(e)
-      case AccessDenied(e) => Forbidden(e)
-      case e => InternalServerError(e.toString + "\n" + stackTrace(e))
-    }
-  }
-
   def put(path: String) = Action.async(rwwBodyParser) { implicit request =>
     val future = for {
       answer <- resourceManager.put(request.body)
@@ -280,6 +246,15 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       case PropertiesConflict(msg) => Conflict(msg)
       case MissingEtag(me) => PreconditionRequired(me)
       case ETagsDoNotMatch(msg) => Results.PreconditionFailed("Etag preconditions failed:"+msg)
+      case err @ AccessDenied(authinfo) => {
+        Logger.warn("Access denied exception"+authinfo)
+        //todo: automatically create html versions if needed of error messages
+        Unauthorized(
+          views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(err) )
+          //todo a better implementation would have this on the actor itself, which WOULD know the type
+        ).withHeaders("WWW-Authenticate"->"""Signature realm="/"""")
+      }
+
       case e => {
         InternalServerError(e.getMessage + "\n" + stackTrace(e))
       }
@@ -296,7 +271,15 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case MissingEtag(me) => PreconditionRequired(me)
       case ETagsDoNotMatch(msg) => Results.PreconditionFailed("Etag preconditions failed:"+msg)
-      case e => InternalServerError(e.getMessage + "\n" + stackTrace(e))
+      case err @ AccessDenied(authinfo) => {
+        Logger.warn("Access denied exception" + authinfo)
+        //todo: automatically create html versions if needed of error messages
+        Unauthorized(
+          views.html.ldp.accessDenied(request.getAbsoluteURI.toString, stackTrace(err))
+          //todo a better implementation would have this on the actor itself, which WOULD know the type
+        ).withHeaders("WWW-Authenticate" -> """Signature realm="/"""")
+      }
+      case NonFatal(e) => InternalServerError(e.getMessage + "\n" + stackTrace(e))
     }
   }
 
@@ -312,13 +295,21 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case umt: UnsupportedMediaType => Results.UnsupportedMediaType(umt.getMessage + stackTrace(umt))
       case OperationNotSupportedException(msg) => NotImplemented(msg)
+      case err @ AccessDenied(authinfo) => {
+        Logger.warn("Access denied exception" + authinfo)
+        //todo: automatically create html versions if needed of error messages
+        Unauthorized(
+          views.html.ldp.accessDenied(request.getAbsoluteURI.toString, stackTrace(err))
+          //todo a better implementation would have this on the actor itself, which WOULD know the type
+        ).withHeaders("WWW-Authenticate" -> """Signature realm="/"""")
+      }
       case e: WrongTypeException =>
         //todo: the Allow methods should not be hardcoded.
         Result(
           ResponseHeader(METHOD_NOT_ALLOWED),
           Enumerator(e.msg.getBytes("UTF-8"))
         )
-      case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
+      case NonFatal(e) => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
     }
   }
 
@@ -339,7 +330,15 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
           ResponseHeader(METHOD_NOT_ALLOWED),
           Enumerator(e.msg.getBytes("UTF-8"))
         )
-      case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
+      case err @ AccessDenied(authinfo) => {
+        Logger.warn("Access denied exception" + authinfo)
+        //todo: automatically create html versions if needed of error messages
+        Unauthorized(
+          views.html.ldp.accessDenied(request.getAbsoluteURI.toString, stackTrace(err))
+          //todo a better implementation would have this on the actor itself, which WOULD know the type
+        ).withHeaders("WWW-Authenticate" -> """Signature realm="/"""")
+      }
+      case NonFatal(e) => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
     }
   }
 
@@ -397,7 +396,15 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
       case MissingEtag(me) => PreconditionRequired(me)
       case ETagsDoNotMatch(msg) => Results.PreconditionFailed("Etag preconditions failed:"+msg)
-      case e => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
+      case err @ AccessDenied(authinfo) => {
+        Logger.warn("Access denied exception" + authinfo)
+        //todo: automatically create html versions if needed of error messages
+        Unauthorized(
+          views.html.ldp.accessDenied(request.getAbsoluteURI.toString, stackTrace(err))
+          //todo a better implementation would have this on the actor itself, which WOULD know the type
+        ).withHeaders("WWW-Authenticate" -> """Signature realm="/"""")
+      }
+      case NonFatal(e) => ExpectationFailed(e.getMessage + "\n" + stackTrace(e))
     }
   }
 

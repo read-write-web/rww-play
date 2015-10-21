@@ -32,8 +32,8 @@ object WebIDVerifier {
 
 class CryptoUtil[Rdf <: RDF](implicit ops: RDFOps[Rdf]) {
 
-  import ops._
   import WebIDVerifier._
+  import ops._
 
   val base10Types = List(xsd("integer"),xsd("int"),xsd("positiveInteger"),xsd("decimal"))
 
@@ -73,7 +73,6 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
                                (implicit ops: RDFOps[Rdf],
                                 sparqlOps: SparqlOps[Rdf],
                                 val ec: ExecutionContext)   {
-  import WebIDVerifier._
   import ops._
   import sparqlOps._
 
@@ -202,8 +201,7 @@ class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
 trait Claim[+S] {
   protected val statements: S
 
-  //warning: implicit here is not a good idea at all
-  def verify[V](implicit fn: S=> V ): V
+  def verify[V](fn: S=> V ): V
 }
 
 object Claim {
@@ -214,8 +212,8 @@ object Claim {
         f(fa.statements).map(a => this.point(a))
 
       def point[A](a: => A) = new Claim[A]{
-        protected val statements : A = a;
-        def verify[V](implicit fn: A=> V ) = fn(statements)
+        protected val statements : A = a
+        def verify[V](fn: A=> V ) = fn(statements)
       }
 
       def bind[A, B](fa: Claim[A])(f: (A) => Claim[B]) = f(fa.statements)
@@ -224,19 +222,13 @@ object Claim {
 
 }
 
-case class WebIDPrincipal(webid: java.net.URI) extends Principal {
-  val getName = webid.toString
-}
-
-case class WebKeyPrincipal(key: java.net.URI) extends Principal {
-  override def getName = key.toString
-}
-
 case class RSAPubKey(modulus: BigInteger, exponent: BigInteger)
 
 
 object VerificationException {
-  implicit val bananaExceptionSemiGroup = firstSemigroup[VerificationException]
+  implicit val bananaExceptionSemiGroup: Semigroup[VerificationException] =
+    firstSemigroup[VerificationException]
+
 
 }
 
