@@ -8,7 +8,7 @@ import org.w3.banana.RDF
 import play.api.mvc.RequestHeader
 import rww.auth.BrowserCertBehavior._
 import rww.ldp.LDPExceptions.ClientAuthDisabled
-import rww.ldp.auth.{Claim, WebIDVerifier}
+import rww.ldp.auth.{PubKeyPrincipal, Claim, WebIDVerifier}
 import rww.play.auth.{AuthN, Subject}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -46,7 +46,8 @@ class WebIDAuthN[Rdf <: RDF](
             cert match {
               case x509: X509Certificate => {
                 val x509claim = Claim.ClaimMonad.point(x509)
-                verifier.verify(x509claim)
+                Future.successful(PubKeyPrincipal(x509.getPublicKey))::
+                  verifier.verify(x509claim)
               }
               case other => List()
             }

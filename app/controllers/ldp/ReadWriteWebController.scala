@@ -47,11 +47,13 @@ class ReadWriteWebController(base: URL, path: Path) extends RWWSetup with ReadWr
   val httpAuthN = new HttpAuthentication(new WebKeyVerifier(rwwAgent),base)
 
   val authn = new AuthN {
+    import AuthN.futureToFutureTry
+    //todo: move to using Future.transformWith in scala 2.12
     override
-    def apply(req: RequestHeader) = httpAuthN(req) andThen {
+    def apply(req: RequestHeader) = futureToFutureTry(httpAuthN(req)) flatMap {
       case Success(Subject(List(), failures)) =>
         //todo: also take webid failures into account
-        webidAuthN(req).map(s => Subject(s.principals, s.failures:::failures))
+        webidAuthN(req).map(s => Subject(s.principals, s.failures ::: failures))
       case Success(other) =>
         //should perhaps also try WebID auth? Unlikely for the moment
         Future.successful(other)

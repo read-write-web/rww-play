@@ -69,10 +69,14 @@ class CryptoUtil[Rdf <: RDF](implicit ops: RDFOps[Rdf]) {
 /**
  *
  */
-class WebIDVerifier[Rdf <: RDF](rww: RWWActorSystem[Rdf])
-                               (implicit ops: RDFOps[Rdf],
-                                sparqlOps: SparqlOps[Rdf],
-                                val ec: ExecutionContext)   {
+class WebIDVerifier[Rdf <: RDF](
+  rww: RWWActorSystem[Rdf]
+)(implicit
+  ops: RDFOps[Rdf],
+  sparqlOps: SparqlOps[Rdf],
+  val ec: ExecutionContext
+) {
+
   import ops._
   import sparqlOps._
 

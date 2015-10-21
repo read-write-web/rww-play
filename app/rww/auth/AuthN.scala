@@ -3,7 +3,7 @@ package rww.play.auth
 import java.security.Principal
 
 import play.api.mvc.RequestHeader
-import rww.ldp.LDPExceptions.{AuthException, HttpAuthException, OtherAuthException}
+import rww.ldp.LDPExceptions.{AuthException, OtherAuthException}
 import rww.ldp.auth.WebIDPrincipal
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -38,7 +38,7 @@ case class Subject(principals: List[Principal],failures: List[AuthException]=Lis
 
 object AuthN {
   def futureToFutureTry[T](f: Future[T])(implicit ec: ExecutionContext): Future[Try[T]] =
-    f.map(Success(_)).recover { case x: HttpAuthException => Failure(x) }
+    f.map(Success(_)).recover { case x: AuthException => Failure(x) }
 
   def toSubject(seqOfFuturePrincipals: Seq[Future[Principal]])(
     implicit ec: ExecutionContext
