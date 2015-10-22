@@ -1,14 +1,16 @@
 package utils
 
+import java.io.OutputStream
+
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import play.api.libs.iteratee._
+
 import scala.concurrent.{ExecutionContext, Future}
-import java.io.{IOException, OutputStream}
-import com.typesafe.scalalogging.slf4j.Logging
 
 /**
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)
  */
-object Iteratees extends Logging {
+object Iteratees extends LazyLogging {
 
   /**
    * Permits to create an enumerator that will emit a single element, the result of a future

@@ -13,11 +13,12 @@ import org.w3.banana._
 import org.w3.banana.binder.RecordBinder
 import org.w3.banana.io._
 import org.w3.banana.sesame.io.{SesameRDFWriter, SesameSyntax}
+import play.api.libs.mailer.CommonsMailerPlugin
 import rww.ldp.actor.RWWActorSystemImpl
 import rww.ldp.{WSClient, WebClient}
 import rww.play.rdf.IterateeSelector
 import rww.play.rdf.sesame.{SesameBlockingRDFIteratee, SesameSparqlQueryIteratee, SesameSparqlUpdateIteratee}
-
+import utils.Mailer
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try
@@ -216,6 +217,7 @@ trait RWWSetup extends SesameSetup with Setup {
     else
       RWWActorSystemImpl.plain[Rdf](rootURI, rootContainerPath, webClient)
   }
+  def mailer(): Mailer = new Mailer(new CommonsMailerPlugin(Play.current).instance)
 }
 
 

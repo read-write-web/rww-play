@@ -189,7 +189,7 @@ class WebIDVerifier[Rdf <: RDF](
   }
 
 
-  def verifyWebIDClaim(webidClaim: Claim[Pair[String,PublicKey]]): Future[Principal] =
+  def verifyWebIDClaim(webidClaim: Claim[(String,PublicKey)]): Future[Principal] =
     webidClaim.verify { sk => verifyWebID(sk._1,sk._2) }
 }
 

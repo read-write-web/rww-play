@@ -100,7 +100,7 @@ class ResourceMgr[Rdf <: RDF](
     *         request on
     */
   private
-  def split(path: String): Pair[String, String] = {
+  def split(path: String): (String, String) = {
     val i = path.lastIndexOf('/')
     if (i < 0) ("", path)
     else (path.substring(0, i + 1), path.substring(i + 1, path.length))

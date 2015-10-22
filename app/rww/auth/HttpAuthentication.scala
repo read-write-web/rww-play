@@ -7,7 +7,7 @@ import java.util.Base64
 import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
 import akka.http.scaladsl.model.headers.{Authorization, GenericHttpCredentials}
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.w3.banana.RDF
 import play.api.mvc.RequestHeader
 import rww.ldp.LDPExceptions.{ClientAuthDisabled, SignatureRequestException, SignatureVerificationException}
@@ -79,7 +79,7 @@ class HttpAuthentication[Rdf <: RDF](
   verifier: WebKeyVerifier[Rdf], base: URL
 )(implicit
   ec: ExecutionContext
-) extends AuthN with Logging {
+) extends AuthN with LazyLogging {
 
   import AuthN._
   import org.w3.banana.TryW

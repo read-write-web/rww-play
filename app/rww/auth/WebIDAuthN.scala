@@ -3,7 +3,7 @@ package rww.auth
 import java.security.Principal
 import java.security.cert.{Certificate, X509Certificate}
 
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.w3.banana.RDF
 import play.api.mvc.RequestHeader
 import rww.auth.BrowserCertBehavior._
@@ -23,7 +23,7 @@ class WebIDAuthN[Rdf <: RDF](
   verifier: WebIDVerifier[Rdf]
 )(implicit
   ec: ExecutionContext
-) extends AuthN with Logging {
+) extends AuthN with LazyLogging {
 
   import AuthN._
   def apply(headers: RequestHeader): Future[Subject] = {

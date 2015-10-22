@@ -37,7 +37,10 @@ object ReadWriteWebController extends ReadWriteWebController (
 )
 
 
-class ReadWriteWebController(base: URL, path: Path) extends RWWSetup with ReadWriteWebControllerGeneric  {
+class ReadWriteWebController(
+  base: URL,
+  path: Path
+) extends RWWSetup with ReadWriteWebControllerGeneric  {
 
   //todo: why do the implicit not work? (ie, why do I have to specify the implicit arguements?)
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Rdf](base,tmpDirInRootConainer)(ops,sparqlOps,graphIterateeSelector,
@@ -47,10 +50,9 @@ class ReadWriteWebController(base: URL, path: Path) extends RWWSetup with ReadWr
   val httpAuthN = new HttpAuthentication(new WebKeyVerifier(rwwAgent),base)
 
   val authn = new AuthN {
-    import AuthN.futureToFutureTry
-    //todo: move to using Future.transformWith in scala 2.12
+    import utils.ScalaUtils._
     override
-    def apply(req: RequestHeader) = futureToFutureTry(httpAuthN(req)) flatMap {
+    def apply(req: RequestHeader) = httpAuthN(req).transformWith({
       case Success(Subject(List(), failures)) =>
         //todo: also take webid failures into account
         webidAuthN(req).map(s => Subject(s.principals, s.failures ::: failures))
@@ -59,7 +61,7 @@ class ReadWriteWebController(base: URL, path: Path) extends RWWSetup with ReadWr
         Future.successful(other)
       case Failure(x: ClientAuthDisabled) => webidAuthN(req)
       case Failure(other) => Future.failed(other)
-    }
+    })
   }
 
   lazy val resourceManager =  new ResourceMgr[Rdf](

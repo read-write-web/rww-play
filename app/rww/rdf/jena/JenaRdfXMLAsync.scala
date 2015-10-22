@@ -44,11 +44,11 @@ object JenaRdfXmlAsync extends RDFIteratee[Jena#Graph, RDFXML] {
           }
           //should one check if asyncParser needs more input?
           feeder.asyncParser.parse()
-          Future.successful(Pair(feeder, false))
+          Future.successful((feeder, false))
         } catch {
           case e: Exception => {
             feeder.err = Some(e)
-            Future.successful(Pair(feeder, true))
+            Future.successful((feeder, true))
           }
         }
     }

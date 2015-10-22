@@ -18,6 +18,7 @@ import play.twirl.api._
 import rww.ldp.LDPCommand._
 import rww.ldp.actor.RWWActorSystem
 import utils.ActionUtils.SignedQueryStringAction
+import utils.Mailer
 import utils.subdomain.SubdomainConfirmationMailUtils.SubdomainConfirmationLinkData
 import utils.subdomain.{SubdomainAdminGraphWrapper, SubdomainGraphUtils}
 
@@ -33,11 +34,17 @@ case class CreateUserSpaceRequest(subdomain: String, email: String)
 /**
  *
  */
-class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Path, rww: RWWActorSystem[Rdf])
-                          (implicit ops: RDFOps[Rdf]) {
+class Subdomains[Rdf<:RDF](
+  subdomainContainer: jURL,
+  subdomainContainerPath: Path,
+  rwwAgent: RWWActorSystem[Rdf],
+  mailer: Mailer
+)(implicit
+  ops: RDFOps[Rdf]
+) {
 
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
-
+  import mailer._
 
   val SessionGenerateCertificateForSubdomain = "generateCertificateForSubdomain"
 
@@ -99,7 +106,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
     // TODO Should we use a "script" do to that?
     // TODO How to we know the URI of this resource ????
     val slug = Some(createSubdomainAdminResourceName(subdomain)) // TODO this should perhaps not be a slug but we may need to force the name of this resource...
-    rww.execute {
+    rwwAgent.execute {
       for {
         adminResource <- createLDPR(subDomainContainerUri,slug, graph)
       } yield adminResource
@@ -117,7 +124,6 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
   }
 
   def sendSubdomainConfirmationEmail(subdomain: String, email: String,confirmationPassword: SubdominConfirmationPassword): Unit = {
-    import utils.Mailer._
     import utils.subdomain.SubdomainConfirmationMailUtils._
     val linkData = SubdomainConfirmationLinkData(subdomain,email,confirmationPassword)
     val baseLinkUrl = RdfSetup.hostRoot.toString + routes.Subdomains.confirmSubdomain.url
@@ -135,7 +141,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
   def confirmSubdomain() = SignedQueryStringAction.async { implicit request =>
     import utils.subdomain.SubdomainConfirmationMailUtils._
-    getSubdomainConfirmationLinkData(request) map { linkData =>
+    getSubdomainConfirmationLinkData(request).map ({ linkData =>
       doConfirmSubdomain(linkData) map { subdomainCreated =>
         Logger.info(s"Subdomain has been created: $subdomainCreated")
         val subdomainURL = RdfSetup.hostRootSubdomain(linkData.subdomain).toString
@@ -143,13 +149,13 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
         Ok(views.html.subdomain.subdomainConfirmation(linkData.subdomain,subdomainURL))
           .withSession(SessionGenerateCertificateForSubdomain -> linkData.subdomain)
       }
-    } recover {
+    }).recover ({
       case e => {
         Logger.error("Error during subdomain confirmation request",e)
         // TODO add a more user friendly error
         Future.successful(BadRequest("This confirmation link seems unusable. Maybe it has already been used"))
       }
-    } get
+    }).get
   }
 
   case class SubdomainCreated(subdomain: Rdf#URI,card: Rdf#URI)
@@ -192,7 +198,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
   private
   def getAdminResource(subdomain: String): Future[SubdomainAdminGraphWrapper[Rdf]] = {
     val adminResourceURI = getAdminResourceURI(subdomain)
-    rww.execute {
+    rwwAgent.execute {
       for {
         adminGraph <- getLDPR(adminResourceURI)
       } yield {
@@ -207,7 +213,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
   def createSubdomain(subdomainName: String, email: String): Future[SubdomainCreated] = {
     // TODO this should not be a slug normally because it may create another domain if the asked domain is already taken or invalid domain name etc...
     val subdomainSlug = Some(subdomainName)
-    rww.execute {
+    rwwAgent.execute {
       for {
         subdomainC <- createContainer(subDomainContainerUri, subdomainSlug, container)
         subdomainMeta <- getMeta(subdomainC)
@@ -272,7 +278,7 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
   }
 
   def addPublicKeyToCard(cardURI: Rdf#URI,publicKey: RSAPublicKey): Future[Unit] = {
-    rww.execute {
+    rwwAgent.execute {
       for {
         card <- updateLDPR(cardURI,add=subdomainGraphUtils.getCardPublicKeyTriples(publicKey))
       } yield card
@@ -374,4 +380,4 @@ class Subdomains[Rdf<:RDF](subdomainContainer: jURL, subdomainContainerPath: Pat
 
 }
 
-object Subdomains extends Subdomains(RdfSetup.rwwRoot,RdfSetup.rootContainerPath,RdfSetup.rwwAgent)
+object Subdomains extends Subdomains(RdfSetup.rwwRoot,RdfSetup.rootContainerPath,RdfSetup.rwwAgent,RdfSetup.mailer())

@@ -2,16 +2,15 @@ package rww.ldp.auth
 
 import java.util.regex.Pattern
 
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.w3.banana._
-import play.Logger
 import play.api.libs.iteratee._
 import rww.ldp.{LDPCommand, PiNG, PiNGs, WebResource}
 import rww.play.Method
 import utils.Iteratees
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.util.{Success, Try}
 
 /**
@@ -22,7 +21,7 @@ import scala.util.{Success, Try}
  * @param ops
  * @tparam Rdf
  */
-class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) extends Logging {
+class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) extends LazyLogging {
 
   import LDPCommand._
   import ops._
@@ -259,7 +258,7 @@ class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) ext
     //todo: it would be nice to have this process stop as soon as it has all the answers
     val authzMethods = getAllowedMethodsForAgentEnum(acl2(on), on, user.map(p => URI(p.webid.toString)))
     Iteratees.enumeratorAsList(authzMethods).map { listOfModes =>
-      Logger.info(s"getAllowedMethodsForAgent($on,$user) is $listOfModes")
+      logger.info(s"getAllowedMethodsForAgent($on,$user) is $listOfModes")
       listOfModes.flatMap(toMethod(_)).toSet
     }
   }

@@ -2,18 +2,15 @@ package rww.ldp.model
 
 import java.io.File
 import java.nio.file._
-import java.util.Date
 
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.w3.banana.io.MimeType
-import org.w3.banana.{ RDF, RDFOps}
-import play.api.libs.Files.TemporaryFile
+import org.w3.banana.{RDF, RDFOps}
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 import rww.ldp.SupportedBinaryMimeExtensions
 import utils.{FileUtils, Iteratees}
 
 import scala.concurrent.ExecutionContext
-import scala.util.Try
 
 /**
  * A binary resource does not get direct semantic interpretation.
@@ -36,7 +33,7 @@ trait BinaryResource[Rdf<:RDF] extends NamedResource[Rdf]  {
 
 case class LocalBinaryResource[Rdf<:RDF](path: Path, location: Rdf#URI,metaData: Option[Rdf#Graph] = None)
                                  (implicit val ops: RDFOps[Rdf])
-  extends BinaryResource[Rdf] with LocalNamedResource[Rdf] with Logging {
+  extends BinaryResource[Rdf] with LocalNamedResource[Rdf] with LazyLogging {
   import ops._
   import org.w3.banana.diesel._
 

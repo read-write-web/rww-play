@@ -11,8 +11,8 @@ object ApplicationBuild extends Build {
   val buildSettings = Seq(
     description := "LDP implementation in Play",
     organization := "bblfish.net",
-    version := "0.7.3-SNAPSHOT",
-    scalaVersion := "2.10.4",
+    version := "0.7.4-SNAPSHOT",
+    scalaVersion := "2.11.7",
 //    crossScalaVersions := Seq("2.11.2", "2.10.4"),
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
     fork := false,
@@ -53,8 +53,8 @@ object ApplicationBuild extends Build {
   val banana = (name: String) => "org.w3" %% name % "0.7.2-SNAPSHOT" excludeAll (ExclusionRule(organization = "org.scala-stm"))
   val semargl = (name: String) => "org.semarglproject" % {"semargl-"+name} % "0.6.1"
 
-  val iterateeDeps = "com.typesafe.play" %% "play-iteratees" % "2.3.6-TLS"
-  val scalatest = "org.scalatest" %% "scalatest" % "2.0.RC1-SNAP4"
+  val iterateeDeps = "com.typesafe.play" %% "play-iteratees" % "2.3-SNAPSHOT"
+  val scalatest = "org.scalatest" %% "scalatest" % "2.2.4" % "test"
 //  val scalaActors = "org.scala-lang" % "scala-actors" % "2.10.2"
 
 
@@ -84,13 +84,13 @@ object ApplicationBuild extends Build {
     "net.sf.uadetector" % "uadetector-resources" % "2014.01",
     "com.typesafe.akka" %% "akka-actor" % "2.3.4",
     iterateeDeps,
-    "org.scalatest" %% "scalatest" % "2.0.RC1-SNAP4",
+    scalatest,
 //    "org.scala-lang" % "scala-actors" % "2.10.2",
     // https://code.google.com/p/guava-libraries/
     "com.google.guava" % "guava" % "16.0.1",
     "com.google.code.findbugs" % "jsr305" % "2.0.2",
-    "com.typesafe" %% "play-plugins-mailer" % "2.2.0",
-    "com.typesafe" %% "scalalogging-slf4j" % "1.0.1"
+    "com.typesafe.play" %% "play-mailer" % "2.4.1",
+    "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2"
     //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
   )
 

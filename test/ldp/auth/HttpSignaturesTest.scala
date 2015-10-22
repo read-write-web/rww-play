@@ -22,7 +22,8 @@ import rww.play.auth.Subject
 import test.ldp.TestSetup._
 import test.ldp.{TestGraphs, TestHelper}
 
-import scala.util.control.NonFatal
+import scala.concurrent.Future
+import scala.concurrent.Future._
 import scala.util.{Failure, Success, Try}
 
 class RdfHttpSignaturesTest
@@ -46,7 +47,7 @@ class HttpSignaturesTest[Rdf<:RDF](
    with TestHelper with TestGraphs[Rdf]  {
 
   import ops._
-  import rww.play.auth.AuthN.futureToFutureTry
+  import utils.ScalaUtils._
 
   val dir: Path = Files.createTempDirectory("HttpSignaturesTest")
 
@@ -97,39 +98,34 @@ class HttpSignaturesTest[Rdf<:RDF](
 
     "key with good sig but non existent key doc" should {
       val siginfo = new SigInfo(header, keyUri / "doesnotexist#key", "SHA256withRSA", signature)
-      val future = futureToFutureTry(webKeyVerifier.verify(siginfo))
 
-      future.getOrFail() match {
+      webKeyVerifier.verify(siginfo).transformWith({
         case Success(x) => fail("should have failed")
-        case Failure(FetchException(msg, si)) => () //everything is ok
-        case Failure(NonFatal(e)) => fail("cought the wrong exception: cought " + e)
-      }
+        case Failure(FetchException(msg, si)) => successful{()} //everything is ok
+        case Failure(e) => fail("cought the wrong exception: cought " + e)
+      }).getOrFail()
     }
 
     "key with good sig in correct doc but wrong id" should {
       val nonDefinedUri = keyUri.withFragment("nokey")
       val siginfo = SigInfo(header, nonDefinedUri, "SHA256withRSA", signature)
-      val future = futureToFutureTry(webKeyVerifier.verify(siginfo))
-
-      future.getOrFail() match {
+      webKeyVerifier.verify(siginfo).transformWith ({
         case Success(x) => fail("should have failed")
         case Failure(KeyIdException(msg, si, pg)) => {
           pg.pointer should be(nonDefinedUri)
-          si should be(siginfo)
+          Future { si should be(siginfo) }
         }
-        case Failure(NonFatal(e)) => fail("cought the wrong exception: cought " + e)
-      }
+        case Failure(e) => failed(new Error("cought the wrong exception: cought " + e))
+      }).getOrFail()
     }
 
     "fail to verify key with bad sig" should {
       val siginfo = SigInfo(header + "x", keyUri, "SHA256withRSA", signature)
-      val future = futureToFutureTry(webKeyVerifier.verify(siginfo))
-
-      future.getOrFail() match {
+      webKeyVerifier.verify(siginfo).transformWith({
         case Success(x) => fail("should have failed")
-        case Failure(SignatureVerificationException(msg, si)) => () //everything is ok
-        case Failure(NonFatal(e)) => fail("cought the wrong exception: cought " + e)
-      }
+        case Failure(SignatureVerificationException(msg, si)) => successful(()) //everything is ok
+        case Failure(e) => fail("cought the wrong exception: cought " + e)
+      }).getOrFail()
 
     }
 

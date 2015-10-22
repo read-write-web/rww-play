@@ -5,7 +5,6 @@ import java.util.Date
 
 import akka.http.scaladsl.model.headers.EntityTag
 import org.w3.banana.{LDPPrefix => _, _}
-import rww.rdf.util.LDPPrefix
 
 import scala.util.{Success, Try}
 
