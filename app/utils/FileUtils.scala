@@ -1,6 +1,7 @@
 package utils
 
 import java.nio.file.Path
+import scala.language.reflectiveCalls
 
 /**
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)

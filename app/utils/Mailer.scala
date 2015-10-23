@@ -23,7 +23,7 @@ class Mailer(mailerClient: MailerAPI) {
       Logger.debug(s"Sending email to $to with body $body")
     }
     // TODO should we really schedule this?
-    Akka.system.scheduler.scheduleOnce(1 seconds) {
+    Akka.system.scheduler.scheduleOnce(1.seconds) {
       val mail = Email(subject,fromEmail,Seq(to),body._1.map(_.body),body._2.map(_.body))
       mailerClient.send(mail)
     }

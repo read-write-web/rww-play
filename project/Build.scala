@@ -1,6 +1,5 @@
 import com.typesafe.sbt.web.SbtWeb
 import org.sbtidea.SbtIdeaPlugin._
-import play.Play.autoImport._
 import play.twirl.sbt.Import.TwirlKeys
 import play.twirl.sbt.SbtTwirl
 import sbt.Keys._
@@ -52,8 +51,8 @@ object ApplicationBuild extends Build {
 
   val banana = (name: String) => "org.w3" %% name % "0.7.2-SNAPSHOT" excludeAll (ExclusionRule(organization = "org.scala-stm"))
   val semargl = (name: String) => "org.semarglproject" % {"semargl-"+name} % "0.6.1"
-
-  val iterateeDeps = "com.typesafe.play" %% "play-iteratees" % "2.3-SNAPSHOT"
+  //see http://bblfish.net/work/repo
+  val playTLS = (name: String) =>  "com.typesafe.play" %% name % "2.3.11-TLS"
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.4" % "test"
 //  val scalaActors = "org.scala-lang" % "scala-actors" % "2.10.2"
 
@@ -73,25 +72,20 @@ object ApplicationBuild extends Build {
 //  Seq("core",)
   Seq(
     akkaHttpCore,
-    ws,
     "net.rootdev" % "java-rdfa" % "0.4.2-RC2",
     "nu.validator.htmlparser" % "htmlparser" % "1.2.1",
-//    "io.spray" % "spray-http" % "1.2.0",
     "org.scalaz" %% "scalaz-core" % "7.0.1", // from "http://repo.typesafe.com/typesafe/releases/org/scalaz/scalaz-core_2.10.0-M6/7.0.0-M2/scalaz-core_2.10.0-M6-7.0.0-M2.jar"
     "org.bouncycastle" % "bcprov-jdk15on" % "1.51",
     "org.bouncycastle" % "bcpkix-jdk15on" % "1.51",
-//    "org.scala-lang" % "scala-actors" % "2.10.0", //for tests because of sbt for some reason
     "net.sf.uadetector" % "uadetector-resources" % "2014.01",
-    "com.typesafe.akka" %% "akka-actor" % "2.3.4",
-    iterateeDeps,
+    playTLS("play-iteratees"),
+    playTLS("play-ws"),
     scalatest,
-//    "org.scala-lang" % "scala-actors" % "2.10.2",
     // https://code.google.com/p/guava-libraries/
     "com.google.guava" % "guava" % "16.0.1",
     "com.google.code.findbugs" % "jsr305" % "2.0.2",
     "com.typesafe.play" %% "play-mailer" % "2.4.1",
     "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2"
-    //        "com.typesafe"                      %% "play-mini"                  % "2.0.1",
   )
 
 
