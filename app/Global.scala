@@ -13,6 +13,7 @@ object Global extends GlobalSettings {
 
   override def onRouteRequest(req: RequestHeader) = {
     import _root_.rww.play.EnhancedRequestHeader
+    Logger.info(s"~~~> ${req.method} ${req.path} \n"+req.headers)
 
     val uri = req.getAbsoluteURI
     if (

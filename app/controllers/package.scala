@@ -31,12 +31,14 @@ trait Setup {
 
 
   val logger = Logger("rww")
-  val httpsPortKey = "https.port"
-  val httpsExternalPortKey = "https.external.port"
-  val httpHostnameKey = "http.hostname"
-  val RootContainerPathKey = "rww.root.container.path"
+
+  val httpsPortKey            = "https.port"
+  val httpsExternalPortKey    = "https.external.port"
+  val httpHostnameKey         = "http.hostname"
+  val rootContainerPathKey    = "rww.root.container.path"
   val rwwSubDomainsEnabledKey = "rww.subdomains"
-  val baseHostnameKey = "http.hostname"
+  val baseHostnameKey         = "http.hostname"
+  val httpsTrustStore         = "https.trustStore"
 
 
   // We usually run https on port 8443 and use a tcp redirect (using iptables) of 443 to 8443
@@ -78,7 +80,11 @@ trait Setup {
     new URL(hostRoot,path)
   }
 
-  lazy val rwwSubdomainsEnabled: Boolean = Play.current.configuration.getBoolean(rwwSubDomainsEnabledKey).getOrElse(false)
+  lazy val rwwSubdomainsEnabled: Boolean =
+    Play.current.configuration.getBoolean(rwwSubDomainsEnabledKey).getOrElse(false)
+
+  lazy val webIDTLSEnabled: Boolean =
+    Play.current.configuration.getString(httpsTrustStore).exists( _ == "noCA" )
 
   /**
    * we check the existence of the file because Resource.fromFile creates the file if it doesn't exist
@@ -96,7 +102,7 @@ trait Setup {
 
 
   val rootContainerPath: Path = {
-    val file = getFileForConfigurationKey(RootContainerPathKey)
+    val file = getFileForConfigurationKey(rootContainerPathKey)
     require(file.isDirectory,s"The root container ($file) is not a directory")
     file.toPath.toAbsolutePath
   }
@@ -104,19 +110,21 @@ trait Setup {
   lazy val tmpDirInRootConainer: Path =
     Files.createDirectories(rootContainerPath.resolve("tmp"))
 
-  logger.info(s""""
+  def logConsole() = logger.info(s"""
     secure port=$securePort
     externalSecurePort=$externalSecurePort
     port = $port
     host = $host
     hostRoot = $hostRoot
     rwwRoot = $rwwRoot
+    webid TLS enabled = $webIDTLSEnabled
     rww root LDPC path = $rootContainerPath
     with subdomain support = $rwwSubdomainsEnabled
     Some properties:
        - jdk.tls.disabledAlgorithms= ${java.security.Security.getProperty("jdk.tls.disabledAlgorithms")}
        - jdk.certpath.disabledAlgorithms= ${java.security.Security.getProperty("jdk.certpath.disabledAlgorithms")}
     """)
+
 }
 
 trait RdfSetup  {
@@ -210,12 +218,14 @@ trait SesameSetup extends RdfSetup  {
 }
 
 trait RWWSetup extends SesameSetup with Setup {
-  val rwwAgent = {
+  lazy val rwwAgent = {
     lazy val rootURI = ops.URI(rwwRoot.toString)
-    if (RdfSetup.rwwSubdomainsEnabled)
+    val result =if (RdfSetup.rwwSubdomainsEnabled)
       RWWActorSystemImpl.withSubdomains[Rdf](rootURI, rootContainerPath, webClient)
     else
       RWWActorSystemImpl.plain[Rdf](rootURI, rootContainerPath, webClient)
+    RdfSetup.logConsole()
+    result
   }
   def mailer(): Mailer = new Mailer(new CommonsMailerPlugin(Play.current).instance)
 }

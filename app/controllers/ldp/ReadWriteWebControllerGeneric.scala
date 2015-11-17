@@ -108,8 +108,15 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     getAsync(request)
   }
 
-  def options(file: String) = head(file)
-
+  def options(file: String) = Action.async { request =>
+    getAsync(request).transform(res =>
+      //Todo: this returns a Content-Length of 0, when it should either return none or the exact same as the original
+      //see: http://stackoverflow.com/questions/3854842/content-length-header-with-head-requests
+      //note: for CORS we need to return a 200, even if the resource is access controlled
+      Result(res.header.copy(status=200), Enumerator(Array[Byte]())),
+      e => e
+    )
+  }
 
   /**
    * Returns the content type to use to answer to the given request
@@ -138,14 +145,42 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       case rse: ResourceDoesNotExist => NotFound(rse.getMessage + stackTrace(rse))
       case umt: UnsupportedMediaType => Results.UnsupportedMediaType(umt.getMessage + stackTrace(umt))
       case ETagsMatch(_) => NotModified
+      case ClientAuthDisabled(msg,optT) => {
+        //todo: this should be tied into the error below
+        //todo: add all the normal headers here too
+        Unauthorized(
+          views.html.ldp.accessDenied( request.getAbsoluteURI.toString, msg )
+          //todo a better implementation would have this on the actor itself, which WOULD know the type
+        ).withHeaders("WWW-Authenticate"->"""Signature realm="/"""",
+          "Access-Control-Expose-Headers"-> "WWW-Authenticate",
+          "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date",
+          "Access-Control-Allow-Origin" -> "*",
+          "Access-Control-Allow-Credentials"->"true"
+        )
+      }
+      case e: AuthException => {
+        //todo: this should be tied into the error below
+        Unauthorized(
+          views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(e) )
+          //todo a better implementation would have this on the actor itself, which WOULD know the type
+        ).withHeaders("WWW-Authenticate"->"""Signature realm="/"""",
+          "Access-Control-Expose-Headers"-> "WWW-Authenticate",
+          "Access-Control-Allow-Credentials"->"true",
+          "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date",
+          "Access-Control-Allow-Origin" -> "*")
+      }
       case err @ AccessDeniedAuthModes(authinfo) => {
         Logger.warn("Access denied exception"+authinfo)
            //todo: automatically create html versions if needed of error messages
             Unauthorized(
               views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(err) )
               //todo a better implementation would have this on the actor itself, which WOULD know the type
-            ).withHeaders("WWW-Authenticate"->"""Signature realm="/"""")
-//          }
+            ).withHeaders("WWW-Authenticate" -> """Signature realm="/"""",
+              "Access-Control-Expose-Headers" -> "WWW-Authenticate",
+              "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date",
+              "Access-Control-Allow-Credentials" -> "true",
+              "Access-Control-Allow-Origin" -> "*")
+        //          }
 //          case _ => {
 //            Unauthorized(err.getMessage).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC
 //          }
@@ -203,6 +238,8 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
         writerFor[Rdf#Graph](request).map { wr =>
           val headers =
             "Access-Control-Allow-Origin" -> "*" ::
+              "Access-Control-Allow-Credentials"->"true"::
+              "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date"::
               "Accept-Patch" -> Syntax.SparqlUpdate.mimeTypes.head.mime :: //todo: something that is more flexible
               linkHeaders(ldpr) ::
               commonHeaders
@@ -223,7 +260,6 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       }
     }
   }
-
 
 
   def head(path: String) = Action.async { request =>

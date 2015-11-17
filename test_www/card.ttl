@@ -7,9 +7,10 @@
 
 <card#me>
      a foaf:Person ;
-     foaf:name "Me (StampleIO test webid)";
+     foaf:name "Me (test webid)";
      foaf:knows <http://bblfish.net/people/henry/card#me> ;
-     cert:key [ a cert:RSAPublicKey;
+     cert:key <key#>,
+              [ a cert:RSAPublicKey;
                 cert:exponent 65537 ;
                 cert:modulus "b7cb16af0aeec58a4c0c05e0504a334382a1db7a8a092057f97c271439f7ff8cfd469b615934fa401b4b320b756cf017e16c8ee0d5afceed1a54390738720c67813b765e1bf9e310809e133b7f7c2aca34e185c3bdcd42fc40d84772ad691f36b9078c8e0079f64089ae0adcaa80d4186cf683403d6485e578dbde161a82b4e34650cb77fd274fe84bb7ae488a3236f146178cf836cc701b1d3c40c0d7a8e838afc209e3b5c825fa9702017b52492f4cf4bdeb089726e2778eb63b8854c8b366b2c5425f5dec236c02c8e760b7303adfb2a94bf835c2e28901abeca292d7ca04c1ae3c377e2d2f3e011be76868d941678a18c2abf78f98f796f493f2a946cf2d"^^xsd:hexBinary;
 ].

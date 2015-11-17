@@ -46,13 +46,15 @@ class ReadWriteWebController(
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Rdf](base,tmpDirInRootConainer)(ops,sparqlOps,graphIterateeSelector,
     sparqlSelector,sparqlUpdateSelector,ec)
 
-  val webidAuthN = new WebIDAuthN(new WebIDVerifier(rwwAgent))
-  val httpAuthN = new HttpAuthentication(new WebKeyVerifier(rwwAgent),base)
+  def webidAuthN   = new WebIDAuthN(new WebIDVerifier(rwwAgent))
+  def httpSigAuthN = new HttpAuthentication(new WebKeyVerifier(rwwAgent),base)
 
-  val authn = new AuthN {
+  def authNLogic = if (webIDTLSEnabled) httpSigThenTLSAuthN else httpSigAuthN
+
+  def httpSigThenTLSAuthN =  new AuthN {
     import utils.ScalaUtils._
     override
-    def apply(req: RequestHeader) = httpAuthN(req).transformWith({
+    def apply(req: RequestHeader) = httpSigAuthN(req).transformWith({
       case Success(Subject(List(), failures)) =>
         //todo: also take webid failures into account
         webidAuthN(req).map(s => Subject(s.principals, s.failures ::: failures))
@@ -67,7 +69,7 @@ class ReadWriteWebController(
   lazy val resourceManager =  new ResourceMgr[Rdf](
     base,
     rwwAgent,
-    authn,
+    authNLogic,
     new WACAuthZ[Rdf](new WebResource[Rdf](rwwAgent))(ops)
   )
 

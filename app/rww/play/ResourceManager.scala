@@ -36,6 +36,7 @@ import rww.play.auth.AuthN
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.Either3
 import scalaz.Either3._
+import org.kiama.output.PrettyPrinter._
 
 
 // TODO not appropriate place
@@ -240,7 +241,7 @@ class ResourceMgr[Rdf <: RDF](
         authn(request).flatMap { subject =>
           //todo: should these webids be added to the session here?
           val newWebIds = subject.webIds
-          Logger.info(s" user agent is identified by $newWebIds")
+          Logger.info(" user agent is identified by "+pretty(any(subject)))
           getAllowedMethodsForAgent(relativePathUri, newWebIds).map { authzModes =>
             Logger.info(
               s"the allowed methods for the now newly authenticated agent $newWebIds is $allowedMethods"

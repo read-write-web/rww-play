@@ -13,7 +13,7 @@ object ApplicationBuild extends Build {
     version := "0.7.4-SNAPSHOT",
     scalaVersion := "2.11.7",
 //    crossScalaVersions := Seq("2.11.2", "2.10.4"),
-    javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
+    javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
     fork := false,
     parallelExecution in Test := false,
     offline := true,
@@ -85,7 +85,9 @@ object ApplicationBuild extends Build {
     "com.google.guava" % "guava" % "16.0.1",
     "com.google.code.findbugs" % "jsr305" % "2.0.2",
     "com.typesafe.play" %% "play-mailer" % "2.4.1",
-    "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2"
+    "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2" ,
+    // https://bitbucket.org/inkytonik/kiama/
+    "com.googlecode.kiama" %% "kiama" % "1.8.0"
   )
 
 
