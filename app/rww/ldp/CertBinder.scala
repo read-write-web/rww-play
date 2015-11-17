@@ -17,6 +17,7 @@ import org.w3.banana.{CertPrefix, RDF, RDFOps}
 class CertBinder[Rdf <: RDF]()(implicit ops: RDFOps[Rdf], recordBinder: RecordBinder[Rdf]) {
     import ops._
     import recordBinder._
+    import utils.CryptoUtils.BigIntOps
     val cert = CertPrefix[Rdf]
 
 //   implicit val rsaClassUri = classUrisFor[RSAPublicKey](cert.RSAPublicKey)
@@ -26,15 +27,15 @@ class CertBinder[Rdf <: RDF]()(implicit ops: RDFOps[Rdf], recordBinder: RecordBi
 
     implicit val rsaPubKeybinder: PGBinder[Rdf, RSAPublicKey] =
       pgb[RSAPublicKey](modulus, exponent)(
-        (m,e)=>factory.generatePublic(new RSAPublicKeySpec(new BigInteger(m),e)).asInstanceOf[RSAPublicKey],
-        key => Some((key.getModulus.toByteArray,key.getPublicExponent))
+        (m,e)=>factory.generatePublic(new RSAPublicKeySpec(new BigInteger(1,m),e)).asInstanceOf[RSAPublicKey],
+        key => Some((key.getModulus.toUnsignedByteArray(),key.getPublicExponent))
       ) // withClasses rsaClassUri
 
     //todo: find better name for key
     val rsaPubKeybinderWithHash: PGBinder[Rdf, RSAPublicKey] =
     pgbWithId[RSAPublicKey](key=>URI("#key_"+Math.abs(key.getModulus.hashCode())))(modulus, exponent)(
-      (m,e)=>factory.generatePublic(new RSAPublicKeySpec(new BigInteger(m),e)).asInstanceOf[RSAPublicKey],
-      key => Some((key.getModulus.toByteArray,key.getPublicExponent))
+      (m,e)=>factory.generatePublic(new RSAPublicKeySpec(new BigInteger(1,m),e)).asInstanceOf[RSAPublicKey],
+      key => Some((key.getModulus.toUnsignedByteArray(),key.getPublicExponent))
     ) // withClasses rsaClassUri
 
 
