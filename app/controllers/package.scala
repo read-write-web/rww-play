@@ -14,7 +14,7 @@ import org.w3.banana.binder.RecordBinder
 import org.w3.banana.io._
 import org.w3.banana.sesame.io.{SesameRDFWriter, SesameSyntax}
 import play.api.libs.mailer.CommonsMailerPlugin
-import rww.ldp.actor.RWWActorSystemImpl
+import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
 import rww.ldp.{WSClient, WebClient}
 import rww.play.rdf.IterateeSelector
 import rww.play.rdf.sesame.{SesameBlockingRDFIteratee, SesameSparqlQueryIteratee, SesameSparqlUpdateIteratee}
@@ -218,7 +218,7 @@ trait SesameSetup extends RdfSetup  {
 }
 
 trait RWWSetup extends SesameSetup with Setup {
-  lazy val rwwAgent = {
+  lazy val rwwAgent: RWWActorSystem[Rdf] = {
     lazy val rootURI = ops.URI(rwwRoot.toString)
     val result =if (RdfSetup.rwwSubdomainsEnabled)
       RWWActorSystemImpl.withSubdomains[Rdf](rootURI, rootContainerPath, webClient)

@@ -18,6 +18,7 @@ package rww.play
 
 import java.io.File
 import java.net.{URI => jURI, URL => jURL}
+import java.security.Principal
 
 import akka.http.scaladsl.model.HttpHeader.ParsingResult.{Error, Ok}
 import akka.http.scaladsl.model.headers._
@@ -29,47 +30,28 @@ import rww.ldp.LDPCommand._
 import rww.ldp.LDPExceptions._
 import rww.ldp._
 import rww.ldp.actor.RWWActorSystem
-import rww.ldp.auth.{WACAuthZ, WebIDPrincipal}
+import rww.ldp.auth.{Method, WACAuthZ}
 import rww.ldp.model.{BinaryResource, LDPC, LDPR, NamedResource}
-import rww.play.auth.AuthN
+import rww.play.auth.{AuthN, Subject}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.Either3
 import scalaz.Either3._
-import org.kiama.output.PrettyPrinter._
-
-
-// TODO not appropriate place
-object Method extends Enumeration {
-  val Read = Value
-  val Write = Value
-  val Append = Value
-}
 
 
 case class AuthorizedModes(
-  user: List[WebIDPrincipal],
+  user: List[Principal],
   path: String,
   modesAllowed: Set[Method.Value]
 )
 
 /**
  * This permits to transmit a result and to add an User header in the request which contains the URI of the authenticated user's WebID
- * @param webid of the authenticated user
+ * @param subject of the authenticated user
  * @param result the result
  * @tparam R
  */
-case class IdResult[R](webid: jURI, result: R) {
-  lazy val id = List(WebIDPrincipal(webid))
-}
-
-/**
- * A result with all the Authorization Mode info
- * @param authInfo
- * @param result
- * @tparam R
- */
-case class AuthResult[R](authInfo: AuthorizedModes, result: R)
+case class IdResult[R](subject: Subject, authZPrincipal: Principal, result: R)
 
 //the idea of this class was to not be reliant on Play! We need RequestHeader in order to do authentication
 //todo: find a way of abstracting this
@@ -78,7 +60,8 @@ case class AuthResult[R](authInfo: AuthorizedModes, result: R)
 class ResourceMgr[Rdf <: RDF](
   base: jURL,
   rwwAgent: RWWActorSystem[Rdf],
-  authn: AuthN,
+  httpAuthN: AuthN,
+  tlsAuthNOpt: Option[AuthN],
   authz: WACAuthZ[Rdf]
 )(implicit
   ops: RDFOps[Rdf],
@@ -113,7 +96,7 @@ class ResourceMgr[Rdf <: RDF](
     val path = request.path
     content match {
       case updatedQuery: PatchRwwContent[Rdf] => for {
-        id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
+        (subj,principal) <- auth(request, request.getAbsoluteURI.toString, Method.Write)
         x <- rwwAgent.execute(
           for {
             resrc <- getResource(URI(request.getAbsoluteURI.toString))
@@ -122,7 +105,7 @@ class ResourceMgr[Rdf <: RDF](
             }
           } yield y
         )
-      } yield IdResult(id, x)
+      } yield IdResult(subj, principal, x)
       case _ => Future.failed(
         new Exception("PATCH requires application/sparql-update message content")
       )
@@ -139,7 +122,7 @@ class ResourceMgr[Rdf <: RDF](
     val (collection, file) = split(path)
     if ("" == file) Future.failed(new PropertiesConflict("Cannot do a PUT on a collection"))
     else for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
+      (subj,principal) <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       f <- content match {
         //todo: arbitrarily for the moment we only allow a PUT of same type things graphs on
         // graphs, and other on other
@@ -160,7 +143,7 @@ class ResourceMgr[Rdf <: RDF](
                 s"Not expected resource type for path request.getAbsoluteURI.toString, type: $other"
               )
             }
-          } yield IdResult[Rdf#URI](id, resrc.location))
+          } yield IdResult[Rdf#URI](subj,principal, resrc.location))
         }
         case BinaryRwwContent(tmpFile, mime) => {
           rwwAgent.execute(
@@ -173,7 +156,7 @@ class ResourceMgr[Rdf <: RDF](
                   // collection.
                   //this needs to be sent to another agent, or it needs to be rethought
                   binaryResource.setContentTo(tmpFile)
-                  IdResult(id, resrc.location)
+                  IdResult(subj,principal, resrc.location)
                 }
               }
               case _ => throw OperationNotSupported(
@@ -195,116 +178,66 @@ class ResourceMgr[Rdf <: RDF](
     * Because WebID-TLS can check the identity of the user during the connection,
     * this may also requests the user's identity at that point.
     *
-    * @param request
-    * @param path
+    * @param path the path to the resource
     * @param mode the mode of the request
-    * @return Future[AuthorizeModes] for the resource and user, the Authorized modes may be empty
+    * @return Future the Subject authorized and the Principal through which he was enabled
     *
-    *
-    */
-  def fullAuthInfo(
-    request: PlayRequestHeader,
-    path: String,
-    mode: Method.Value
-  ): Future[AuthorizedModes] = {
-
-    Logger.info(s"fullAuthInfo(_,$path,$mode)")
-    //1. find out what the user is authenticated as
-    //todo: we should be able to deal with a session containing multiple ids. WebIDs & e-mail
-    // addresses, etc...
-    val webIdsList = request.session.get("webid").toList.map(u => WebIDPrincipal(new jURI(u)))
-
-    //todo: it would actually make sense to check for "Authorize:" headers here, because they would
-    //todo: presumably only be sent if the user wanted to be authenticated that way.
-    //todo: otherwise one risks calling getAllowedMethodsForAgent one more time than needed
-    //todo: this means one should split the WWW-Authenticate and the WebIDTLSAuthenticate
-
-    val relativePathUri = URI(path)
-
-    //2. find out all rights for this user
-
-    //todo: what we are missing here is a way for the user to say that he prefers to be
-    // authenticated
-    //because otherwise for most resources we may just return what the public user is allowed
-    // access to.
-
-    getAllowedMethodsForAgent(relativePathUri, webIdsList).flatMap { allowedMethods =>
-      Logger.info(s"the allowed methods for agent $webIdsList is $allowedMethods")
-      //3. if the requested method is allowed
-      if (allowedMethods.contains(mode)) {
-        Future.successful(AuthorizedModes(webIdsList, path, allowedMethods))
-      }
-      else if (webIdsList.isEmpty) {
-        //todo: we need a way to tell that the user has been asked to authenticate but does not
-        // want to be
-        //if the person has not been authenticated yet, authenticate if possible, then verify
-        authn(request).flatMap { subject =>
-          //todo: should these webids be added to the session here?
-          val newWebIds = subject.webIds
-          Logger.info(" user agent is identified by "+pretty(any(subject)))
-          getAllowedMethodsForAgent(relativePathUri, newWebIds).map { authzModes =>
-            Logger.info(
-              s"the allowed methods for the now newly authenticated agent $newWebIds is $allowedMethods"
-            )
-            AuthorizedModes(newWebIds, path, authzModes)
-          }
-        }.recoverWith({//we're back to previous non-authenticated state
-          case e: AccessDeniedAuthModes =>
-            Future.successful(AuthorizedModes(webIdsList, path, allowedMethods))
-        })
-      } else {
-        // the user cannot access the resource in the desired mode, and has not authenticated
-        // successfully
-        Future.successful(AuthorizedModes(webIdsList, path, allowedMethods))
-      }
-    }
-  }
-
-  /**
-    * todo: This could be made part of the Play Action.
-    *
-    * @param request
-    * @param path the resource on which an action is required
-    * @param mode the type of the action
-    * @return the authorized agent WebID
+    * todo: we would need a way to test that the returned subject is different from the one sent.
     */
   def auth(
     request: PlayRequestHeader,
     path: String,
     mode: Method.Value
-  ): Future[jURI] = {
-    getAuthorizedWebIDsFor(URI(path), wacIt(mode)).flatMap { agents =>
-      Logger.debug(s"Agents found for $path with mode $mode are: $agents")
-      if (agents.contains(foaf.Agent)) {
-        Logger.info(s"All agents can access with mode $mode on ${request.path}")
-        Future.successful(new jURI(foaf.Agent.toString))
+  ): Future[(Subject,Principal)] = {
+
+    Logger.info(s"auth(_,$path,$mode)")
+    //1. find out what the user is authenticated as
+    //todo: we should be able to deal with a session containing multiple ids. WebIDs & e-mail
+    // addresses, etc...
+    def sessionSubject = Subject.parse(request.session.get("subject"))
+
+    val subjectFuture: Future[Subject] = if (
+      request.headers.get("Authorization")
+        .exists(_.toLowerCase.startsWith("signature"))
+    ) {
+      httpAuthN(request).map{ subject =>
+        Logger.info(s"~~~> authenticated $subject")
+        sessionSubject.merge(subject)
       }
-      else if (agents.isEmpty) {
-        Future.failed(AccessDenied(
-            s"No agents found is allowed to access with mode $mode on ${request.path}"
-          ))
-      }
-      else {
-        //todo: we need to also now look at the session!
-        //todo: should this rather be part of authn?
-        //todo: if yes, then this also affects fullAuthInfo method!
-        authn(request).recoverWith ({
-          case e: ClientAuthDisabled => Future.failed(
-              AccessDenied("User cannot authenticate with current ids "+agents)
-            )
-        }).flatMap { subject =>
-          subject.webIds.find { wid =>
-            agents.contains(URI(wid.webid.toString))
-          } match {
-            case Some(id) => {
-              Logger.info(
-                s"Access allowed with mode $mode on ${request.path}. Subject $subject has been found on the allowed agents list $agents"
-              )
-              Future.successful(id.webid)
+    }  else {
+      Future.successful(sessionSubject)
+    }
+
+    val rdfURI = URI(path)
+
+    subjectFuture.flatMap { subject =>
+      Logger.info(s"~~~> working with $subject")
+      //todo: it would actually make sense to check for "Authorize:" headers here, because they would
+      //todo: presumably only be sent if the user wanted to be authenticated that way.
+      //todo: otherwise one risks calling getAllowedMethodsForAgent one more time than needed
+      //todo: this means one should split the WWW-Authenticate and the WebIDTLSAuthenticate
+
+
+      //2. find out all rights for this user
+
+      //todo: what we are missing here is a way for the user to say that he prefers to be
+      // authenticated
+      //because otherwise for most resources we may just return what the public user is allowed
+      // access to.
+
+
+      isAuthorized(subject, mode, rdfURI).map((subject, _)).recoverWith {
+        case fail@NoAuthorization(_, _, _) => {
+          tlsAuthNOpt match {
+            case Some(tlsAuthN) => tlsAuthN(request).flatMap { tlsSubject =>
+              if (!tlsSubject.principals.subsetOf(subject.principals)) {
+                val fullSubject = tlsSubject.merge(subject)
+                isAuthorized(tlsSubject, mode, rdfURI).map((fullSubject, _))
+              } else {
+                Future.failed(fail)
+              }
             }
-            case None => Future.failed(AccessDenied(
-                s"No access for $mode on ${request.path }. Subject is $subject and allowed agents are $agents"
-              ))
+            case None => Future.failed(fail)
           }
         }
       }
@@ -315,23 +248,16 @@ class ResourceMgr[Rdf <: RDF](
   def get(
     request: PlayRequestHeader,
     uri: java.net.URI
-  ): Future[AuthResult[NamedResource[Rdf]]] = {
-
-    fullAuthInfo(request, uri.toString, Method.Read).flatMap { authmodes =>
-      Logger.info(s"get(_,$uri) fullAuthInfo returns $authmodes")
-      if (authmodes.modesAllowed.contains(Method.Read)) {
-        rwwAgent.execute(
-          for {
-            rsrc <- getResource(URI(uri.toString), None)
-          } yield {
-            HttpResourceUtils.ifNoneMatch(request, rsrc) { () => rsrc }
-          }
-        ).map(id => AuthResult(authmodes, id))
-      } else {
-        Future.failed(AccessDeniedAuthModes(authmodes))
+  ): Future[IdResult[NamedResource[Rdf]]] =
+    for {
+      (subj, principal) <- auth(request, uri.toString, Method.Read)
+      namedResource <- rwwAgent.execute {
+        getResource(URI(uri.toString), None)
+          .map { case rsrc => HttpResourceUtils.ifNoneMatch(request, rsrc) { () => rsrc } }
       }
-    }
-  }
+    } yield {IdResult(subj, principal, namedResource)}
+
+
 
   def makeLDPR(
     collectionPath: String,
@@ -343,7 +269,7 @@ class ResourceMgr[Rdf <: RDF](
 
     val uric: Rdf#URI = URI(request.getAbsoluteURI.toString)
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
+      (subj,principal) <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       x <- rwwAgent.execute(
         for {
           r <- createLDPR(uric, slug, content)
@@ -360,7 +286,7 @@ class ResourceMgr[Rdf <: RDF](
           r
         }
       )
-    } yield IdResult(id, x)
+    } yield IdResult(subj,principal, x)
   }
 
   val parser = new LinkHeaderParser[Rdf]
@@ -414,7 +340,7 @@ class ResourceMgr[Rdf <: RDF](
     (implicit request: PlayRequestHeader
     ): Future[IdResult[Rdf#URI]] = {
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
+      (subj, principal) <- auth(request, request.getAbsoluteURI.toString, Method.Write)
       x <- rwwAgent.execute {
         for {
           c <- createContainer(URI(request.getAbsoluteURI.toString), slug,
@@ -431,7 +357,7 @@ class ResourceMgr[Rdf <: RDF](
           _ <- updateLDPR(meta.acl.get, add = aclg.triples)
         } yield c
       }
-    } yield IdResult(id, x)
+    } yield IdResult(subj,principal, x)
   }
 
   def postBinary(
@@ -446,7 +372,7 @@ class ResourceMgr[Rdf <: RDF](
       Logger
         .debug(s"Will post binary on containerUri=$containerUri with slug=$slug and mimeType=$mime")
       for {
-        id <- auth(request, containerUri, Method.Write)
+        (s,p) <- auth(request, containerUri, Method.Write)
         x <- rwwAgent.execute {
           for {
             binaryResource <- createBinary(URI(containerUri), slug, mime)
@@ -464,15 +390,15 @@ class ResourceMgr[Rdf <: RDF](
             binaryResource.location
           }
         }
-      } yield IdResult(id, x)
+      } yield IdResult(s,p, x)
     }
   }
 
 
   def delete(implicit request: PlayRequestHeader): Future[IdResult[Unit]] = for {
-    id <- auth(request, request.getAbsoluteURI.toString, Method.Write)
+    (s,p) <- auth(request, request.getAbsoluteURI.toString, Method.Write)
     e <- rwwAgent.execute(deleteResource(URI(request.getAbsoluteURI.toString)))
-  } yield IdResult(id, e)
+  } yield IdResult(s,p, e)
 
 
   def postQuery(path: String, query: QueryRwwContent[Rdf])(
@@ -483,7 +409,7 @@ class ResourceMgr[Rdf <: RDF](
     import sparqlOps._
     //clearly the queries could be simplified here.
     for {
-      id <- auth(request, request.getAbsoluteURI.toString, Method.Read)
+      (s,p) <- auth(request, request.getAbsoluteURI.toString, Method.Read)
       e <- rwwAgent.execute {
         if ("" != file)
           fold(query.query)(
@@ -504,7 +430,7 @@ class ResourceMgr[Rdf <: RDF](
               .map(right3[Rdf#Graph, Rdf#Solutions, Boolean] _)
           )
       }
-    } yield IdResult(id, e)
+    } yield IdResult(s, p, e)
 
   }
 

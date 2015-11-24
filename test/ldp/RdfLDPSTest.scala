@@ -1,6 +1,7 @@
 package test.ldp
 
 import java.nio.file.Path
+import java.net.{URI=>jURI}
 import java.util.concurrent.TimeUnit
 
 import _root_.play.api.libs.iteratee.Enumerator
@@ -12,8 +13,9 @@ import rww.ldp.LDPCommand._
 import rww.ldp.LDPExceptions._
 import rww.ldp._
 import rww.ldp.actor.RWWActorSystem
-import rww.ldp.auth.WACAuthZ
+import rww.ldp.auth.{Agent, WebIDPrincipal, Method, WACAuthZ}
 import rww.ldp.model.{BinaryResource, LDPR}
+import rww.play.auth.{Anonymous, Subject}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -99,6 +101,7 @@ abstract class LDPSTest[Rdf <: RDF](
   val helloWorldBinary2 = "Hello, World!".getBytes("UTF-8")
 
   val baseLdpc = URI("http://example.com/foo/")
+
 
 
   "CreateLDPR should create an LDPR with the given graph" in {
@@ -211,7 +214,6 @@ abstract class LDPSTest[Rdf <: RDF](
 
 
 
-
   "CreateLDPC & LDPR with ACLs" in {
 
     val ldpcUri = URI("http://example.com/foo/bertails/")
@@ -228,7 +230,6 @@ abstract class LDPSTest[Rdf <: RDF](
         _ <- putLDPR(ldpc.acl.get, graphCollectionACL)
         acl <- getLDPR(ldpc.acl.get)
       } yield {
-        ldpc.acl.get should be(ldpcMetaFull)
         assert(acl isIsomorphicWith graphCollectionACL)
       }
     }
@@ -241,11 +242,9 @@ abstract class LDPSTest[Rdf <: RDF](
         x <- putLDPR(cardRes.acl.get,  graphCardACL)
         acl <- getLDPR(cardRes.acl.get)
       } yield {
-        cardRes.location should be(betehessCard)
-        cardRes.acl.get should be(ldprMeta)
         assert(acl.resolveAgainst(ldprMeta) isIsomorphicWith graphCardACL)
         cardRes match {
-          case card: LDPR[Rdf] => assert(card.graph isIsomorphicWith (graph union containsRel).resolveAgainst(betehessCard))
+          case card: LDPR[Rdf] => assert(card.graph isIsomorphicWith (graph union containsRel).resolveAgainst(rUri))
           case _ => throw new Exception("received the wrong type of resource")
         }
       }
@@ -255,18 +254,18 @@ abstract class LDPSTest[Rdf <: RDF](
 
 
     val authZ1 = for {
-      athzd <- getAuthorizedWebIDsFor(betehessCard, wac.Read)
+      athzd <- isAuthorized(Anonymous, Method.Read, betehessCard)
     } yield {
-      athzd.contains(foaf.Agent)
+      athzd should be(Agent)
     }
 
 
     authZ1.getOrFail()
 
     val authZ2 = for {
-      athzd <- getAuthorizedWebIDsFor(betehessCard, wac.Write)
+      athzd <- isAuthorized(webidToSubject(betehess), Method.Write, betehessCard)
     } yield {
-      assert(athzd.contains(betehess))
+      athzd should be(webIdToPrincipal(betehess))
     }
 
 

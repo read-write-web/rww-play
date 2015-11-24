@@ -1,17 +1,29 @@
 package rww.ldp.auth
 
+import java.net.{URI => jURI}
+import java.security.Principal
 import java.util.regex.Pattern
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.w3.banana._
+import play.Logger
 import play.api.libs.iteratee._
-import rww.ldp.{LDPCommand, PiNG, PiNGs, WebResource}
-import rww.play.Method
-import utils.Iteratees
+import rww.ldp.LDPExceptions.{MissingACLException, NoAuthorization}
+import rww.ldp.{LDPCommand, PiNG, WebResource}
+import rww.play.auth.Subject
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Success, Try}
+
+
+// TODO not appropriate place
+object Method extends Enumeration {
+  val Read = Value
+  val Write = Value
+  val Append = Value
+}
+
 
 /**
  * WACAuthZ groups methods to find the authorized WebIDs for a particular resource
@@ -32,120 +44,72 @@ class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) ext
 
 
   val foaf = FOAFPrefix[Rdf]
-  val wac = WebACLPrefix[Rdf]
+  val wac  = WebACLPrefix[Rdf]
+  val cert = CertPrefix[Rdf]
   val rdfs = RDFSPrefix[Rdf]
 
-  /**
-   * Returns a Script for authentication that looks in the metadata file for a resource
-   * to see what agents have access to a given resource in a given manner, following
-   * resources.
-   *
-   *
-   * but is not tail rec because of flatMap
-   * @param aclUri metadata
-   * @param method the method of access asked for ( in wac ontology )
-   * @param on the resource to which access is requested
-   * @return a Free based recursive structure that will return a list of agents ( identified by WebIDs. )
-   **/
-  def getAuth(aclUri: Rdf#URI, method: Rdf#URI, on: Rdf#URI): Future[List[Rdf#URI]] = {
-    logger.debug(s"Will try to get the authorized agents for $method on $on with Acl URI = $aclUri")
-    val acl: Enumerator[LinkedDataResource[Rdf]] = web ~ (aclUri)
-    val authzWebIds = getAuthEnum(acl, method, on)
-    Iteratees.enumeratorAsList(authzWebIds)
-  }
-
-
-  protected
-  def getAuthEnum(acls: Enumerator[LinkedDataResource[Rdf]],
-                  method: Rdf#URI, on: Rdf#URI): Enumerator[Rdf#URI] = {
-    acls.flatMap { ldr =>
-      authzWebIDs(ldr, on, method)
-    }
-
-  }
-
 
   /**
-   * getAuth for a resource ( fetch metadata for it )
-   * @param resource the resource to check authorization for
-   * @param method the type of access requested
-   * @return the list of WebIDs for which authentication on the given resource is allowed for the specified method.
-   */
-  def getAuthorizedWebIDsFor(resource: Rdf#URI, method: Rdf#URI): Future[List[Rdf#URI]] = {
-    val authzWebIds = getAuthEnum(acl(resource), method, resource)
-    Iteratees.enumeratorAsList(authzWebIds)
-  }
-
-  /** retrieves the acl for a resource */
-  def acl2(uri: Rdf#URI): Enumerator[PiNG[Rdf]] = {
-    val futureACL: Future[Option[PiNG[Rdf]]] = rww.execute {
-      //todo: this code could be moved somewhere else see: Command.GET
-      val docUri = uri.fragmentLess
-      getMeta(docUri).flatMap { m =>
-        val x: LDPCommand.Script[Rdf, Option[PiNG[Rdf]]] = m.acl match {
-          case Success(aclUri) => {
-            logger.info(s"Resource $uri claims its ACLs are stored at $aclUri")
-            getLDPR(aclUri).map { g =>
-              Some(PiNG(aclUri, PointedGraph(aclUri, g)))
-            }
-          }
-          case _ => `return`(None)
+    * Is subject authorized to do action in mode `mode` on resource
+    * @return first authorized principal found
+    */
+  def isAuthorized(subject: Subject, mode: Method.Value, on: Rdf#URI): Future[Principal] = {
+    val result = aclFor(on).flatMap {
+      case None => Future.failed(MissingACLException(new jURI(on.toString)))
+      case Some(aclDoc) => {
+        val futureP = allowsMethodForSubject(subject, aclDoc.point(wacIt(mode)), on) run Iteratee.head
+        futureP flatMap {
+          case None => Future.failed(NoAuthorization(subject, new jURI(on.toString), mode))
+          case Some(principal) => Future.successful(principal)
         }
-        x
       }
     }
-    //todo we require an execution context here - I imported a global one, but user choice may be better
-    new Enumerator[PiNG[Rdf]] {
-      def apply[A](i: Iteratee[PiNG[Rdf], A]): Future[Iteratee[PiNG[Rdf], A]] =
-        futureACL.flatMap { aclOpt =>
-          i.feed(aclOpt match {
-            case Some(ldr) => Input.El(ldr)
-            case None => Input.Empty
-          })
-        }
+    result.onComplete {
+      case x => Logger.info(s"~~~> authorizedPrincipals($subject,$mode,$on)=$x")
     }
-  }
-
-  /** retrieves the acl for a resource */
-  def acl(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]] = {
-    logger.debug(s"Will try to get Acls for $uri")
-    val futureACL: Future[Option[LinkedDataResource[Rdf]]] = rww.execute {
-      //todo: this code could be moved somewhere else see: Command.GET
-      val docUri = uri.fragmentLess
-      getMeta(docUri).flatMap { m =>
-        val x: LDPCommand.Script[Rdf, Option[LinkedDataResource[Rdf]]] = m.acl match {
-          case Success(aclUri) => {
-            logger.info(s"Resource $uri claims its ACLs are stored at $aclUri")
-            getLDPR(aclUri).map { g =>
-              Some(LinkedDataResource(aclUri, PointedGraph(aclUri, g)))
-            }
-          }
-          case _ => `return`(None)
-        }
-        x
-      }
-    }
-    //todo we require an execution context here - I imported a global one, but user choice may be better
-    new Enumerator[LinkedDataResource[Rdf]] {
-      def apply[A](i: Iteratee[LinkedDataResource[Rdf], A]): Future[Iteratee[LinkedDataResource[Rdf], A]] =
-        futureACL.flatMap { aclOpt =>
-          i.feed(aclOpt match {
-            case Some(ldr) => Input.El(ldr)
-            case None => Input.Empty
-          })
-        }
-    }
+    result
   }
 
   /**
-   * Create a  Enumeratee filter that filters PointedGraph Enumerators, pointing to ACLs
-   * @param on  the resource to which access is requested
-   * @return an Enumeratee of those PointedGraphs giving access to the given resource
-   */
-  protected
-  def accessToResourceFilterFor(on: Rdf#URI) = Enumeratee.filter[PointedGraph[Rdf]] {
-    authorizationPermitsAccessToResource(on)
+    * ( very close to isAuthorized )
+    * @return the set of principals allowed access in given mode on given resource
+    */
+  def authorizedPrincipals(subject: Subject, mode: Method.Value, on: Rdf#URI): Future[Set[Principal]] =
+    aclFor(on).flatMap {
+      case None =>
+        Future.failed(MissingACLException(new jURI(on.toString)))
+      case Some(aclDoc) => {
+        val futureList = allowsMethodForSubject(subject, aclDoc.point(wacIt(mode)), on) run Iteratee.getChunks
+        futureList flatMap {
+          case Nil => Future.failed(NoAuthorization(subject, new jURI(on.toString), mode))
+          case list => Future.successful(list.toSet)
+        }
+      }
+    }
+
+
+  /**
+    * //todo: note what happens if there is more than one acl in the header?
+    * @param uri the URL of the resource for which we are seeking the acl
+    * @return as a future the acl as a Pointer to the named graph itself
+    */
+  def aclFor(uri: Rdf#URI): Future[Option[PiNG[Rdf]]] = rww.execute {
+    //todo: this code could be moved somewhere else see: Command.GET
+    val docUri = uri.fragmentLess
+    getMeta(docUri).flatMap { m =>
+      val x: LDPCommand.Script[Rdf, Option[PiNG[Rdf]]] = m.acl match {
+        case Success(aclUri) => {
+          logger.info(s"Resource $uri claims its ACLs are stored at $aclUri")
+          getLDPR(aclUri).map { g =>
+            Some(PiNG(aclUri, PointedGraph(aclUri, g)))
+          }
+        }
+        case _ => `return`(None)
+      }
+      x
+    }
   }
+
 
   /**
    * tests if authorizations permit access to a given resource
@@ -165,72 +129,6 @@ class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) ext
       }
   }
 
-  /**
-   * return the list of agents that are allowed access to the given resource
-   * stop looking if everybody is authorized
-   * @param acldr the graph which contains the acl rules
-   * @param on the resource on which access is being requested
-   * @param method the type of access requested
-   * @return A list of Agents with access ( sometimes just an Agent )
-   **/
-  protected
-  def authzWebIDs(acldr: LinkedDataResource[Rdf], on: Rdf#URI, method: Rdf#URI): Enumerator[Rdf#URI] = {
-    val authDefs = Enumerator((PointedGraph(method, acldr.resource.graph) /- wac.mode).toSeq: _*)
-
-    // filter those pointedGraphs that give access to the required resource
-    val accessToResourceFilter = accessToResourceFilterFor(on)
-
-    val relevantAcls: Enumerator[PointedGraph[Rdf]] = authDefs.through(accessToResourceFilter)
-
-    //follow the wac.agent relations add those that are not bnodes to a list
-    val agents: Enumerator[List[Rdf#URI]] = agentsEnabledBy(relevantAcls)
-
-    val agentClassLDRs: Enumerator[LinkedDataResource[Rdf]] =
-      relevantAcls.flatMap(pg => web.~>(LinkedDataResource(acldr.location, pg), wac.agentClass) {
-        _.pointer != foaf.Agent
-      })
-
-    val seeAlso: Enumerator[Rdf#URI] = for {
-      ldr <- web.~>(acldr, wac.include)()
-      uri <- authzWebIDs(ldr, on, method)
-    } yield {
-      uri
-    }
-
-    val groupMembers: Enumerator[List[Rdf#URI]] = extractGroupMembers(agentClassLDRs)
-
-    //todo: stop at the first discovery of a foaf:Agent?
-    //todo: collapse all agents into one foaf:Agent
-
-    (agents andThen groupMembers).flatMap(uris => Enumerator(uris.toSeq: _*)) andThen seeAlso
-  }
-
-
-  /**
-   * Transform an Enumerator of PointedGraphs pointing each to an ACL to an Enumerators of WebIDs it enables access to
-   * @param relevantAcls the acls as Enumerators of PGs
-   * @return an Enumerator of WebIDs it enables directly ( via wac.agent relation )
-   */
-  protected
-  def agentsEnabledBy(relevantAcls: Enumerator[PointedGraph[Rdf]]): Enumerator[List[Rdf#URI]] =
-    relevantAcls.map[List[Rdf#URI]] { pg =>
-      val webids = (pg / wac.agent).collect { case PointedGraph(p, _) if isURI(p) => p.asInstanceOf[Rdf#URI]}
-      webids.toList
-    }
-
-  /**
-   * Transform an Enumerator of LinkedDataResources pointing each to an agent class, to an Enumerator of those
-   * WebIDs that are members of that group.
-   * @param agentClassLDRs an Enumerator of LDR
-   * @return
-   */
-  protected
-  def extractGroupMembers(agentClassLDRs: Enumerator[LinkedDataResource[Rdf]]): Enumerator[List[Rdf#URI]] =
-    agentClassLDRs.map { ldr =>
-      val webids = if (ldr.resource.pointer == foaf.Agent) Iterable(foaf.Agent) //todo <- here we can stop
-      else (ldr.resource / foaf.member).collect { case PointedGraph(p, _) if isURI(p) => p.asInstanceOf[Rdf#URI]}
-      webids.toList
-    }
 
   def wacIt(mode: Method.Value) = mode match {
     case Method.Read => wac.Read
@@ -238,149 +136,96 @@ class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) ext
     case Method.Append => wac.Append
   }
 
-  /**
-   *
-   * @param on   resource for which we are looking for rights
-   * @param user verified WebIds of the authenticated user, or the empty list
-   * @return a Future which will contain the list of wac:modes allowed: wac:Read, wac:Write, wac:Append
-   */
-  def getAllowedMethodsForAgent(on: Rdf#URI, user: List[WebIDPrincipal])
-  : Future[Set[Method.Value]] = {
-    //todo: move this to a more specialised class
-    def toMethod(modeUri: Rdf#URI): Option[Method.Value] = {
-      modeUri match {
-        case wac.Read => Some(Method.Read)
-        case wac.Write => Some(Method.Write)
-        case wac.Append => Some(Method.Append)
-        case _ => None
-      }
-    }
-    //todo: it would be nice to have this process stop as soon as it has all the answers
-    val authzMethods = getAllowedMethodsForAgentEnum(acl2(on), on, user.map(p => URI(p.webid.toString)))
-    Iteratees.enumeratorAsList(authzMethods).map { listOfModes =>
-      logger.info(s"getAllowedMethodsForAgent($on,$user) is $listOfModes")
-      listOfModes.flatMap(toMethod(_)).toSet
-    }
-  }
 
-  /**
-   *
-   * @param acls  Enumeration of LinkedDataResources to be looked into to find the information
-   * @param on: the uri on which a request is being made
-   * @param user verified WebIds of the authenticated user, or the empty list
-   * @return a Enumerator of the list of wac:modes allowed: wac:Read, wac:Write, wac:Append
-   */
-  protected
-  def getAllowedMethodsForAgentEnum(acls: Enumerator[PiNG[Rdf]],
-                                    on: Rdf#URI,
-                                    user: List[Rdf#URI]): Enumerator[Rdf#URI] = {
-    acls.flatMap { aclPing =>
-      val aclsInGraph = Enumerator(wac.Read, wac.Write, wac.Control, wac.Append)
-        .map(ctrl => aclPing.point(ctrl)) &> allowsMethodForAgent2(on, user)
+    /**
+     * method to test if an ACL graph allows access for the given mode to the given user
+     * @param aclMode selected mode pointing into the acl
+     * @param on the resource on which access is being requested
+     * @param subject the subject requiring access
+     * @return the first Principal that was found to be enabled
+     **/
+    protected
+    def allowsMethodForSubject(
+      subject: Subject,
+      aclMode: PiNG[Rdf],
+      on: Rdf#URI
+    ): Enumerator[Principal] = {
+      // It would be interesting to return a Future[Proof]
+      // An initial way to think of a Proof would be as a path of PiNGs and relations used
+      // to get from one to the other side ending with a Principals of the Subject
+      // Proof = (Path[PiNG],Principal)
+      // But a simple linear path may not be enough: we may need a Tree.
+      // For example for Access Control Rules we need to find the acl that gives access to
+      // a given resource in a given mode, and from there find the agent, identified either
+      // by webID, or indirectly by keyId, or even the key's information, by e-mail address, by
+      // openid, etc, etc... ( one would need to determine when jumps are ok, and when not ).
+      //
+      // So for example if we have a PubKeyPrincipal then we have a proof if we have an ACL
+      // for a given resource and a given mode, and that points either to a
+      //
+      //  a. rule ~- wac:agent ~-> [ ~- cert:key -~> [ cert:modulus m; cert:exp ?p ] ].
+      //  b. rule ~- wac:agentClass -> [ ~- foaf:member [ ~- cert:key -~> [ ... ] ]
+      //
+      // In the above one can use the information locally or one can jump at every stage, both will be
+      // ok. That is if the acl tells us only someone in that graph with the given pk, or if the key
+      // is published remotely, it does not matter.
+      // ( well if the url of the local key clashes with the remote one, then there
+      // is a potentially dangerous inconsistency )
+      //
+      // More precisely It should be a (Path[Pattern],Principal) where Pattern is a pattern
+      // in a graph. eg: one has to start with finding the
 
-      val seeAlso = (aclPing.document ~> wac.include) &> Enumeratee.filter[PiNG[Rdf]](p => ops.isURI(p.location))
-      aclsInGraph andThen getAllowedMethodsForAgentEnum(seeAlso, on, user)
-    }
-  }
+      val modeBeingConsidered = aclMode.pointer.asInstanceOf[Rdf#URI]
+      assert (List(wac.Read,wac.Write,wac.Control,wac.Append).exists(_ == modeBeingConsidered))
 
-  def allowsMethodForAgent2(on: Rdf#URI,
-                            webids: List[Rdf#URI])
-  : Enumeratee[PiNG[Rdf], Rdf#URI] = {
-
-    Enumeratee.mapFlatten { mode =>
-      val modeBeingConsidered = mode.pointedGraph.pointer.asInstanceOf[Rdf#URI]
-      assert(List(wac.Read, wac.Write, wac.Control, wac.Append).exists(_ == modeBeingConsidered))
-
-      val authsForMode = mode /- wac.mode
+      val authsForMode = aclMode /- wac.mode
       // filter those pointedGraphs that give access to the required resource
-      val authsResourceAndMode = authsForMode.filter(ping => authorizationPermitsAccessToResource(on)(ping.pointedGraph))
+      val authsResourceAndMode = authsForMode
+        .filter(ping => authorizationPermitsAccessToResource(on)(ping.pointedGraph))
 
-      val modeEnabled = authsResourceAndMode.exists { authsPg =>
-        (authsPg / wac.agent).exists(pg => webids.contains(pg.pointedGraph.pointer))
-      }
-
-      if (modeEnabled) Enumerator(modeBeingConsidered)
-      else {
-        val agentClassesPGsEnums = PiNGs(authsResourceAndMode) ~>(wac.agentClass, _.pointer == foaf.Agent)
-        val findMode = Enumeratee.mapFlatten[PiNG[Rdf]][Rdf#URI] { agentClassPG: PiNG[Rdf] =>
-          val result: Enumerator[Rdf#URI] = if (agentClassPG.pointedGraph.pointer == foaf.Agent) {
-            Enumerator(modeBeingConsidered)
-          } else {
-            val containsUser = (agentClassPG.pointedGraph / foaf.member).exists { pg =>
-              pg.pointer.fold(u=>webids.contains(u),_=>false,_=>false)
-            }
-            if (containsUser)
-              Enumerator(modeBeingConsidered)
-            else
-              Enumerator.empty
+      /**
+        * given an agent pointer, find if from there one can find a match for the verified principals
+        * @return an enumeration of successful principals
+        */
+      def agentToPrincipal(agentPng: PiNG[Rdf]): Enumerator[Principal] =
+        Enumerator(subject.principals.toSeq: _*).flatMap { principal =>
+          principal match {
+            case w@WebIDPrincipal(wid) if wid.toUri == agentPng.pointer =>
+              Enumerator[Principal](w)
+            case k@WebKeyPrincipal(key) =>
+              (agentPng / cert.key).toEnum.jump.flatMap { keyPng =>
+                if (keyPng.pointer == key.toUri)
+                  Enumerator[Principal](k)
+                else Enumerator.empty[Principal]
+              }
+            case other => Enumerator.empty[Principal]
           }
-          result
         }
-        agentClassesPGsEnums &> findMode
+
+
+      val agentPrincipals: Enumerator[Principal] = (authsResourceAndMode/wac.agent).toEnum
+        .flatMap(agentToPrincipal)
+
+
+      val classPrincipals:  Enumerator[Principal] =
+        (authsResourceAndMode/wac.agentClass).toEnum.flatMap{agentClass=>
+         if(agentClass.pointer == foaf.Agent)
+           Enumerator(Agent) //<-- allows everyone
+         else {
+           agentClass.thisAndJump.flatMap(ac=> (ac/foaf.member).toEnum).flatMap(agentToPrincipal)
+         }
+       }
+
+      val all = agentPrincipals interleave( classPrincipals)
+
+      val seeAlsoAnswers = (aclMode.document~>(wac.include)).flatMap{ doc =>
+        val modePointer = doc.point(aclMode.pointer)
+        allowsMethodForSubject(subject, modePointer, on)
       }
 
+      all interleave seeAlsoAnswers
     }
-  }
 
-
-  //  /**
-  //   * method to test if an ACL graph allows access for the given mode to the given user
-  //   * @param mode selected mode in the Named Graph
-  //   * @param on the resource on which access is being requested
-  //   * @param webids the webids of the user requesting access
-  //   * @return the mode if it is allowed
-  //   **/
-  //  protected
-  //  def allowsMethodForAgent(mode: PiNG[Rdf],
-  //                           on: Rdf#URI,
-  //                           webids: List[Rdf#URI]): Future[(Rdf#URI,Boolean)] = {
-  //
-  //    val modeBeingConsidered = mode.pointedGraph.pointer.asInstanceOf[Rdf#URI]
-  //    assert (List(wac.Read,wac.Write,wac.Control,wac.Append).exists(_ == modeBeingConsidered))
-  //
-  //    val authsForMode = mode /- wac.mode
-  //    // filter those pointedGraphs that give access to the required resource
-  //    val authsResourceAndMode = authsForMode.filter(ping=> authorizationPermitsAccessToResource(on)(ping.pointedGraph))
-  //
-  //    val modeEnabled = authsResourceAndMode.exists { authsPg =>
-  //      (authsPg / wac.agent).exists(pg => webids.contains(pg.pointedGraph.pointer))
-  //    }
-  //
-  //    if (modeEnabled) return Future.successful((modeBeingConsidered,true))
-  //    else {
-  //       val agentClassesPGs = PiNGs(authsResourceAndMode)~>(wac.agentClass,_.pointer!=foaf.Agent)
-  //       val folder = Iteratee.fold2[PiNG[Rdf],(Rdf#URI,Boolean)]((modeBeingConsidered,false)){
-  //         (cont,agentClassPG)=>
-  //           val result = if (agentClassPG.pointedGraph.pointer == foaf.Agent) {
-  //             true
-  //           } else {
-  //              (agentClassPG.pointedGraph/foaf.member).exists { pg =>
-  //                pg.pointer match {
-  //                  case u: Rdf#URI => webids.contains(u)
-  //                  case _ => false
-  //                }
-  //             }
-  //           }
-  //         Future.successful(((modeBeingConsidered,result),result))
-  //       }
-  //
-  //       agentClassesPGs |>>> folder
-  //    }
-  //
-  ////    val seeAlso: Enumerator[Rdf#URI] = for {
-  ////      ldr <- web.~>(acldr, wac.include)()
-  ////      uri <- authzAllWebIDs(ldr, on)
-  ////    } yield {
-  ////      uri
-  ////    }
-  ////
-  ////    val groupMembers: Enumerator[List[Rdf#URI]] = extractGroupMembers(agentClassLDRs)
-  ////
-  ////    //todo: stop at the first discovery of a foaf:Agent?
-  ////    //todo: collapse all agents into one foaf:Agent
-  ////
-  ////    (agents andThen groupMembers).flatMap(uris => Enumerator(uris.toSeq: _*)) andThen seeAlso
-  //  }
 
 
 }

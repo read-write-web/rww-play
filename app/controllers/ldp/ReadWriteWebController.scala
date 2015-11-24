@@ -19,17 +19,11 @@ package controllers.ldp
 import java.net.URL
 import java.nio.file.Path
 
-import _root_.play.api.mvc.RequestHeader
 import controllers.{RWWSetup, RdfSetup}
 import rww.auth.{HttpAuthentication, WebIDAuthN}
-import rww.ldp.LDPExceptions.ClientAuthDisabled
 import rww.ldp._
 import rww.ldp.auth.{WACAuthZ, WebIDVerifier, WebKeyVerifier}
 import rww.play._
-import rww.play.auth.{AuthN, Subject}
-
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
 
 object ReadWriteWebController extends ReadWriteWebController (
   RdfSetup.rwwRoot,
@@ -46,30 +40,19 @@ class ReadWriteWebController(
   implicit lazy val rwwBodyParser =  new RwwBodyParser[Rdf](base,tmpDirInRootConainer)(ops,sparqlOps,graphIterateeSelector,
     sparqlSelector,sparqlUpdateSelector,ec)
 
-  def webidAuthN   = new WebIDAuthN(new WebIDVerifier(rwwAgent))
+  def webidAuthN = if (!webIDTLSEnabled) None
+  else
+    Some(new WebIDAuthN(new WebIDVerifier(new WebResource[Rdf](rwwAgent))))
+
   def httpSigAuthN = new HttpAuthentication(new WebKeyVerifier(rwwAgent),base)
 
-  def authNLogic = if (webIDTLSEnabled) httpSigThenTLSAuthN else httpSigAuthN
 
-  def httpSigThenTLSAuthN =  new AuthN {
-    import utils.ScalaUtils._
-    override
-    def apply(req: RequestHeader) = httpSigAuthN(req).transformWith({
-      case Success(Subject(List(), failures)) =>
-        //todo: also take webid failures into account
-        webidAuthN(req).map(s => Subject(s.principals, s.failures ::: failures))
-      case Success(other) =>
-        //should perhaps also try WebID auth? Unlikely for the moment
-        Future.successful(other)
-      case Failure(x: ClientAuthDisabled) => webidAuthN(req)
-      case Failure(other) => Future.failed(other)
-    })
-  }
 
   lazy val resourceManager =  new ResourceMgr[Rdf](
     base,
     rwwAgent,
-    authNLogic,
+    httpSigAuthN,
+    webidAuthN,
     new WACAuthZ[Rdf](new WebResource[Rdf](rwwAgent))(ops)
   )
 

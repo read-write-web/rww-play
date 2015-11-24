@@ -51,7 +51,7 @@ abstract class WebIDVerifierTest[Rdf<:RDF](
 
   implicit val authz: WACAuthZ[Rdf] =  new WACAuthZ[Rdf](new WebResource(rwwAgent))
 
-  val webidVerifier = new WebIDVerifier(rwwAgent)
+  val webidVerifier = new WebIDVerifier(new WebResource(rwwAgent))
 
   val web = new WebResource[Rdf](rwwAgent)
 
@@ -69,6 +69,8 @@ abstract class WebIDVerifierTest[Rdf<:RDF](
       ldpc     <- createContainer(baseUri,Some("bertails"),Graph.empty)
       ldpcMeta <- getMeta(ldpc)
       card     <- createLDPR(ldpc,Some(bertailsCard.lastPathSegment),bertailsCardGraph)
+      keyDoc <- createLDPR(ldpc,Some(bertailsKeyDoc.lastPathSegment),bertailsKeyGraph)
+      keyGraph <- getLDPR(keyDoc)
       cardMeta <- getMeta(card)
       _        <- updateLDPR(ldpcMeta.acl.get, add=bertailsContainerAclGraph.triples)
       _        <- updateLDPR(cardMeta.acl.get, add=bertailsCardAclGraph.triples)

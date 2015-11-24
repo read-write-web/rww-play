@@ -1,10 +1,13 @@
 package rww.play.auth
 
+import java.net.{URI => jURI}
 import java.security.Principal
 
+import org.w3.banana.RDF
+import play.api.Logger
 import play.api.mvc.RequestHeader
-import rww.ldp.LDPExceptions.{AuthException, OtherAuthException}
-import rww.ldp.auth.WebIDPrincipal
+import rww.ldp.LDPExceptions.{AuthNException, OtherAuthNException}
+import rww.ldp.auth.{WebIDPrincipal, WebKeyPrincipal}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -29,16 +32,57 @@ import scala.util.{Failure, Success, Try}
   *       case class Subject(principals: List[Principal)
   *       as it is quite possible that some authentications fail and other succeed
   */
-case class Subject(principals: List[Principal],failures: List[AuthException]=List()) {
+case class Subject(principals: Set[Principal],failures: List[AuthNException]=List()) {
+  def merge(other: Subject): Subject = Subject(
+    principals ++ other.principals,
+    failures ::: other.failures
+  )
+
   lazy val webIds = principals.collect{
       case wp: WebIDPrincipal => wp
     }
+
+  def toSession: String =
+    principals.collect {
+      case WebIDPrincipal(wid) => s"webid=$wid"
+      case WebKeyPrincipal(key) => s"webkey=$key"
+    }.mkString("\n")
+
+}
+
+/** The Anonymous subject */
+object Anonymous extends Subject(Set())
+
+//does this make sense? The SuperUser is the one who has a proof that he is everyone
+//not used yet
+object SuperUser extends Subject(Set(rww.ldp.auth.Agent))
+
+object Subject {
+
+  /** parse a string for storing in session into a principal */
+  def parse(ops: Option[String]): Subject = {
+    val l: List[List[Principal]] = for {
+      principals <- ops.toList
+      principalAV <- principals.lines.toList
+      (typ, id) = principalAV.splitAt(principalAV.indexOf('=')+1)
+    } yield {
+      typ match {
+        case "webid=" => List(WebIDPrincipal(new jURI(id)))
+        case "webkey=" => List(WebKeyPrincipal(new jURI(id)))
+        case other => {
+          Logger.warn(s"ignoring principal: [$principalAV]")
+          List()
+        }
+      }
+    }
+    Subject(l.flatten.toSet)
+  }
 
 }
 
 object AuthN {
   def futureToFutureTry[T](f: Future[T])(implicit ec: ExecutionContext): Future[Try[T]] =
-    f.map(Success(_)).recover { case x: AuthException => Failure(x) }
+    f.map(Success(_)).recover { case x: AuthNException => Failure(x) }
 
   def toSubject(seqOfFuturePrincipals: Seq[Future[Principal]])(
     implicit ec: ExecutionContext
@@ -52,10 +96,10 @@ object AuthN {
         case Failure(e) => "failure"
       }
       Subject(
-        grouped.get("success").toSeq.flatten.collect { case Success(p) => p }.toList,
+        grouped.get("success").toSeq.flatten.collect { case Success(p) => p }.toSet,
         grouped.get("failure").toSeq.flatten.collect {
-          case Failure(e: AuthException) => e
-          case Failure(NonFatal(e)) =>  OtherAuthException(e)
+          case Failure(e: AuthNException) => e
+          case Failure(NonFatal(e)) =>  OtherAuthNException(e)
         }.toList
       )
     }

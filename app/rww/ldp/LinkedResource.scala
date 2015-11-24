@@ -16,7 +16,7 @@ import scala.util.{Failure, Success, Try}
 trait LinkedResource[Rdf <: RDF] {
 
   /** retrieves a resource based on its URI */
-  def ~(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]]
+  def apply(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]]
 
   /**
    * todo: could the fetchCond be better be done by an Enumeratee?
@@ -54,7 +54,7 @@ class WebResource[Rdf <:RDF](val rwwActorSys: RWWActorSystem[Rdf])(implicit ops:
   import rww.ldp.LDPCommand._
 
   /** retrieves a resource based on its URI */
-  def ~(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]] = {
+  def apply(uri: Rdf#URI): Enumerator[LinkedDataResource[Rdf]] = {
     //todo: this code could be moved somewhere else see: Command.GET
     val docUri = uri.fragmentLess
     val script = getLDPR(docUri).map{graph=>

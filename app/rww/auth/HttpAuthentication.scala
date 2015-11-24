@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.headers.{Authorization, GenericHttpCredentials}
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.w3.banana.RDF
 import play.api.mvc.RequestHeader
-import rww.ldp.LDPExceptions.{ClientAuthDisabled, SignatureRequestException, SignatureVerificationException}
+import rww.ldp.LDPExceptions.{ClientAuthNDisabled, SignatureRequestException, SignatureVerificationException}
 import rww.ldp.auth.WebKeyVerifier
 import rww.play.auth.{AuthN, Subject}
 
@@ -93,7 +93,7 @@ class HttpAuthentication[Rdf <: RDF](
         parseSignatureInfo(req, params).asFuture.flatMap(verifier.verify(_))
     }
     if (seqOfFuturePrincipals.isEmpty) {
-      Future.failed(ClientAuthDisabled("No 'Authorization: Signature ...' http header"))
+      Future.failed(ClientAuthNDisabled("No 'Authorization: Signature ...' http header"))
     }
     else toSubject(seqOfFuturePrincipals)
   }

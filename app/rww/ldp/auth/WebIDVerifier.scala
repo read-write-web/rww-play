@@ -9,8 +9,11 @@ import java.security.{Principal, PublicKey}
 
 import org.slf4j.LoggerFactory
 import org.w3.banana._
-import rww.ldp.LDPCommand
+import org.w3.banana.binder.RecordBinder
+import play.api.libs.iteratee.{Enumerator, Enumeratee}
+import rww.ldp.{CertBinder, WebResource, LDPCommand}
 import rww.ldp.actor.RWWActorSystem
+import utils.Iteratees
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -70,18 +73,23 @@ class CryptoUtil[Rdf <: RDF](implicit ops: RDFOps[Rdf]) {
  *
  */
 class WebIDVerifier[Rdf <: RDF](
-  rww: RWWActorSystem[Rdf]
+  web: WebResource[Rdf]
 )(implicit
   ops: RDFOps[Rdf],
   sparqlOps: SparqlOps[Rdf],
+  recordBinder: RecordBinder[Rdf],
   val ec: ExecutionContext
 ) {
 
   import ops._
-  import sparqlOps._
+  import org.w3.banana.diesel._
 
   val logger = LoggerFactory.getLogger(this.getClass)
   val crypto = new CryptoUtil[Rdf]()
+  val cert = CertPrefix[Rdf]
+  val certBinder = new CertBinder[Rdf]()
+  import certBinder._
+
   import crypto._
 
   //todo: find a good sounding name for (String,PublicKey)
@@ -109,21 +117,6 @@ class WebIDVerifier[Rdf <: RDF](
     }
 
 
-  //  val webidVerifier = {
-  //    val wiv = context.actorFor("webidVerifier")
-  //    if (wiv == context.actorFor("/deadLetters"))
-  //      context.actorOf(Props(classOf[WebIDClaimVerifier]),"webidVerifier")
-  //    else wiv
-  //  }
-
-  val query = parseSelect("""
-      PREFIX : <http://www.w3.org/ns/auth/cert#>
-      SELECT ?m ?e
-      WHERE {
-          ?webid :key [ :modulus ?m ;
-                        :exponent ?e ].
-      }""").get
-
 
 
   /**
@@ -146,36 +139,19 @@ class WebIDVerifier[Rdf <: RDF](
     else key match {
       case rsaKey: RSAPublicKey =>  {
         val wid = URI(san)
-        rww.execute(selectLDPR(URI(ir),query,Map("webid" -> wid))).flatMap { sols=>
-          val s: Iterator[Try[WebIDPrincipal]] = solutionIterator(sols).map { sol: Rdf#Solution =>
+        val keyNPGEnum: Enumerator[Try[RSAPublicKey]] = for {
+          webIdLDR <- web(wid)
+          keyNPG <- web.~>(webIdLDR, cert.key)()
+        } yield {  keyNPG.resource.as[RSAPublicKey] }
 
-            val keyVal = for { mod <- getNode(sol,"m") flatMap { toPositiveInteger(_) }
-                               exp <- getNode(sol,"e") flatMap { toPositiveInteger(_) }
-            } yield RSAPubKey(mod,exp)
-            logger.debug(s"solutions for $ir=$keyVal")
+        val filterTo: Enumeratee[Try[RSAPublicKey],WebIDPrincipal] = Enumeratee.collect[Try[RSAPublicKey]] {
+          case Success(pk) if pk ==  rsaKey => WebIDPrincipal(uri)
+        }
 
-            keyVal.flatMap { key =>
-              if (key.modulus == rsaKey.getModulus && key.exponent == rsaKey.getPublicExponent) Success(WebIDPrincipal(uri))
-              else Failure(new KeyMatchFailure(s"RSA key does not match one in profile. $san $rsaKey $key",san,rsaKey,key))
-            }
-          }
-          val result: Try[WebIDPrincipal] = s.find(_.isSuccess).getOrElse {
-            val failures: List[BananaException] = s.toList.map(  t =>
-              t match {
-                case Failure(e: BananaException) => e
-                case Failure(e)  => WrappedThrowable(e) // a RunTimeException?
-                case Success(e)  => throw new Error("should never reach this point")
-              }
-            )
-            Failure(
-              if (failures.size == 0) WebIDVerificationFailure(s"no rsa keys found in profile for WebID. $uri",uri)
-              else WebIDVerificationFailure(s"no keys matched the WebID in the profile $uri",uri,failures)
-            )
-          }
-          if ( result.isSuccess ) {
-            logger.info(s"Successfully authenticated as ${result.get}")
-          }
-          result.asFuture
+        val result = keyNPGEnum.through(filterTo)
+        Iteratees.enumeratorAsList(result).flatMap{
+          case head::tail => Future.successful(head)
+          case Nil => Future.failed(WebIDVerificationFailure("No matching keys",uri,List())) //todo
         }
       }
       case _ => Future.failed(

@@ -162,7 +162,7 @@ class HttpSignaturesTest[Rdf<:RDF](
         val hdrs = FakeHeaders(specHeaders ++ Seq("Authorization" -> Seq(sigHeader)))
         val specReq = FakeRequest("POST","/foo?param=value&pet=dog", hdrs, AnyContentAsEmpty)
         httpAuth(specReq).getOrFail() should be(
-          Subject(List(WebKeyPrincipal(new jURI(keyUri.getString))))
+          Subject(Set(WebKeyPrincipal(new jURI(keyUri.getString))))
         )
 
       }
@@ -176,7 +176,7 @@ class HttpSignaturesTest[Rdf<:RDF](
         val hdrs = FakeHeaders(specHeaders ++ Seq("Authorization" -> Seq(sigHeader)))
         val specReq = FakeRequest("POST","/foo?param=value&pet=dog", hdrs, AnyContentAsEmpty)
         val x= httpAuth(specReq).getOrFail()
-        x.principals should be (List())
+        x.principals should be (Set())
         x.failures.head shouldBe a [SignatureRequestException]
       }
 
@@ -205,7 +205,7 @@ class HttpSignaturesTest[Rdf<:RDF](
         val specReq = FakeRequest("POST",
           "/foo?param=value&pet=dog", hdrs, AnyContentAsEmpty)
         httpAuth(specReq).getOrFail() should be(
-          Subject(List(
+          Subject(Set(
             WebKeyPrincipal(new jURI(keyUri.getString))))
         )
 
@@ -236,7 +236,7 @@ class HttpSignaturesTest[Rdf<:RDF](
         val hdrs = FakeHeaders(specHeaders ++ Seq("Authorization" -> Seq(sigHeader)))
         val specReq = FakeRequest("POST","/foo?param=value&pet=dog", hdrs, AnyContentAsEmpty)
         httpAuth(specReq).getOrFail() should be(
-          Subject(List(WebKeyPrincipal(new jURI(keyUri.getString))))
+          Subject(Set(WebKeyPrincipal(new jURI(keyUri.getString))))
         )
 
       }

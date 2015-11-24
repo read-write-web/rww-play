@@ -1,6 +1,7 @@
 package controllers.ldp
 
 import java.net.{URI => jURI, URLDecoder}
+import java.security.Principal
 
 import _root_.play.{api => PlayApi}
 import akka.http.scaladsl.model.DateTime
@@ -14,11 +15,12 @@ import play.api.libs.iteratee.Enumerator
 import play.api.mvc.Results._
 import play.api.mvc._
 import rww.ldp.LDPExceptions._
-import rww.ldp.auth.WebIDPrincipal
+import rww.ldp.auth.{Method, WebIDPrincipal}
 import rww.ldp.model.{LocalLDPC, _}
 import rww.ldp.{SupportedBinaryMimeExtensions, WrongTypeException}
+import rww.play.auth.Subject
 import rww.play.rdf.IterateeSelector
-import rww.play.{AuthResult, BinaryRwwContent, GraphRwwContent, QueryRwwContent, _}
+import rww.play.{ BinaryRwwContent, GraphRwwContent, QueryRwwContent, _}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -53,34 +55,33 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
   /**
    * The user header is used to transmit the WebId URI to the client, because he can't know it before
    * the authentication takes place with the server.
-   * @param principals
+   * @param subject the authenticated subject
    * @return a one element List or an empty one
    * todo: what happens
    */
-  private def userHeader(principals: List[WebIDPrincipal]): List[(String,String)] =  {
-    principals match {
-      case Nil => Nil
-      case webidp::_ => List("User" -> webidp.webid.toString)
+  private def userHeader(subject: Subject): List[(String,String)] =  {
+    subject.principals.toList collect {
+      case WebIDPrincipal(webidp) => ("User" -> webidp.toString)
     }
   }
 
 
-  private def etagHeader(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
+  private def etagHeader(authResult: IdResult[NamedResource[Rdf]]): List[(String, String)] = {
      authResult.result.etag.toOption.map(et=>("ETag",et.value)).toList
   }
 
-  private def updatedHeader(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
+  private def updatedHeader(authResult: IdResult[NamedResource[Rdf]]): List[(String, String)] = {
     authResult.result.updated.toOption.map{ u =>
       val lm = `Last-Modified`(DateTime(u.getTime))
       (lm.name(),lm.value())
     }.toList
   }
 
-  private def allowHeaders(authResult: AuthResult[NamedResource[Rdf]]): List[(String, String)] = {
-    val modesAllowed = authResult.authInfo.modesAllowed
+  private def allowHeaders(authResult: IdResult[NamedResource[Rdf]]): List[(String, String)] = {
     val isLDPC =  authResult.result.isInstanceOf[LocalLDPC[_]]
     val allow = "Allow" -> {
-      val headerStr = modesAllowed.collect {
+      //todo: if we can get the authorized modes for the user efficiently use just those
+      val headerStr = List(wac.Read,wac.Write,wac.Control,wac.Append).collect {
         case Method.Append =>
           authResult.result match {
             case l: LocalLDPC[Rdf] => "POST"
@@ -145,41 +146,35 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       case rse: ResourceDoesNotExist => NotFound(rse.getMessage + stackTrace(rse))
       case umt: UnsupportedMediaType => Results.UnsupportedMediaType(umt.getMessage + stackTrace(umt))
       case ETagsMatch(_) => NotModified
-      case ClientAuthDisabled(msg,optT) => {
+      case ClientAuthNDisabled(msg,optT) => {
         //todo: this should be tied into the error below
         //todo: add all the normal headers here too
         Unauthorized(
           views.html.ldp.accessDenied( request.getAbsoluteURI.toString, msg )
           //todo a better implementation would have this on the actor itself, which WOULD know the type
-        ).withHeaders("WWW-Authenticate"->"""Signature realm="/"""",
-          "Access-Control-Expose-Headers"-> "WWW-Authenticate",
-          "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date",
-          "Access-Control-Allow-Origin" -> "*",
-          "Access-Control-Allow-Credentials"->"true"
+        ).withHeaders("WWW-Authenticate"->"""Signature realm="/""""::
+          "Access-Control-Expose-Headers"-> "WWW-Authenticate"::
+          corsHeaders :_*
         )
       }
-      case e: AuthException => {
+      case e: AuthNException => {
         //todo: this should be tied into the error below
         Unauthorized(
           views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(e) )
           //todo a better implementation would have this on the actor itself, which WOULD know the type
-        ).withHeaders("WWW-Authenticate"->"""Signature realm="/"""",
-          "Access-Control-Expose-Headers"-> "WWW-Authenticate",
-          "Access-Control-Allow-Credentials"->"true",
-          "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date",
-          "Access-Control-Allow-Origin" -> "*")
+        ).withHeaders("WWW-Authenticate"->"""Signature realm="/""""::
+          "Access-Control-Expose-Headers"-> "WWW-Authenticate"::
+           corsHeaders :_*
+          )
       }
-      case err @ AccessDeniedAuthModes(authinfo) => {
-        Logger.warn("Access denied exception"+authinfo)
+      case err @ NoAuthorization(_,_,_) => {
            //todo: automatically create html versions if needed of error messages
             Unauthorized(
               views.html.ldp.accessDenied( request.getAbsoluteURI.toString, stackTrace(err) )
               //todo a better implementation would have this on the actor itself, which WOULD know the type
-            ).withHeaders("WWW-Authenticate" -> """Signature realm="/"""",
-              "Access-Control-Expose-Headers" -> "WWW-Authenticate",
-              "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date",
-              "Access-Control-Allow-Credentials" -> "true",
-              "Access-Control-Allow-Origin" -> "*")
+            ).withHeaders("WWW-Authenticate" -> """Signature realm="/""""::
+              "Access-Control-Expose-Headers" -> "WWW-Authenticate"::
+              corsHeaders :_*)
         //          }
 //          case _ => {
 //            Unauthorized(err.getMessage).withHeaders(allowHeaders(authinfo.modesAllowed,false):_*) // we don't know if this is an LDPC
@@ -225,25 +220,31 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     "Link" -> res.mkString(", ")
   }
 
-  private def writeGetResult(authResult: AuthResult[NamedResource[Rdf]])
+  def corsHeaders(implicit request: PlayApi.mvc.Request[AnyContent]): List[(String,String)] = {
+    val origin = request.headers.get("Origin").getOrElse("*")
+    "Access-Control-Allow-Origin" -> origin ::
+      "Access-Control-Allow-Credentials"->"true"::
+      "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date,*"::Nil
+  }
+
+  private def writeGetResult(authResult: IdResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): Result = {
     def commonHeaders: List[(String, String)] =
       allowHeaders(authResult) :::
         etagHeader(authResult) :::
         updatedHeader(authResult) :::
-        userHeader(authResult.authInfo.user).toList
+        userHeader(authResult.subject)
+
 
     authResult.result match {
       case ldpr: LDPR[Rdf] => {
         writerFor[Rdf#Graph](request).map { wr =>
           val headers =
-            "Access-Control-Allow-Origin" -> "*" ::
-              "Access-Control-Allow-Credentials"->"true"::
-              "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date"::
+               corsHeaders:::
               "Accept-Patch" -> Syntax.SparqlUpdate.mimeTypes.head.mime :: //todo: something that is more flexible
               linkHeaders(ldpr) ::
               commonHeaders
-          result(200, wr, Map(headers: _*))(ldpr.graph)
+          result(200, wr, Map(headers: _*))(ldpr.graph).addingToSession("subject"->authResult.subject.toSession)
         } getOrElse {
           play.api.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
             request.headers.get(play.api.http.HeaderNames.ACCEPT))
@@ -256,7 +257,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
         Result(
           header = ResponseHeader(200, Map(headers:_*)),
           body = bin.readerEnumerator(1024 * 8)
-        )
+        ).addingToSession("subject"->authResult.subject.toSession)
       }
     }
   }
@@ -275,7 +276,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     val future = for {
       answer <- resourceManager.put(request.body)
     } yield {
-      Ok("Succeeded").withHeaders(userHeader(answer.id):_*)
+      Ok("Succeeded").withHeaders(userHeader(answer.subject):_*)
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
@@ -301,7 +302,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     val future = for {
       answer <- resourceManager.patch( request.body)
     } yield {
-      Ok("Succeeded").withHeaders(userHeader(answer.id):_*)
+      Ok("Succeeded").withHeaders(userHeader(answer.subject):_*)
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
@@ -386,7 +387,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     for {
       location <- resourceManager.postGraph(slug, rwwGraph)
     } yield {
-      Created.withHeaders("Location" -> location.result.toString::userHeader(location.id):_*)
+      Created.withHeaders("Location" -> location.result.toString::userHeader(location.subject):_*)
     }
   }
 
@@ -394,7 +395,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     for {
       answer <- resourceManager.postBinary(request.path, slug, binaryContent.file, binaryContent.mime )
     } yield {
-      Created.withHeaders("Location" -> answer.result.toString::userHeader(answer.id):_*)
+      Created.withHeaders("Location" -> answer.result.toString::userHeader(answer.subject):_*)
     }
   }
 
@@ -406,15 +407,15 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       answer.result.fold(
         graph =>
           writerFor[Rdf#Graph](request).map {
-            wr => result(200, wr,Map(userHeader(answer.id):_*))(graph)
+            wr => result(200, wr,Map(userHeader(answer.subject):_*))(graph)
           },
         sol =>
           writerFor[Rdf#Solutions](request).map {
-            wr => result(200, wr,Map(userHeader(answer.id):_*))(sol)
+            wr => result(200, wr,Map(userHeader(answer.subject):_*))(sol)
           },
         bool =>
           writerFor[Boolean](request).map {
-            wr => result(200, wr,Map(userHeader(answer.id):_*))(bool)
+            wr => result(200, wr,Map(userHeader(answer.subject):_*))(bool)
           }
       ).getOrElse(PlayApi.mvc.Results.UnsupportedMediaType(s"Cannot publish answer of type ${answer.getClass} as" +
         s"one of the mime types given ${request.headers.get("Accept")}"))
@@ -426,7 +427,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     val future = for {
       answer <- resourceManager.delete(request)
     } yield {
-      Ok.withHeaders(userHeader(answer.id):_*)
+      Ok.withHeaders(userHeader(answer.subject):_*)
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))

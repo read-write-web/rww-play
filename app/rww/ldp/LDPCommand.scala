@@ -3,6 +3,7 @@ package rww.ldp
 import _root_.play.api.libs.Files.TemporaryFile
 import org.w3.banana._
 import org.w3.banana.io.MimeType
+import rww.play.auth.Subject
 import scalaz.{MonadPlus, Free, Functor}
 import scalaz.Free.Suspend
 import scalaz.Free.Return
@@ -19,14 +20,6 @@ sealed trait LDPContainerCmd[Rdf <: RDF, +A] extends LDPCommand[Rdf,A] {
   def uri: Rdf#URI = container
   def container: Rdf#URI //just a synonym for URI when the command can only be run on a container
 }
-
-trait Subject {
-  def id: List[Principal]
-}
-
-case class Subj (id: List[Principal]) extends Subject
-
-case class Admin(onBehalfOf: Subject, id: List[Principal]=List())
 
 
 

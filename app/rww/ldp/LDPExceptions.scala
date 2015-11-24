@@ -1,8 +1,12 @@
 package rww.ldp
 
+import java.net.URI
+
 import org.w3.banana.{BananaException, PointedGraph, RDF}
 import rww.auth.SigInfo
+import rww.ldp.auth.Method
 import rww.play.AuthorizedModes
+import rww.play.auth.Subject
 
 /**
  * @author Sebastien Lorber (lorber.sebastien@gmail.com)
@@ -13,7 +17,6 @@ object LDPExceptions {
   case class ResourceDoesNotExist(message: String) extends Exception(message) with BananaException
   case class RequestNotAcceptable(message: String) extends Exception(message) with BananaException
   case class AccessDenied(message: String) extends Exception(message) with BananaException
-  case class AccessDeniedAuthModes(authinfo: AuthorizedModes) extends Exception("No access to resource") with BananaException
   case class PreconditionFailed(message: String) extends Exception(message) with BananaException
   case class UnsupportedMediaType(message: String) extends Exception(message) with BananaException
   case class StorageError(message: String)  extends Exception(message) with BananaException
@@ -27,19 +30,23 @@ object LDPExceptions {
   case class OperationNotSupportedException(message: String) extends Exception(message) with BananaException
 
 
+  sealed trait AuthZException extends Exception
+  case class MissingACLException(resource: URI) extends AuthZException
+  case class NoAuthorization(subject: Subject, on: URI, mode: Method.Value) extends AuthZException
+
   // Authentiction Exceptions
-  sealed trait AuthException extends Exception
-  case class ClientAuthDisabled(msg: String, e: Option[Throwable]=None) extends AuthException
-  case class OtherAuthException(e: Throwable) extends AuthException
+  sealed trait AuthNException extends Exception
+  case class ClientAuthNDisabled(msg: String, e: Option[Throwable]=None) extends AuthNException
+  case class OtherAuthNException(e: Throwable) extends AuthNException
 
-  case class TLSAuthException(cause: Throwable) extends AuthException
+  case class TLSAuthNException(cause: Throwable) extends AuthNException
 
-  trait HttpAuthException extends AuthException
-  case class SignatureRequestException(msg: String) extends HttpAuthException
+  trait HttpAuthNException extends AuthNException
+  case class SignatureRequestException(msg: String) extends HttpAuthNException
 
-  trait SignatureAuthException extends HttpAuthException
+  trait SignatureAuthNException extends HttpAuthNException
   //todo: the exception here should be one returned by rww.execute
-  case class FetchException(sigInfo: SigInfo, e: Throwable) extends SignatureAuthException
-  case class SignatureVerificationException(msg: String, sigInfo: SigInfo) extends SignatureAuthException
-  case class KeyIdException[Rdf<:RDF](msg: String, sigInfo: SigInfo, pg: PointedGraph[Rdf]) extends SignatureAuthException
+  case class FetchException(sigInfo: SigInfo, e: Throwable) extends SignatureAuthNException
+  case class SignatureVerificationException(msg: String, sigInfo: SigInfo) extends SignatureAuthNException
+  case class KeyIdException[Rdf<:RDF](msg: String, sigInfo: SigInfo, pg: PointedGraph[Rdf]) extends SignatureAuthNException
 }

@@ -14,11 +14,13 @@ import scala.util.{Failure, Success, Try}
  * Point in Named Graph
  */
 trait PiNG[Rdf <: RDF]  {
-  import org.w3.banana.diesel.PointedGraphW
+  import org.w3.banana.diesel._
 
   val location: Rdf#URI
 
   val pointedGraph: PointedGraph[Rdf]
+
+  def pointer = pointedGraph.pointer
 
   /**
    * create a new PiNG with the same location and graph, but with pointer at location
@@ -26,7 +28,7 @@ trait PiNG[Rdf <: RDF]  {
    * @param newPointer the new pointer
    * @return  a new PiNG
    */
-  def point(newPointer: Rdf#URI): PiNG[Rdf] = PiNG(location, PointedGraph(newPointer,pointedGraph.graph))
+  def point(newPointer: Rdf#Node): PiNG[Rdf] = PiNG(location, PointedGraph(newPointer,pointedGraph.graph))
 
   def document: PiNG[Rdf] = PiNG(location,PointedGraph(location,pointedGraph.graph))
 
@@ -56,12 +58,25 @@ trait PiNG[Rdf <: RDF]  {
    * @param rww
    * @return
    */
-  def jump(implicit ops: RDFOps[Rdf],  rww: RWWActorSystem[Rdf], ec: ExecutionContext): Enumerator[PiNG[Rdf]] = {
+  def jump(implicit
+    ops: RDFOps[Rdf],
+    rww: RWWActorSystem[Rdf],
+    ec: ExecutionContext): Enumerator[PiNG[Rdf]] = {
     import ops._
 
     pointedGraph.pointer match {
       case uri: Rdf#URI if (isURI(uri) && uri.fragmentLess!=location) =>
         PiNG(uri.fragmentLess).map(ping=> PiNG(ping.location,PointedGraph(uri,ping.pointedGraph.graph)))
+      case _ => Enumerator(this)
+    }
+  }
+
+  def thisAndJump(implicit ops: RDFOps[Rdf],  rww: RWWActorSystem[Rdf], ec: ExecutionContext) = {
+    import ops._
+
+    pointedGraph.pointer match {
+      case uri: Rdf#URI if (isURI(uri) && uri.fragmentLess!=location) =>
+        Enumerator(this) andThen PiNG(uri.fragmentLess).map(ping=> PiNG(ping.location,PointedGraph(uri,ping.pointedGraph.graph)))
       case _ => Enumerator(this)
     }
   }
@@ -191,25 +206,29 @@ object PiNG {
 
   def unapply[Rdf<:RDF](ping: PiNG[Rdf]): Option[(Rdf#URI,PointedGraph[Rdf])] = Some((ping.location,ping.pointedGraph))
 
-
-
-}
-
-/**
- * todo: Can one do the same here as with PointedGraphs nameley extend Enumerator?
- * @param pings
- * @tparam Rdf
- */
-class PiNGs[Rdf<:RDF](val pings: Enumerator[PiNG[Rdf]]) extends AnyVal {
+  /**
+    * todo: Can one do the same here as with PointedGraphs nameley extend Enumerator?
+    * @param pings
+    * @tparam Rdf
+    */
+  implicit class PiNGsEnum[Rdf<:RDF](val pings: Enumerator[PiNG[Rdf]]) extends AnyVal {
 
     def ~>(relation: Rdf#URI,unlessFetchCondition: PointedGraph[Rdf]=>Boolean=(_=>false))
-          (implicit ec: ExecutionContext, rww: RWWActorSystem[Rdf], rdfOps: RDFOps[Rdf])
+      (implicit ec: ExecutionContext, rww: RWWActorSystem[Rdf], rdfOps: RDFOps[Rdf])
     :  Enumerator[PiNG[Rdf]] =
       pings.flatMap(_~>(relation,unlessFetchCondition))
-}
 
-object PiNGs {
-  def apply[Rdf<:RDF](pings: Iterable[PiNG[Rdf]])
-                     (implicit rww: RWWActorSystem[Rdf])
-  : PiNGs[Rdf] = new PiNGs(Enumerator[PiNG[Rdf]](pings.toSeq: _*))
+    def jump(implicit ec: ExecutionContext,rww: RWWActorSystem[Rdf], rdfOps: RDFOps[Rdf]): Enumerator[PiNG[Rdf]] =
+      pings.flatMap(_.jump)
+  }
+
+  implicit class PingsIter[Rdf<:RDF](val pings: Iterable[PiNG[Rdf]]) extends AnyVal {
+
+    def toEnum(implicit ec: ExecutionContext): Enumerator[PiNG[Rdf]] = Enumerator.enumerate(pings)
+
+    def /(rel:  Rdf#URI)(implicit rdfOps: RDFOps[Rdf]) = pings.flatMap( _ /rel)
+
+  }
+
+
 }

@@ -8,16 +8,18 @@ import org.w3.banana._
 import org.w3.banana.binder.RecordBinder
 import org.w3.banana.io._
 import play.api.libs.iteratee.Iteratee
+import rww.ldp.LDPExceptions.NoAuthorization
 import rww.ldp.actor.{RWWActorSystem, RWWActorSystemImpl}
-import rww.ldp.auth.{WACAuthZ, WebIDPrincipal, WebIDVerifier}
+import rww.ldp.auth._
 import rww.ldp.{LDPCommand, WebResource}
-import rww.play.Method
+import rww.play.auth.{Subject, Anonymous}
 import test.ldp.TestSetup._
 
 import scala.util.Try
 
 
-object RdfWebTest extends WebTestSuite[Rdf](baseUri, dir)(
+class RdfWebTest
+  extends WebTestSuite[Rdf](baseUri, dir)(
   ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
 )
 
@@ -25,7 +27,6 @@ object RdfWebTest extends WebTestSuite[Rdf](baseUri, dir)(
  *
  * tests the local and remote LDPR request, creation, LDPC creation, access control, etc...
  */
-abstract
 class WebTestSuite[Rdf <: RDF](
   baseUri: Rdf#URI,
   dir: Path
@@ -44,7 +45,7 @@ class WebTestSuite[Rdf <: RDF](
 
   val rwwAgent: RWWActorSystem[Rdf] = RWWActorSystemImpl.plain[Rdf] (baseUri, dir, testFetcher)
 
-  val webidVerifier = new WebIDVerifier(rwwAgent)
+  val webidVerifier = new WebIDVerifier(new WebResource(rwwAgent))
   implicit val authz: WACAuthZ[Rdf] = new WACAuthZ[Rdf](new WebResource(rwwAgent))(ops)
   import Method._
 
@@ -53,15 +54,10 @@ class WebTestSuite[Rdf <: RDF](
   "access to Henry's resources" when {
 
     "Henry's card to its acl" in {
-      val ex = authz.acl(henryCard)
-      val aclsFuture = ex.run(Iteratee.fold(List[LinkedDataResource[Rdf]] ()) {
-        case (lst, ldr) => ldr :: lst
-      })
-      val res = aclsFuture.map {
-        res =>
-          res.size should be(1)
-          res(0).location should be(henryCardAcl)
-          assert(res(0).resource.graph isIsomorphicWith henryCardAclGraph.resolveAgainst(henryCard))
+      val res = authz.aclFor(henryCard).map { optAcl =>
+          optAcl.size should be(1)
+          optAcl.get.location should be(henryCardAcl)
+          assert(optAcl.get.pointedGraph.graph isIsomorphicWith henryCardAclGraph.resolveAgainst(henryCard))
       }
       res.getOrFail()
     }
@@ -78,33 +74,39 @@ class WebTestSuite[Rdf <: RDF](
 
     "Who can access Henry's WebID profile?" in {
       val ex = for {
-        read <- authz.getAuthorizedWebIDsFor(henryCard, wac.Read)
-        write <- authz.getAuthorizedWebIDsFor(henryCard, wac.Write)
+        read <- authz.isAuthorized(webidToSubject(henry), Method.Read, henryCard)
+        write <- authz.isAuthorized(webidToSubject(henry), Method.Write, henryCard)
       } yield {
-          assert(read.contains(henry))
-          assert(read.contains(foaf.Agent))
-          assert(write.contains(henry))
-          assert(!write.contains(foaf.Agent))
+          Set(webIdToPrincipal(henry),Agent)
+          webIdToPrincipal(henry) should be(write)
         }
       ex.getOrFail()
     }
 
-    "What methods does Henry's WebID profile permit an anonymous user" in {
-      val ex = authz.getAllowedMethodsForAgent(henryCard, List())
-      val modes = ex.getOrFail()
-      modes should be(Set(Read))
+    "Can anyone access Henry's profile document in read mode" in {
+      val ex = authz.isAuthorized(Anonymous,Method.Read,henryCard)
+      val principal = ex.getOrFail()
+      principal should be(Agent)
     }
 
-    "What methods does Henry's WebID profile permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryCard, List(WebIDPrincipal(henry)))
-      val modes = ex.getOrFail()
-      modes should be(Set(Read, Write))
+
+    "Can Henry's WebID profile permit Henry identified by his key to access" in {
+      for (mode <- List(Read,Write)) yield {
+        val ex = authz.authorizedPrincipals(keyToSubject(henryKeyId),mode, henryCard)
+        val principals = ex.getOrFail()
+        if (mode==Read) principals should be(Set(keyToPrincipal(henryKeyId),Agent))
+        else principals should be(Set(keyToPrincipal(henryKeyId)))
+      }
     }
 
     "What methods does Henry's WebID profile acl permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryCardAcl, List(WebIDPrincipal(henry)))
-      val modes = ex.getOrFail()
-      modes should be(Set(Read, Write))
+      for (mode <- List(Read,Write)) yield {
+        val ex = authz.authorizedPrincipals(webidToSubject(henry), mode, henryCardAcl)
+        val principals = ex.getOrFail()
+        //note that the web access control only gives henry access in read mode, and not the world!
+        //also it does not give access to henry as identified by his key, but by his WebID
+        principals should be(Set(webIdToPrincipal(henry)))
+      }
     }
 
     "henry creates his foaf list ( no ACL here )" in {
@@ -123,18 +125,21 @@ class WebTestSuite[Rdf <: RDF](
       ex.getOrFail()
     }
 
+    val idp = webIdToPrincipal _
+
     "Who can access Henry's foaf profile?" in {
+      val fusion = Subject(Set(idp(timbl),idp(henry),idp(bertails)))
       val ex =
         for {
-          read <- authz.getAuthorizedWebIDsFor(henryFoaf, wac.Read)
-          write <- authz.getAuthorizedWebIDsFor(henryFoaf, wac.Write)
+          read <- authz.authorizedPrincipals(fusion,  Read, henryFoaf)
+          write <- authz.authorizedPrincipals(fusion, Write, henryFoaf)
         } yield {
-          assert(read.contains(timbl), "timbl can read")
-          assert(read.contains(bertails), "alex can read")
-          assert(read.contains(henry), "henry can read")
-          assert(!read.contains(foaf.Agent), "not everyone can read profile")
-          assert(write.contains(henry))
-          assert(!write.contains(foaf.Agent))
+          assert(read.contains(idp(timbl)), "timbl can read")
+          assert(read.contains(idp(bertails)), "alex can read")
+          assert(read.contains(idp(henry)), "henry can read")
+          assert(!read.contains(Agent), "not everyone can read profile")
+          assert(write.contains(idp(henry)), "henry can write")
+          assert(!write.contains(Agent), "Anonymous users can't write")
         }
 
       ex.getOrFail()
@@ -142,27 +147,57 @@ class WebTestSuite[Rdf <: RDF](
 
 
     "What methods does Henry's foaf profile permit an anonymous user" in {
-      val ex = authz.getAllowedMethodsForAgent(henryFoaf, List())
-      val modes = ex.getOrFail()
-      modes should be(Set())
+      val ex =
+        for {
+          read <- authz.authorizedPrincipals(webidToSubject(henry),  Read, henryFoaf)
+          write <- authz.authorizedPrincipals(webidToSubject(henry), Write, henryFoaf)
+        } yield {
+          read should not contain(Agent)
+          write should not contain(Agent)
+          read should contain(idp(henry))
+          write should contain(idp(henry))
+          read.size should be(1)
+          write.size should be(1)
+        }
+      ex.getOrFail()
     }
 
-    "What methods does Henry's foaf profile permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryFoaf, List(WebIDPrincipal(henry)))
-      val modes = ex.getOrFail()
-      modes should be(Set(Read, Write))
-    }
 
     "What methods does Henry's foaf profile acl permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryFoafWac, List(WebIDPrincipal(henry)))
-      val modes = ex.getOrFail()
-      modes should be(Set(Read, Write))
+      val ex =
+        for {
+          read <- authz.authorizedPrincipals(webidToSubject(henry),  Read, henryFoafWac)
+          write <- authz.authorizedPrincipals(webidToSubject(henry), Write, henryFoafWac)
+        } yield {
+          read should not contain(Agent)
+          write should not contain(Agent)
+          read should contain(idp(henry))
+          write should contain(idp(henry))
+          read.size should be(1)
+          write.size should be(1)
+        }
+      ex.getOrFail()
     }
 
     "What methods does Henry's foaf profile acl permit TimBL to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryFoaf, List(WebIDPrincipal(timbl)))
-      val modes = ex.getOrFail()
-      modes should be(Set(Read))
+      val timblSubj = webidToSubject(timbl)
+      val ex = authz.authorizedPrincipals(timblSubj,  Read, henryFoafWac).map(p=>
+        fail("TimBl is not allowed access to document in read mode")
+      ).failed.map{
+        case no: NoAuthorization => () //everything ok
+        case x => fail("wrong error thrown: "+x)
+      }
+
+      ex.getOrFail()
+
+      val ex2 = authz.authorizedPrincipals(timblSubj,  Write, henryFoafWac).map(p=>
+        fail("TimBl is not allowed access to document in read mode")
+      ).failed.map{
+        case no: NoAuthorization => () //everything ok
+        case x => fail("wrong error thrown: "+x)
+      }
+
+      ex2.getOrFail()
     }
 
   }
@@ -176,6 +211,8 @@ class WebTestSuite[Rdf <: RDF](
         ldpc <- createContainer(baseUri, Some("bertails"), Graph.empty)
         ldpcMeta <- getMeta(ldpc)
         card <- createLDPR(ldpc, Some(bertailsCard.lastPathSegment), bertailsCardGraph)
+        keyDoc <- createLDPR(ldpc,Some(bertailsKeyDoc.lastPathSegment),bertailsKeyGraph)
+        keyGraph <- getLDPR(keyDoc)
         cardMeta <- getMeta(card)
         _ <- updateLDPR(ldpcMeta.acl.get, add = bertailsContainerAclGraph.triples)
         _ <- updateLDPR(cardMeta.acl.get, add = bertailsCardAclGraph.triples)
@@ -186,11 +223,15 @@ class WebTestSuite[Rdf <: RDF](
           ldpc should be(bertailsContainer)
           cardMeta.acl.get should be(bertailsCardAcl)
           val shouldBe = (bertailsCardGraph union containsRel).resolveAgainst(bertailsCard)
-          println(s"~~~~~>rGraph $rGraph should be $shouldBe ")
           assert(rGraph isIsomorphicWith shouldBe)
           assert(aclGraph isIsomorphicWith bertailsCardAclGraph.resolveAgainst(bertailsCardAcl))
-          assert(containerAclGraph isIsomorphicWith bertailsContainerAclGraph.resolveAgainst
-          (bertailsContainerAcl))
+          assert(containerAclGraph isIsomorphicWith
+            bertailsContainerAclGraph.resolveAgainst(bertailsContainerAcl)
+          )
+          keyDoc should be(bertailsKeyDoc)
+          //todo: remove the links here, they should be in the headers!!
+          val fullKeyGraph = (keyGraph union containsRel).resolveAgainst(keyDoc)
+          assert( keyGraph  isIsomorphicWith( fullKeyGraph.resolveAgainst(bertailsKeyDoc)))
         })
       script.getOrFail()
 
@@ -205,55 +246,70 @@ class WebTestSuite[Rdf <: RDF](
       res.getOrFail()
     }
 
+    val idp = webIdToPrincipal _
+
     "can Access Alex's profile" in {
+      val fusion = Subject(Set(idp(timbl),idp(henry),idp(bertails)))
+
       val ex = for {
-        read <- authz.getAuthorizedWebIDsFor(bertailsCard, wac.Read)
-        write <- authz.getAuthorizedWebIDsFor(bertailsCard, wac.Write)
+        read <- authz.authorizedPrincipals(fusion, Read, bertailsCard)
+        write <- authz.authorizedPrincipals(fusion, Write, bertailsCard)
       } yield {
-          assert(read.contains(bertails))
-          assert(read.contains(foaf.Agent))
-          assert(write.contains(bertails))
-          assert(!write.contains(henry))
-          assert(!write.contains(foaf.Agent))
+          read should contain(idp(bertails))
+          read should contain(Agent)
+          write should contain(idp(bertails))
+          write should not contain(idp(henry))
+          write should not contain(foaf.Agent)
         }
       ex.getOrFail()
     }
 
-    "can Access other resources in Alex's container" in {
-      val ex = for {
-        read <- authz.getAuthorizedWebIDsFor(bertailsCard, wac.Read)
-        write <- authz.getAuthorizedWebIDsFor(bertailsCard, wac.Write)
-      } yield {
-          assert(read.contains(bertails))
-          assert(read.contains(foaf.Agent))
-          assert(write.contains(bertails))
-          assert(!write.contains(foaf.Agent))
-        }
-      ex.getOrFail()
-    }
-
-    "What methods does Alex's profile permit an anonymous user" in {
-      val ex = authz.getAllowedMethodsForAgent(bertailsCard, List())
-      val modes = ex.getOrFail()
-      modes should be(Set(Read))
-    }
 
     "What methods does Alex's profile permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(bertailsCard, List(WebIDPrincipal(henry)))
-      val modes = ex.getOrFail()
-      modes should be(Set(Read))
+      val ex = for {
+        read <- authz.authorizedPrincipals(webidToSubject(henry), Read, bertailsCard)
+      } yield {
+        read should not contain (idp(henry))
+        read should contain(Agent)
+      }
+      ex.getOrFail()
+
+      val ex2 = authz.authorizedPrincipals(webidToSubject(henry), Write, bertailsCard).failed.map{
+        case no: NoAuthorization => () //everything ok
+        case e => fail("wrong exception: "+e)
+      }
+      ex2.getOrFail()
+
     }
 
     "What methods does Alex's profile acl permit Henry to access" in {
-      val ex = authz.getAllowedMethodsForAgent(bertailsCard, List(WebIDPrincipal(bertails)))
-      val modes = ex.getOrFail()
-      modes should be(Set(Read, Write))
+      val ex = for {
+        read <- authz.authorizedPrincipals(webidToSubject(bertails), Read, bertailsCard)
+        write <- authz.authorizedPrincipals(webidToSubject(bertails), Write, bertailsCard)
+      } yield {
+        read should contain(idp(bertails))
+        read should contain(Agent)
+        write should contain(idp(bertails))
+        write should not contain(idp(henry))
+        write should not contain(foaf.Agent)
+      }
+      ex.getOrFail()
     }
 
     "What methods does Alex's profile acl permit TimBL to access" in {
-      val ex = authz.getAllowedMethodsForAgent(henryFoaf, List(WebIDPrincipal(timbl)))
-      val modes = ex.getOrFail()
-      modes should be(Set(Read))
+      val ex = for {
+        read <- authz.authorizedPrincipals(webidToSubject(timbl), Read, bertailsCard)
+      } yield {
+        read should not contain(idp(bertails))
+        read should contain(Agent)
+      }
+      ex.getOrFail()
+
+      val ex2 = authz.authorizedPrincipals(webidToSubject(timbl), Write, bertailsCard).failed.map{
+        case no: NoAuthorization => () //everything ok
+        case e => fail("wrong exception: "+e)
+      }
+      ex2.getOrFail()
     }
 
 

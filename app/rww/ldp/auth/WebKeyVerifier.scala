@@ -34,7 +34,7 @@ case class WebKeyVerifier[Rdf <: RDF](
   import org.w3.banana.diesel._
 
   val cert       = CertPrefix[Rdf]
-  val certbinder = new CertBinder()
+  val certbinder: CertBinder[Rdf] = new CertBinder[Rdf]()
 
   import certbinder._
 

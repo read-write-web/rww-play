@@ -31,9 +31,15 @@ class CertBinder[Rdf <: RDF]()(implicit ops: RDFOps[Rdf], recordBinder: RecordBi
         key => Some((key.getModulus.toUnsignedByteArray(),key.getPublicExponent))
       ) // withClasses rsaClassUri
 
-    //todo: find better name for key
-    val rsaPubKeybinderWithHash: PGBinder[Rdf, RSAPublicKey] =
-    pgbWithId[RSAPublicKey](key=>URI("#key_"+Math.abs(key.getModulus.hashCode())))(modulus, exponent)(
+  //todo: find better name for key
+  val rsaPubKeybinderWithHash: PGBinder[Rdf, RSAPublicKey] =
+    constructRsaPubKeybinderWithHash((key: RSAPublicKey) =>
+      "#key_" + Math.abs(key.getModulus.hashCode())
+    )
+
+  //todo: find better name for key
+   def constructRsaPubKeybinderWithHash(buildFragment: RSAPublicKey => String): PGBinder[Rdf, RSAPublicKey] =
+    pgbWithId[RSAPublicKey](key=>URI(buildFragment(key)))(modulus, exponent)(
       (m,e)=>factory.generatePublic(new RSAPublicKeySpec(new BigInteger(1,m),e)).asInstanceOf[RSAPublicKey],
       key => Some((key.getModulus.toUnsignedByteArray(),key.getPublicExponent))
     ) // withClasses rsaClassUri

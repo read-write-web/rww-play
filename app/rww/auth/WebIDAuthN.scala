@@ -7,7 +7,7 @@ import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.w3.banana.RDF
 import play.api.mvc.RequestHeader
 import rww.auth.BrowserCertBehavior._
-import rww.ldp.LDPExceptions.ClientAuthDisabled
+import rww.ldp.LDPExceptions.ClientAuthNDisabled
 import rww.ldp.auth.{PubKeyPrincipal, Claim, WebIDVerifier}
 import rww.play.auth.{AuthN, Subject}
 
@@ -28,7 +28,7 @@ class WebIDAuthN[Rdf <: RDF](
   import AuthN._
   def apply(headers: RequestHeader): Future[Subject] = {
     if (browserMayNotSupportsClientCerts(headers)) {
-      Future.failed(ClientAuthDisabled("browser does not support client certificate authentication"))
+      Future.failed(ClientAuthNDisabled("browser does not support client certificate authentication"))
     }
     else {
       val certificateRequired: Boolean = browserDoesNotSupportsTLSWantMode(headers)
@@ -36,7 +36,7 @@ class WebIDAuthN[Rdf <: RDF](
       val certs = headers.certs(certificateRequired) recoverWith {
         //todo: find out exactly what the exceptions that may be cought are
         case NonFatal(e) => Future.failed(
-          ClientAuthDisabled("client sent no certificate over TLS", Some(e))
+          ClientAuthNDisabled("client sent no certificate over TLS", Some(e))
         )
       }
       certs.flatMap { certs: Seq[Certificate] =>

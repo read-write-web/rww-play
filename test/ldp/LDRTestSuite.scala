@@ -46,7 +46,7 @@ class LDRTestSuite[Rdf<:RDF](
   val rww: RWWActorSystem[Rdf] = RWWActorSystemImpl.plain[Rdf](baseUri,dir,testFetcher)
   implicit val authz =  new WACAuthZ[Rdf](new WebResource(rww))
 
-  val webidVerifier = new WebIDVerifier(rww)
+  val webidVerifier = new WebIDVerifier(new WebResource(rww))
 
   val web = new WebResource[Rdf](rww)
 
@@ -76,7 +76,7 @@ class LDRTestSuite[Rdf<:RDF](
   }
 
   "Test WebResource ~" in {
-    val ldrEnum = web~(tpacGroup)
+    val ldrEnum = web(tpacGroup)
     val futureResList = ldrEnum(Iteratee.getChunks[LinkedDataResource[Rdf]]).flatMap(_.run)
     val resList = futureResList.getOrFail()
     resList should have length(1)
@@ -88,7 +88,7 @@ class LDRTestSuite[Rdf<:RDF](
 
   "Test WebResource ~>" in {
     val memberEnum: Enumerator[LinkedDataResource[Rdf]] = for {
-      groupLdr <- web~(tpacGroup)
+      groupLdr <- web(tpacGroup)
       member <-  web.~>(groupLdr,foaf.member)()
     } yield {
       member
@@ -113,7 +113,7 @@ class LDRTestSuite[Rdf<:RDF](
 
   "Test WebResource ~> followed by ~> to literal" in {
     val nameEnum = for {
-      groupLdr <- web~(tpacGroup)
+      groupLdr <- web(tpacGroup)
       member <-  web.~>(groupLdr,foaf.member)()
       name <- web.~>(member,foaf.name)()
     } yield {
@@ -131,7 +131,7 @@ class LDRTestSuite[Rdf<:RDF](
 
   "Test ACLs with ~ and ~> and <~ (tests bnode support too)" in {
     val nameEnum = for {
-      wacLdr <- web~(henryFoafWac)
+      wacLdr <- web(henryFoafWac)
       auth  <-  web.<~(LinkedDataResource(wacLdr.location,PointedGraph(henryFoaf,wacLdr.resource.graph)),wac.accessTo)()
       agentClass <-  web.~>(auth,wac.agentClass)()
       member <-  web.~>(agentClass,foaf.member)()
@@ -158,7 +158,7 @@ class LDRTestSuite[Rdf<:RDF](
     assert{ Await.result(res,Duration(2,TimeUnit.SECONDS)) == true}
     //now we should only have two resources returned
     val memberEnum: Enumerator[LinkedDataResource[Rdf]] = for {
-      groupLdr <- web~(tpacGroup)
+      groupLdr <- web(tpacGroup)
       member <-  web.~>(groupLdr,foaf.member)()
     } yield {
       member

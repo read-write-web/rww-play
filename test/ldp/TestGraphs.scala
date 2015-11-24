@@ -1,18 +1,20 @@
 package test.ldp
 
-import java.net.{URL => jURL}
+import java.net.{URL => jURL, URI=>jURI}
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import java.security.{KeyPair, KeyPairGenerator}
 import java.util.Date
 
-import rww.ldp._
-import rww.ldp.model.{LDPR, NamedResource}
-import rww.rdf.util.LDPPrefix
 import org.scalatest.{BeforeAndAfter, Suite}
 import org.w3.banana.binder.RecordBinder
 import org.w3.banana.io.{Syntax, Writer}
 import org.w3.banana.{LDPPrefix => _, _}
 import org.w3.play.api.libs.ws.ResponseHeaders
+import rww.ldp._
+import rww.ldp.auth.{WebKeyPrincipal, WebIDPrincipal}
+import rww.ldp.model.{LDPR, NamedResource}
+import rww.play.auth.Subject
+import rww.rdf.util.LDPPrefix
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -32,7 +34,15 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
   val certbinder = new CertBinder()
   import certbinder._
 
+  def webidToSubject(webid:Rdf#URI) = Subject(Set(webIdToPrincipal(webid)))
+  def keyToSubject(key: Rdf#URI ) = Subject(Set(keyToPrincipal(key)))
+
+  def keyToPrincipal(key: Rdf#URI): WebKeyPrincipal = WebKeyPrincipal(toJUri(key))
+
+  def webIdToPrincipal(webid: Rdf#URI) = WebIDPrincipal(toJUri(webid))
   //reset the web before each (major "in" ?) test
+  def toJUri(webid: Rdf#URI): jURI = new jURI(webid.toString)
+
   before {
     testFetcher.resetWeb
   }
@@ -79,12 +89,13 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
     URI("#me") -- cert.key ->- henryKeyPair.pub
       -- foaf.name ->- "Henry"
     ).graph
+  val henryKeyId =  URI(henryCard.getString+"#key")
 
   val henryCardAcl = URI("http://bblfish.net/people/henry/card;wac")
   val henryCardAclGraph: Rdf#Graph = (
     bnode("t1")
       -- wac.accessTo ->- henryCard
-      -- wac.agent ->- henry
+      -- wac.agent ->- (henry -- cert.key ->- henryKeyId)
       -- wac.mode ->- wac.Read
       -- wac.mode ->- wac.Write
     ).graph union (
@@ -154,20 +165,22 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
   // local resources
   //
 
-  val bertailsContainer =    URI("http://example.com/foo/bertails/")
+  val bertailsContainer    = URI("http://example.com/foo/bertails/")
   val bertailsContainerAcl = URI("http://example.com/foo/bertails/.acl")
-  val bertails =             URI("http://example.com/foo/bertails/card#me")
-  val bertailsCard =         URI("http://example.com/foo/bertails/card")
-  val bertailsCardAcl =      URI("http://example.com/foo/bertails/card.acl")
-  val bertailsFoaf =         URI("http://example.com/foo/bertails/foaf")
-  val bertailsFoafAcl =      URI("http://example.com/foo/bertails/foaf.acl")
+  val bertails             = URI("http://example.com/foo/bertails/card#me")
+  val bertailsCard         = URI("http://example.com/foo/bertails/card")
+  val bertailsCardAcl      = URI("http://example.com/foo/bertails/card.acl")
+  val bertailsKey          = URI("http://example.com/foo/bertails/key#")
+  val bertailsKeyDoc       = URI("http://example.com/foo/bertails/key")
+  val bertailsFoaf         = URI("http://example.com/foo/bertails/foaf")
+  val bertailsFoafAcl      = URI("http://example.com/foo/bertails/foaf.acl")
 
 
   val bertailsCardGraph: Rdf#Graph = (
     URI("#me")
       -- foaf.name ->- "Alexandre".lang("fr")
       -- foaf.title ->- "Mr"
-      -- cert.key ->- bertKeyPair.pub
+      -- cert.key ->- bertailsKey
     ).graph
 
   val bertailsCardAclGraph: Rdf#Graph = (
@@ -178,6 +191,9 @@ trait TestGraphs[Rdf<:RDF] extends BeforeAndAfter {  this: Suite =>
     ).graph  union (
     URI("") -- wac.include ->- URI(".acl")
     ).graph
+
+  val bertailsKeyGraph: Rdf#Graph =
+      constructRsaPubKeybinderWithHash(_ => "#").toPG(bertKeyPair.pub).graph
 
 
   val bertailsContainerAclGraph: Rdf#Graph = (
