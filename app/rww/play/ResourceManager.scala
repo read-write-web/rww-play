@@ -212,19 +212,6 @@ class ResourceMgr[Rdf <: RDF](
 
     subjectFuture.flatMap { subject =>
       Logger.info(s"~~~> working with $subject")
-      //todo: it would actually make sense to check for "Authorize:" headers here, because they would
-      //todo: presumably only be sent if the user wanted to be authenticated that way.
-      //todo: otherwise one risks calling getAllowedMethodsForAgent one more time than needed
-      //todo: this means one should split the WWW-Authenticate and the WebIDTLSAuthenticate
-
-
-      //2. find out all rights for this user
-
-      //todo: what we are missing here is a way for the user to say that he prefers to be
-      // authenticated
-      //because otherwise for most resources we may just return what the public user is allowed
-      // access to.
-
 
       isAuthorized(subject, mode, rdfURI).map((subject, _)).recoverWith {
         case fail@NoAuthorization(_, _, _) => {

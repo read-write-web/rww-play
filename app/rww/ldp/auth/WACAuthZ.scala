@@ -148,8 +148,10 @@ class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) ext
     def allowsMethodForSubject(
       subject: Subject,
       aclMode: PiNG[Rdf],
-      on: Rdf#URI
+      on: Rdf#URI,
+      recursionMax: Int = 5
     ): Enumerator[Principal] = {
+      if (recursionMax <= 0) return Enumerator()
       // It would be interesting to return a Future[Proof]
       // An initial way to think of a Proof would be as a path of PiNGs and relations used
       // to get from one to the other side ending with a Principals of the Subject
@@ -218,9 +220,10 @@ class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) ext
 
       val all = agentPrincipals interleave( classPrincipals)
 
+      //danger of infinite recursion
       val seeAlsoAnswers = (aclMode.document~>(wac.include)).flatMap{ doc =>
         val modePointer = doc.point(aclMode.pointer)
-        allowsMethodForSubject(subject, modePointer, on)
+        allowsMethodForSubject(subject, modePointer, on, recursionMax-1)
       }
 
       all interleave seeAlsoAnswers

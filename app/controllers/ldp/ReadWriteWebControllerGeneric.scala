@@ -80,8 +80,8 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
   private def allowHeaders(authResult: IdResult[NamedResource[Rdf]]): List[(String, String)] = {
     val isLDPC =  authResult.result.isInstanceOf[LocalLDPC[_]]
     val allow = "Allow" -> {
-      //todo: if we can get the authorized modes for the user efficiently use just those
-      val headerStr = List(wac.Read,wac.Write,wac.Control,wac.Append).collect {
+      //todo: if we can get the authorized modes for the user efficiently should use just those
+      val headerStr = List(Method.Read,Method.Write,Method.Append).collect {
         case Method.Append =>
           authResult.result match {
             case l: LocalLDPC[Rdf] => "POST"
