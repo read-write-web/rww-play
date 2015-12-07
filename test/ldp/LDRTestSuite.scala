@@ -19,7 +19,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-//class PlantainLDRTest
+//class LDRTester
 //  extends LDRTestSuite[Rdf](baseUri, dir)(
 //    ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
 //  )

@@ -15,15 +15,12 @@ import test.ldp.TestSetup._
 import scala.util.Try
 
 
-class RwwActorSubdomainsTest
+class RwwActorSubdomainsTester
   extends RWWActorSubdomainsTest[Rdf](baseUri, dir)(
     ops,recordBinder,sparqlOps,sparqlGraph,turtleWriter,turtleReader
   )
 
 
-/**
- * Created by hjs on 23/11/2013.
- */
 abstract class RWWActorSubdomainsTest[Rdf<:RDF](
   baseUri: Rdf#URI,
   dir: Path

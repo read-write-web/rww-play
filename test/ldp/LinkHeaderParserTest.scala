@@ -6,7 +6,8 @@ import rww.ldp.LinkHeaderParser
 
 import scala.util.control.NonFatal
 import test.ldp.TestSetup._
-class PlantainLinkHeaderParserTest extends LinkHeaderParserTest[Rdf]()(ops)
+
+class LinkHeaderParserTester extends LinkHeaderParserTest[Rdf]()(ops)
 
 
 abstract class LinkHeaderParserTest[Rdf<:RDF](
