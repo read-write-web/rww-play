@@ -31,7 +31,7 @@ import rww.ldp.LDPExceptions._
 import rww.ldp._
 import rww.ldp.actor.RWWActorSystem
 import rww.ldp.auth.{Method, WACAuthZ}
-import rww.ldp.model.{BinaryResource, LDPC, LDPR, NamedResource}
+import rww.ldp.model._
 import rww.play.auth.{AuthN, Subject}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -47,11 +47,12 @@ case class AuthorizedModes(
 
 /**
  * This permits to transmit a result and to add an User header in the request which contains the URI of the authenticated user's WebID
- * @param subject of the authenticated user
+  *
+  * @param subject of the authenticated user
  * @param result the result
  * @tparam R
  */
-case class IdResult[R](subject: Subject, authZPrincipal: Principal, result: R)
+case class IdResult[+R](subject: Subject, authZPrincipal: Principal, result: R)
 
 //the idea of this class was to not be reliant on Play! We need RequestHeader in order to do authentication
 //todo: find a way of abstracting this
@@ -92,7 +93,7 @@ class ResourceMgr[Rdf <: RDF](
 
   def patch(content: RwwContent)(
     implicit request: PlayRequestHeader
-  ): Future[IdResult[Boolean]] = {
+  ): Future[IdResult[Meta[Rdf]]] = {
     val path = request.path
     content match {
       case updatedQuery: PatchRwwContent[Rdf] => for {
@@ -103,7 +104,8 @@ class ResourceMgr[Rdf <: RDF](
             y <- HttpResourceUtils.ifMatch(request, resrc) { () =>
               patchLDPR(URI(path), updatedQuery.query, Map())
             }
-          } yield y
+            meta <- getMeta(URI(path))
+          } yield meta
         )
       } yield IdResult(subj, principal, x)
       case _ => Future.failed(
@@ -115,7 +117,7 @@ class ResourceMgr[Rdf <: RDF](
 
   def put(content: RwwContent)(
     implicit request: PlayRequestHeader
-  ): Future[IdResult[Rdf#URI]] = {
+  ): Future[IdResult[Meta[Rdf]]] = {
 
     import HttpResourceUtils.ifMatch
     val path = request.path
@@ -137,13 +139,22 @@ class ResourceMgr[Rdf <: RDF](
                 }
               }
               case ldpr: LDPR[Rdf] => ifMatch(request, resrc) { () =>
-                putLDPR(ldpr.location, grc.graph)
+                val linkHeaders = request.headers.getAll("Link")
+                val typeHeaders = parser.parse(linkHeaders: _*).toOption.toList.flatMap { graph =>
+                  (PointedGraph(URI(""), graph) / rdf.`type`).toList.collect {
+                    case PointedGraph(u@URI(_),_) => u
+                  }
+                }
+                for {
+                  _ <- putLDPR(URI(collection),file, typeHeaders, grc.graph)
+                  x <- getMeta(ldpr.location)
+                } yield x
               }
               case other => throw OperationNotSupported(
                 s"Not expected resource type for path request.getAbsoluteURI.toString, type: $other"
               )
             }
-          } yield IdResult[Rdf#URI](subj,principal, resrc.location))
+          } yield IdResult[Meta[Rdf]](subj,principal, x))
         }
         case BinaryRwwContent(tmpFile, mime) => {
           rwwAgent.execute(
@@ -156,7 +167,7 @@ class ResourceMgr[Rdf <: RDF](
                   // collection.
                   //this needs to be sent to another agent, or it needs to be rethought
                   binaryResource.setContentTo(tmpFile)
-                  IdResult(subj,principal, resrc.location)
+                  IdResult[Meta[Rdf]](subj,principal, resrc)
                 }
               }
               case _ => throw OperationNotSupported(
@@ -280,6 +291,7 @@ class ResourceMgr[Rdf <: RDF](
 
   /**
     * HTTP POST of a graph
+    *
     * @param request
     * @param slug a suggested name for the resource
     * @param content
@@ -430,7 +442,8 @@ object HttpResourceUtils {
   /**
    * checks "If-Match" for resources that are to be changed.
    * Here no If match header is a failure by default, and
-   * @return true if able to proceed with request
+    *
+    * @return true if able to proceed with request
    * @throws rww.ldp.LDPExceptions.ETagsDoNotMatch if tags do not match
    * @throws rww.ldp.LDPExceptions.MissingEtag if no etag available
    * todo: this only works to stop altering of resources, but one can also use

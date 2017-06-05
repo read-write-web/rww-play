@@ -2,11 +2,13 @@
 @prefix cert: <http://www.w3.org/ns/auth/cert#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix ldp: <http://www.w3.org/ns/ldp#> .
+@prefix pws: <https://www.w3.org/ns/pim/space#> .
 
 <card> foaf:primaryTopic <card#me> .
 
 <card#me>
      a foaf:Person ;
+     pws:storage <.>;
      foaf:name "Me (test webid)";
      foaf:knows <http://bblfish.net/people/henry/card#me> ;
      cert:key <key#>,

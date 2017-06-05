@@ -66,18 +66,18 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
   }
 
 
-  private def etagHeader(authResult: IdResult[NamedResource[Rdf]]): List[(String, String)] = {
+  private def etagHeader(authResult: IdResult[Meta[Rdf]]): List[(String, String)] = {
      authResult.result.etag.toOption.map(et=>("ETag",et.value)).toList
   }
 
-  private def updatedHeader(authResult: IdResult[NamedResource[Rdf]]): List[(String, String)] = {
+  private def updatedHeader(authResult: IdResult[Meta[Rdf]]): List[(String, String)] = {
     authResult.result.updated.toOption.map{ u =>
       val lm = `Last-Modified`(DateTime(u.getTime))
       (lm.name(),lm.value())
     }.toList
   }
 
-  private def allowHeaders(authResult: IdResult[NamedResource[Rdf]]): List[(String, String)] = {
+  private def allowHeaders(authResult: IdResult[Meta[Rdf]]): List[(String, String)] = {
     val isLDPC =  authResult.result.isInstanceOf[LocalLDPC[_]]
     val allow = "Allow" -> {
       //todo: if we can get the authorized modes for the user efficiently should use just those
@@ -227,13 +227,15 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       "Access-Control-Allow-Headers" -> "Authorization,Host,User,Signature-Date,*"::Nil
   }
 
+  private
+  def commonHeaders(authResult: IdResult[Meta[Rdf]]): List[(String, String)] =
+    allowHeaders(authResult) :::
+      etagHeader(authResult) :::
+      updatedHeader(authResult) :::
+      userHeader(authResult.subject)
+
   private def writeGetResult(authResult: IdResult[NamedResource[Rdf]])
                             (implicit request: PlayApi.mvc.Request[AnyContent]): Result = {
-    def commonHeaders: List[(String, String)] =
-      allowHeaders(authResult) :::
-        etagHeader(authResult) :::
-        updatedHeader(authResult) :::
-        userHeader(authResult.subject)
 
 
     authResult.result match {
@@ -243,7 +245,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
                corsHeaders:::
               "Accept-Patch" -> Syntax.SparqlUpdate.mimeTypes.head.mime :: //todo: something that is more flexible
               linkHeaders(ldpr) ::
-              commonHeaders
+              commonHeaders(authResult)
           result(200, wr, Map(headers: _*))(ldpr.graph).addingToSession("subject"->authResult.subject.toSession)
         } getOrElse {
           play.api.mvc.Results.UnsupportedMediaType("could not find serialiser for Accept types " +
@@ -252,7 +254,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
       }
       case bin: BinaryResource[Rdf] => {
         val contentType = bin.mime.mime
-        val headers =  "Content-Type" -> contentType :: linkHeaders(bin)::commonHeaders
+        val headers =  "Content-Type" -> contentType :: linkHeaders(bin)::commonHeaders(authResult)
 
         Result(
           header = ResponseHeader(200, Map(headers:_*)),
@@ -276,7 +278,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     val future = for {
       answer <- resourceManager.put(request.body)
     } yield {
-      Ok("Succeeded").withHeaders(userHeader(answer.subject):_*)
+      Ok("Succeeded").withHeaders(commonHeaders(answer):_*)
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))
@@ -302,7 +304,7 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
     val future = for {
       answer <- resourceManager.patch( request.body)
     } yield {
-      Ok("Succeeded").withHeaders(userHeader(answer.subject):_*)
+      Ok("Succeeded").withHeaders(commonHeaders(answer):_*)
     }
     future recover {
       case nse: NoSuchElementException => NotFound(nse.getMessage + stackTrace(nse))

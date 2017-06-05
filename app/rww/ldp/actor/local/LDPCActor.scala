@@ -16,13 +16,13 @@ import rww.ldp.model._
 import rww.ldp.{CreateBinary, CreateContainer, CreateLDPR, DeleteResource, _}
 
 import scala.language.reflectiveCalls
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
  * A LDP Container actor that is responsible for the equivalent of a directory
  *
- *
- * @param ldpcUri the URI for the container
+  * @param ldpcUri the URI for the container
  * @param root the path on the file system where data is saved to
  * @param ops
  */
@@ -165,7 +165,8 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
 
   /**
    * Runs a command that can be evaluated on this container.
-   * @param cmd the command to evaluate
+    *
+    * @param cmd the command to evaluate
    * @tparam A The final return type of the script
    * @return a script for further evaluation
    */
@@ -220,14 +221,58 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
           //todo: make sure the uri does not end in ";aclPath" or whatever else the aclPath standard will be
         } getOrElse(throw UnsupportedMediaType("we do not yet support "+mime))
       }
-//      case PutLDPR(uri,graph,headers,k) => {
-//        for {
-//          headerGraph <- headers;
-//          if (PointedGraph(uri, headerGraph) / rdf.typ).nodes.exists(_.fold(u => u == ldp.BasicContainer, _ => false, _ => false))
-//        } yield {
-//
-//        }
-//      }
+      case PutLDPR(uri,name, types, graph,a) => {
+        val path = root.resolve(name)
+        if (path == root)
+          throw  OperationNotSupportedException("Cannot PUT on an existing LDPC for the moment")
+        else if (types.exists(t=> t == ldp.DirectContainer || t == ldp.IndirectContainer)) {
+          throw OperationNotSupportedException("No support yet for direct or indirect containers")
+        } else if (types.exists(_==ldp.BasicContainer)) {
+          try {
+            val dir = Files.createDirectory(path)
+            Files.createFile(path.resolve(ext))
+            Files.createFile(path.resolve(acl+ext))
+            val newContainerUri = ldpcUri / name / ""
+            val ldpc = context.actorOf(Props(new LDPCActor(newContainerUri, path)), name)
+            val creationRel = Triple(ldpcUri, ldp.contains, newContainerUri)
+            val linkedGraph = graph union Graph(creationRel)
+            val scrpt = for {
+              c <- LDPCommand.suspend(cmd)
+              //todo: should these be in the header?
+              y <- LDPCommand.updateLDPR[Rdf](newContainerUri, add = linkedGraph.triples)
+            } yield a //todo: should this be what is yielded?
+            ldpc forward ScriptMessage(scrpt)
+          } catch {
+            case e: FileAlreadyExistsException =>
+              throw OperationNotSupportedException("Container exists, we can't overwrite one yet")
+          }
+        } else if (types.exists(_==ldp.Resource)) {
+          val (actor, newResourceUri) = try {
+            val newfile = Files.createFile(path.resolveSibling(path.getFileName.toString+ext))
+            Files.createSymbolicLink(path, newfile.getFileName)
+            val fileAcl = Files.createFile(path.resolveSibling(path.getFileName.toString+acl+ext))
+            log.debug(s"Created file $newfile with acl file $fileAcl")
+            val iri = ldpcUri/name
+            val actor = context.actorOf(Props(new LDPRActor(uri, path)), path.getFileName.toString)
+            (actor,iri)
+          } catch {
+            case e: FileAlreadyExistsException => {
+              val actor = context.actorFor(path.getFileName.toString)
+              (actor,ldpcUri/name)
+            }
+            case NonFatal(e) => throw OperationNotSupportedException(e.getMessage)
+          }
+          //todo: move this into the resource created ( it should know on creation how to find the parent )
+          val linkedGraph = graph union Graph(Triple(ldpcUri, ldp.contains, newResourceUri))
+
+          val scrpt = for {
+              c <- LDPCommand.suspend(cmd)
+              //todo: should these be in the header?
+              y <- LDPCommand.updateLDPR[Rdf](newResourceUri, add = linkedGraph.triples)
+            } yield a //todo: should this be what is yielded?
+          actor forward ScriptMessage(scrpt)
+        }
+      }
       case CreateContainer(_,slugOpt,graph,k) => {
         val (uri, pathSegment) = mkDir(slugOpt)
         val p = root.resolve(pathSegment)
@@ -281,7 +326,8 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
 
   /**
    * creates a file from the slug, and returns the URI and path for it.
-   * @param slug
+    *
+    * @param slug
    * @param ext for the extension of the file, should not be the "" string
    **/
   protected def mkFile[A](slug: String, ext: String): (Rdf#URI, Path) = {
@@ -289,7 +335,7 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
     val safeSlug = slug.replaceAll("[/.]+", "_")
     val slugLink = root.resolve(safeSlug)
     val slugFile =  slugLink.resolveSibling(slugLink.getFileName.toString+ext)
-    val slugAcl = slugLink.resolveSibling(slugLink.getFileName.toString+acl+".ttl")
+    val slugAcl = slugLink.resolveSibling(slugLink.getFileName.toString+acl+ext)
     if ( Files.exists(slugLink, LinkOption.NOFOLLOW_LINKS) || Files.exists(slugFile) || Files.exists(slugLink) ) {
       val slugFallback = generateSlugFallback(slug)
       log.info(s"filename $slug is not available, will try with new slug $slugFallback")
@@ -312,7 +358,8 @@ class LDPCActor[Rdf<:RDF](ldpcUri: Rdf#URI, root: Path)
 
   /**
    * creates a dir/collection from the slug, and returns the URI and path for it.
-   * @param slugOpt, optional file name
+    *
+    * @param slugOpt, optional file name
    **/
   protected def mkDir[A](slugOpt: Option[String]): (Rdf#URI, Path) = {
     val path = slugOpt match {

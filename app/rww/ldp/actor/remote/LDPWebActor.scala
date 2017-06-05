@@ -67,9 +67,10 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
           }
         }
       }
-      case PutLDPR(uri, graph, a) => {
+      //todo: one has to pass the headers here too!
+      case PutLDPR(uri, name, headers, graph, a) => {
         val sender = context.sender  //very important. Calling in function onComplete will return deadLetter
-        val result = webc.put(uri,graph,Syntax.Turtle)
+        val result = webc.put(uri/name,graph,Syntax.Turtle)
         result.onComplete{ tryres =>
           tryres match {
             case Success(url) => rwwRouterActor.tell(ScriptMessage(a),sender)
@@ -139,9 +140,6 @@ class LDPWebActor[Rdf<:RDF](val excluding: Rdf#URI, val webc: WebClient[Rdf])
             case Failure(e) => failMsg(e, sender,s"failure DELETing remote resource <$uri>")
           }
         }
-      }
-      case PutLDPR(uri,graph,a) => {
-
       }
       case UpdateLDPR(uri, remove, add, a) => {
         val sender = context.sender

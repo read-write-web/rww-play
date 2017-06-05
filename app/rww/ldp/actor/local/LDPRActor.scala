@@ -239,9 +239,9 @@ class LDPRActor[Rdf<:RDF](val baseUri: Rdf#URI,path: Path)
           case Failure(fail) => context.sender ! akka.actor.Status.Failure(fail)
         }
       }
-      case PutLDPR(uri, graph, a) => {
-        val nme = localName(uri)
-        setResource(nme, graph)
+      case PutLDPR(uri, name, types, graph, a) => {
+        //todo, should actually check the container type.
+        setResource(name, graph)
         rwwRouterActor.tell(ScriptMessage(a), context.sender)
       }
 // this would allow one to change a resource to a binary in one atomic operation

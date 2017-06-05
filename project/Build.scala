@@ -92,7 +92,7 @@ object ApplicationBuild extends Build {
 
 
   val main = Project(
-    id = "RWWeb",
+    id = "rww-play-dev",
     base = file("."),
     settings =  buildSettings
   ).enablePlugins(play.PlayScala).enablePlugins(SbtWeb).enablePlugins(SbtTwirl)
