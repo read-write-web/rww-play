@@ -26,7 +26,7 @@ are no stupid questions!
 Getting going
 =============
 
-* You need at least Java 8 which is [being widely adopted by the Scala community](http://www.infoq.com/news/2014/12/Typesafe-surveys-Java-Adoption)
+* You need at least Java 8 which is [being widely adopted by the Scala community](http://www.infoq.com/news/2014/12/Typesafe-surveys-Java-Adoption). Make sure `JAVA_HOME` ist set properly.
 * clone [this project](https://github.com/stample/rww-play) 
 * run
 ```bash
