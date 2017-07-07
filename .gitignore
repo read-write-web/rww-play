@@ -18,7 +18,7 @@ dist
 .history
 
 # Play2 - TLS #
-conf/generated.keystore
+#conf/generated.keystore
 
 # Backup files / users specific #
 *~
