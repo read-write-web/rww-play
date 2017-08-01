@@ -8,7 +8,7 @@
 
 [] acl:accessToClass [ acl:regex "https://[^:]+:8443/.*" ];
    acl:mode acl:Write, acl:Read;
-#   acl:agentClass foaf:Agent
+#   acl:agentClass foaf:Agent .
    acl:agent <card#me> .
 
 #if you name your computer "bleau" in /etc/hosts then it is easier to debug virtual cell phone apps

@@ -3,11 +3,8 @@
 
 [] acl:accessTo <card>, <card.ttl> ;
    acl:agent <card#me> ;
-	acl:agentClass <http://xmlns.com/foaf/0.1/Agent> ;
-	acl:mode acl:Read .
-
-# we allow authentication on the key too
-<card#me> cert:key <key#> .
-
+   #acl:agent [ cert:key <key#> ];
+   acl:agentClass <http://xmlns.com/foaf/0.1/Agent> ;
+   acl:mode acl:Read .
 
 <> acl:include <.acl> .
