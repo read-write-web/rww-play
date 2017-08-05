@@ -32,7 +32,7 @@ object LDPExceptions {
 
   sealed trait AuthZException extends Exception
   case class MissingACLException(resource: URI) extends AuthZException
-  case class NoAuthorization(subject: Subject, on: URI, mode: Method.Value) extends AuthZException
+  case class NoAuthorization(subject: Subject, onUri: String, mode: Method.Value) extends AuthZException
 
   // Authentiction Exceptions
   sealed trait AuthNException extends Exception

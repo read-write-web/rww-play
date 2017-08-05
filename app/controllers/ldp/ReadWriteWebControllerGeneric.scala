@@ -342,6 +342,12 @@ trait ReadWriteWebControllerGeneric extends ReadWriteWebControllerTrait {
           //todo a better implementation would have this on the actor itself, which WOULD know the type
         ).withHeaders("WWW-Authenticate" -> """Signature realm="/"""")
       }
+      case err @ NoAuthorization(subj,on,mode) => {
+        Unauthorized(
+          views.html.ldp.accessDenied(s"no access on $on in mode $mode with method ${request.method}", stackTrace(err))
+          //todo a better implementation would have this on the actor itself, which WOULD know the type
+        ).withHeaders("WWW-Authenticate" -> """Signature realm="/"""")
+      }
       case e: WrongTypeException =>
         //todo: the Allow methods should not be hardcoded.
         Result(

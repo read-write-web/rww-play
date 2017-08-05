@@ -59,7 +59,7 @@ class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) ext
       case Some(aclDoc) => {
         val futureP = allowsMethodForSubject(subject, aclDoc.point(wacIt(mode)), on) run Iteratee.head
         futureP flatMap {
-          case None => Future.failed(NoAuthorization(subject, new jURI(on.toString), mode))
+          case None => Future.failed(NoAuthorization(subject, on.toString, mode))
           case Some(principal) => Future.successful(principal)
         }
       }
@@ -81,7 +81,7 @@ class WACAuthZ[Rdf <: RDF](web: WebResource[Rdf])(implicit ops: RDFOps[Rdf]) ext
       case Some(aclDoc) => {
         val futureList = allowsMethodForSubject(subject, aclDoc.point(wacIt(mode)), on) run Iteratee.getChunks
         futureList flatMap {
-          case Nil => Future.failed(NoAuthorization(subject, new jURI(on.toString), mode))
+          case Nil => Future.failed(NoAuthorization(subject, on.toString, mode))
           case list => Future.successful(list.toSet)
         }
       }
